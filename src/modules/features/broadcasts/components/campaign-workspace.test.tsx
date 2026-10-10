@@ -35,6 +35,15 @@ beforeEach(() => {
 async function wizard() { render(<CampaignBuilder campaignId={id} campaignName="Campaña de prueba" />); await waitFor(() => expect(screen.queryByText('Cargando campaña…')).not.toBeInTheDocument()) }
 function tab(name: string) { fireEvent.mouseDown(screen.getByRole('tab', { name }), { button: 0, ctrlKey: false }) }
 describe('Simple campaign workspace', () => {
+    it('presents the commercial order and keeps targeting and scheduling collapsed without discarding saved criteria', async () => {
+        await wizard()
+        expect(screen.getAllByRole('heading', { level: 3 }).map(heading => heading.textContent).slice(0, 3)).toEqual(['1. Canal', '2. Mensaje', '3. Destinatarios'])
+        expect(screen.getByText(/Personalizar destinatarios · opcional/).closest('details')).not.toHaveAttribute('open')
+        expect(screen.getByText('Programar envío · opcional').closest('details')).not.toHaveAttribute('open')
+        expect(screen.getByLabelText('Estado del contacto · vacío para todos')).not.toBeVisible()
+        expect(screen.getByRole('button', { name: 'Equilibrado: 30 s de intervalo base' })).toBeVisible()
+        expect(mocks.saveAudience).not.toHaveBeenCalled()
+    })
     it('loads the recipient step without creating, enrolling, changing consent or sending', async () => {
         await wizard()
         expect(screen.getByLabelText('Estado del contacto · vacío para todos')).toBeInTheDocument()
@@ -53,7 +62,7 @@ describe('Simple campaign workspace', () => {
         await wizard(); tab('Preparación')
         fireEvent.change(screen.getByLabelText('Fecha de inicio · hora local del navegador'), { target: { value: '2099-01-01T12:00' } })
         tab('Preparación')
-        expect(screen.getByRole('button', { name: 'Abrir revisión final' })).toBeDisabled()
+        expect(screen.getByRole('button', { name: 'Revisar y enviar' })).toBeDisabled()
         expect(mocks.update).not.toHaveBeenCalled()
         tab('Preparación')
         expect(screen.getByLabelText('Fecha de inicio · hora local del navegador')).toHaveValue('2099-01-01T12:00')
@@ -92,7 +101,7 @@ describe('Simple campaign workspace', () => {
         fireEvent.click(screen.getByRole('button', { name: 'Guardar configuración' }))
         await waitFor(() => expect(mocks.toast).toHaveBeenCalledWith('Conflicto de prueba'))
         expect(mocks.saveAudience).toHaveBeenCalled()
-        expect(screen.getByRole('button', { name: 'Abrir revisión final' })).toBeDisabled()
+        expect(screen.getByRole('button', { name: 'Revisar y enviar' })).toBeDisabled()
         expect(screen.getByLabelText('Fecha de inicio · hora local del navegador')).toHaveValue('2099-01-01T12:00')
     })
     it('keeps paused campaigns read-only and labels their real state', async () => {
@@ -104,7 +113,7 @@ describe('Simple campaign workspace', () => {
     it('respects view-only permissions in the editor', async () => {
         mocks.setup.mockResolvedValue({ success: true, canManage: false, canExecute: false, canImport: false, channels: [] })
         await wizard(); expect(screen.getByLabelText('Estado del contacto · vacío para todos')).toBeDisabled()
-        tab('Preparación'); expect(screen.getByRole('button', { name: 'Abrir revisión final' })).toBeDisabled()
+        tab('Preparación'); expect(screen.getByRole('button', { name: 'Revisar y enviar' })).toBeDisabled()
     })
     it('preserves the existing UTC timestamp and an unrestricted delivery window when changing the time zone', async () => {
         const iso = '2099-01-01T15:00:42.123Z'

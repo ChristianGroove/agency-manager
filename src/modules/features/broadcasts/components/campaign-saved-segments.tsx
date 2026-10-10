@@ -36,7 +36,7 @@ export function CampaignSavedSegments({ disabled, filters, onApply }: { disabled
     }, [query, cursor, revision])
     return <div className="space-y-3 pt-3 text-sm">
         <form className="flex gap-2" onSubmit={event => { event.preventDefault(); setQuery(search.trim()); setCursor(null); setRevision(value => value + 1) }}><Input aria-label="Buscar segmento guardado" value={search} maxLength={100} onChange={event => setSearch(event.target.value)} /><Button variant="outline" disabled={loading}>Buscar</Button></form>
-        <p className="text-xs text-muted-foreground">Usar un segmento copia sus filtros al borrador. Guardar destinatarios no modifica el segmento original.</p>
+        <p className="text-xs text-muted-foreground">Una selección guardada reutiliza filtros; una lista importada agrupa contactos de un archivo. Usar filtros los copia al borrador sin modificar la selección original.</p>
         {error && <p role="alert" className="text-red-600">{error}</p>}
         {loading ? <p>Consultando segmentos…</p> : <ul className="space-y-2">{page?.rows.map(row => <li key={row.id} className="flex justify-between items-center gap-2"><span>{row.name}</span><Button disabled={disabled || saving} variant="outline" size="sm" onClick={() => {
             const result = audienceFiltersSchema.safeParse(row.filters)

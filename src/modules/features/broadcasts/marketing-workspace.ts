@@ -18,6 +18,8 @@ export interface CampaignRow {
 }
 export interface CampaignPage { rows: CampaignRow[]; next: { createdAt: string; id: string } | null }
 export const audiencePageSchema = campaignPageSchema.pick({ search: true, cursor: true }).strict()
+export const contactListPageSchema = audiencePageSchema.extend({ selected: z.string().uuid().nullable().default(null) }).strict()
+export interface ContactListPage { rows: Array<{ id: string; name: string; createdAt: string; contacts: number }>; next: CampaignPage['next']; selected: { id: string; name: string } | null }
 export interface AudiencePage { rows: Array<{ id: string; name: string; createdAt: string; filters: Record<string, unknown> }>; next: CampaignPage['next'] }
 
 export const stepOrderSchema = z.object({

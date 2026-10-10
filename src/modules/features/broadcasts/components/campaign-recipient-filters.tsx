@@ -24,6 +24,8 @@ export function CampaignRecipientFilters({ value, onChange, disabled, refresh = 
     const [readiness, setReadiness] = useState<AudienceReadiness | null>(null), [error, setError] = useState(''), [loading, setLoading] = useState(true)
     const [revision, setRevision] = useState(0)
     const [advanced, setAdvanced] = useState(false)
+    const [custom, setCustom] = useState(false)
+    const hasCustom = Object.entries(value).some(([key, field]) => !['has_phone', 'list_id'].includes(key) && (Array.isArray(field) ? field.length > 0 : field !== undefined && field !== '' && field !== false))
     useEffect(() => {
         let current = true
         setLoading(true); setError(''); setReadiness(null)
@@ -39,9 +41,12 @@ export function CampaignRecipientFilters({ value, onChange, disabled, refresh = 
         return () => { current = false; clearTimeout(timer) }
     }, [value, revision, refresh])
     return <div className="space-y-4">
-        <p className="text-[11px] text-muted-foreground">Contactos del CRM con autorización vigente. Las bajas y los duplicados se excluyen automáticamente.</p>
+        <details open={custom} onToggle={event => setCustom(event.currentTarget.open)} className="rounded-xl border border-border/60 bg-muted/20 p-3">
+        <summary className="cursor-pointer text-xs font-medium">Personalizar destinatarios · opcional{hasCustom ? ' · selección personalizada' : ''}</summary>
+        <p className="py-3 text-xs text-muted-foreground">Estos filtros reducen la selección; no cambian datos ni etapas. Vacío incluye todos los contactos de la selección.</p>
         <div className="grid md:grid-cols-2 gap-3"><div><Label htmlFor="recipient-status">Estado del contacto · vacío para todos</Label><Input className="h-9 rounded-xl bg-background text-xs" id="recipient-status" maxLength={100} disabled={disabled} value={value.status || ''} onChange={event => onChange({ ...value, status: event.target.value })} /></div>
             <div><Label htmlFor="recipient-tags">Etiquetas · separadas por comas</Label><Input className="h-9 rounded-xl bg-background text-xs" id="recipient-tags" disabled={disabled} value={(value.tags || []).join(', ')} onChange={event => onChange({ ...value, tags: event.target.value ? event.target.value.split(',').map(tag => tag.trim()) : [] })} /></div></div>
+        <p className="py-2 text-[11px] text-muted-foreground">Estado: etapa actual del contacto en el CRM; no es la etapa de destino. Etiquetas: incluye quien tenga al menos una de las indicadas.</p>
         <details open={advanced} onToggle={event => setAdvanced(event.currentTarget.open)} className="rounded-xl border border-border/60 bg-muted/20 p-3"><summary className="cursor-pointer text-xs font-medium">Filtros avanzados</summary><div className="grid md:grid-cols-2 gap-3 pt-3">
             <div><Label htmlFor="recipient-source">Origen · vacío para todos</Label><Input className="h-9 rounded-xl bg-background text-xs" id="recipient-source" maxLength={100} disabled={disabled} value={value.source || ''} onChange={event => onChange({ ...value, source: event.target.value })} /></div>
             <div><Label htmlFor="recipient-score-min">Puntaje mínimo</Label><Input className="h-9 rounded-xl bg-background text-xs" id="recipient-score-min" type="number" disabled={disabled} value={value.score_min ?? ''} onChange={event => onChange({ ...value, score_min: event.target.value ? Number(event.target.value) : undefined })} /></div>
@@ -56,12 +61,13 @@ export function CampaignRecipientFilters({ value, onChange, disabled, refresh = 
                     onChange({ ...value, [key]: input ? new Date(input).toISOString() : undefined })
                 }} /></div>)}
             {advanced && <div className="col-span-full"><CampaignAssigneeFilter value={value.assigned_to} disabled={disabled} onChange={id => onChange({ ...value, assigned_to: id })} /></div>}
-        </div></details>
+        </div></details></details>
         <div className="rounded-xl border border-emerald-500/15 bg-emerald-500/5 p-3 text-xs" aria-live="polite">
             {loading ? <p>Revisando destinatarios…</p> : error ? <p role="alert" className="text-red-600">{error}</p> : readiness && <>
-                <p className="font-semibold">{readiness.eligible} destinatarios únicos con autorización vigente</p><p className="text-[11px] leading-relaxed text-muted-foreground mt-1">De {readiness.matched} contactos del filtro. Excluidos: {readiness.missingConsent} sin autorización, {readiness.optedOut} bajas, {readiness.invalidFormat} teléfonos inválidos y {readiness.duplicates} duplicados.</p>
+                <p className="font-semibold">{readiness.eligible} destinatarios únicos con autorización vigente</p>
+                <details className="mt-2 text-[11px] text-muted-foreground"><summary className="cursor-pointer">Ver contactos excluidos</summary><p className="mt-1 leading-relaxed">De {readiness.matched} contactos seleccionados. Excluidos: {readiness.missingConsent} sin autorización, {readiness.optedOut} bajas, {readiness.invalidFormat} teléfonos inválidos y {readiness.duplicates} duplicados.</p></details>
             </>}
-            <Button type="button" variant="ghost" size="sm" disabled={loading} onClick={() => setRevision(value => value + 1)}>Revisar destinatarios</Button>
+            <Button type="button" variant="ghost" size="sm" disabled={loading} onClick={() => setRevision(value => value + 1)}>Actualizar cantidad</Button>
         </div>
     </div>
 }

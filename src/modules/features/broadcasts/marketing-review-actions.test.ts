@@ -7,6 +7,14 @@ const token = '09000000-0000-4000-8000-000000000001'
 const row = { row: 2, name: 'Synthetic', phone: '573001234567', email: '', source: 'form', evidence: 'reference', occurredAt: '2026-01-01T00:00:00Z' }
 beforeEach(() => { vi.resetAllMocks(); mocks.access.mockResolvedValue({ organizationId: 'tenant-a', userId: 'actor-a', canExecute: true }); mocks.rpc.mockResolvedValue({ data: {}, error: null }) })
 describe('Reviewed marketing operations', () => {
+    it('creates a named list through the atomic import RPC with the authenticated actor', async () => {
+        expect((await confirmMarketingImport({ token, rows: [2], confirmed: true, listName: ' October ' })).success).toBe(true)
+        expect(mocks.rpc).toHaveBeenCalledWith('confirm_marketing_list_import', { p_org: 'tenant-a', p_actor: 'actor-a', p_ticket: token, p_rows: [2], p_name: 'October' })
+    })
+    it('rejects an empty list name before confirming contacts', async () => {
+        expect((await confirmMarketingImport({ token, rows: [2], confirmed: true, listName: ' ' })).success).toBe(false)
+        expect(mocks.rpc).not.toHaveBeenCalled()
+    })
     it.each([() => prepareMarketingImport([row]), () => confirmMarketingImport({ token, rows: [2], confirmed: true }),
         () => prepareMarketingRenewal(row.phone), () => confirmMarketingRenewal({ token, ...row, confirmed: true }), () => prepareCampaignActivation(token)])('checks permission before privileged RPC', async run => {
         mocks.access.mockRejectedValue(new Error('Denied')); expect((await run()).success).toBe(false); expect(mocks.rpc).not.toHaveBeenCalled()

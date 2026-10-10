@@ -2,6 +2,7 @@ import { z } from 'zod'
 import { parsePhoneNumberFromString } from 'libphonenumber-js/max'
 
 const audienceFilterFields = z.object({
+    list_id: z.string().uuid().optional(),
     status: z.string().max(100).optional(), source: z.string().max(100).optional(),
     has_phone: z.boolean().optional(), has_email: z.boolean().optional(),
     score_min: z.number().finite().optional(), score_max: z.number().finite().optional(),
@@ -26,6 +27,7 @@ export const audienceFiltersSchema = audienceFilterFields.superRefine((filters, 
 
 export function applyAudienceFilters<T>(query: T, input: unknown): T {
     const filters = audienceFiltersSchema.parse(input || {})
+    if (filters.list_id) throw new Error('Las listas requieren la consulta de destinatarios por organización.')
     let q: any = query
     for (const key of ['status', 'source', 'assigned_to'] as const) if (filters[key]) q = q.eq(key, filters[key])
     if (filters.has_phone) q = q.not('phone', 'is', null)

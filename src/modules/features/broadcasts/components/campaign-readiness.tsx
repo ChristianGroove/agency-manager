@@ -10,7 +10,7 @@ import { CampaignPreflight, recordMarketingPermission, reviewCampaign } from '..
 import { toast } from 'sonner'
 import { MarketingRenewal } from './marketing-renewal'
 
-export function CampaignReadiness({ campaignId, revision, canExecute = false }: { campaignId: string; revision: number; canExecute?: boolean }) {
+export function CampaignReadiness({ campaignId, revision, canExecute = false, permissionsOnly = false, onChanged }: { campaignId: string; revision: number; canExecute?: boolean; permissionsOnly?: boolean; onChanged?: () => void }) {
     const [review, setReview] = useState<CampaignPreflight | null>(null)
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState('')
@@ -42,16 +42,17 @@ export function CampaignReadiness({ campaignId, revision, canExecute = false }: 
                 occurredAt: new Date(form.date).toISOString(), confirmed: form.confirmed })
             if (!result.success) { toast.error(result.error); return }
             toast.success('Autorización registrada con evidencia.'); setOpen(false)
-            setForm({ phone: '', source: '', evidence: '', date: '', confirmed: false }); await check()
+            setForm({ phone: '', source: '', evidence: '', date: '', confirmed: false }); onChanged?.()
+            if (!permissionsOnly) await check()
         } catch { toast.error('No se pudo registrar la autorización.') }
         finally { setSaving(false) }
     }
     return <section className="rounded-xl border p-5 space-y-4 bg-white dark:bg-zinc-900">
         <div className="flex flex-wrap justify-between gap-3">
-            <div><h4 className="font-semibold">Revisión previa de campaña</h4><p className="text-xs text-muted-foreground">Guarda primero tus cambios. Esta revisión no inscribe contactos ni envía mensajes.</p></div>
-            <div className="flex flex-wrap gap-2"><Button variant="outline" disabled={!canExecute} onClick={() => setOpen(true)}>Registrar autorización</Button><Button variant="outline" disabled={!canExecute} onClick={() => setRenewalOpen(true)}>Renovar después de una baja</Button><Button onClick={check} disabled={loading}>{loading ? 'Revisando…' : 'Revisar campaña'}</Button></div>
+            <div><h4 className="font-semibold">{permissionsOnly ? 'Autorizaciones de contactos' : 'Revisión previa de campaña'}</h4><p className="text-xs text-muted-foreground">{permissionsOnly ? 'Úsalo solo si necesitas registrar evidencia o renovar una autorización después de una baja. No envía mensajes.' : 'Guarda primero tus cambios. Esta revisión no inscribe contactos ni envía mensajes.'}</p></div>
+            <div className="flex flex-wrap gap-2"><Button variant="outline" disabled={!canExecute} onClick={() => setOpen(true)}>Registrar autorización</Button><Button variant="outline" disabled={!canExecute} onClick={() => setRenewalOpen(true)}>Renovar después de una baja</Button>{!permissionsOnly && <Button onClick={check} disabled={loading}>{loading ? 'Revisando…' : 'Revisar campaña'}</Button>}</div>
         </div>
-        {renewalOpen && <MarketingRenewal onClose={() => setRenewalOpen(false)} onSaved={() => { setRenewalOpen(false); toast.success('Nueva autorización registrada.'); void check() }} />}
+        {renewalOpen && <MarketingRenewal onClose={() => setRenewalOpen(false)} onSaved={() => { setRenewalOpen(false); toast.success('Nueva autorización registrada.'); onChanged?.(); if (!permissionsOnly) void check() }} />}
         {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
         {review?.audience && <dl className="grid grid-cols-2 md:grid-cols-3 gap-3 text-sm">
             {Object.entries({ 'Contactos del filtro': review.audience.matched, 'Destinatarios con autorización': review.audience.eligible,

@@ -2,10 +2,20 @@ import { beforeEach, describe, expect, it, vi } from 'vitest'
 const mocks = vi.hoisted(() => ({ access: vi.fn(), rpc: vi.fn() }))
 vi.mock('./marketing-access', () => ({ requireMarketingAccess: mocks.access }))
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }))
-import { getMarketingCampaignPage, getCampaignAudience, saveCampaignAudience, getMarketingAudiencePage, reorderCampaignSteps, getMarketingAssignees } from './marketing-workspace-actions'
+import { getMarketingCampaignPage, getCampaignAudience, saveCampaignAudience, getMarketingAudiencePage, reorderCampaignSteps, getMarketingAssignees, getMarketingContactListPage } from './marketing-workspace-actions'
 const id = '16000000-0000-4000-8000-000000000001'
 beforeEach(() => { vi.resetAllMocks(); mocks.access.mockResolvedValue({ organizationId: 'own-org', session: { rpc: mocks.rpc } }); mocks.rpc.mockResolvedValue({ data: { rows: [], next: null }, error: null }) })
 describe('Marketing workspace boundaries', () => {
+    it('reads imported lists through the authenticated tenant and bounded keyset page', async () => {
+        expect((await getMarketingContactListPage({ search: ' October ', selected: id })).success).toBe(true)
+        expect(mocks.rpc).toHaveBeenCalledWith('read_marketing_contact_list_page', { p_org: 'own-org', p_search: 'October', p_before: null, p_before_id: null, p_selected: id })
+    })
+    it('rejects list tenant overrides and denied permissions before querying', async () => {
+        expect((await getMarketingContactListPage({ organizationId: 'foreign' } as never)).success).toBe(false)
+        mocks.access.mockRejectedValue(new Error('Denied'))
+        expect((await getMarketingContactListPage()).success).toBe(false)
+        expect(mocks.rpc).not.toHaveBeenCalled()
+    })
     it.each([() => getMarketingCampaignPage(), () => getCampaignAudience(id), () => saveCampaignAudience(id, {}), () => getMarketingAudiencePage(), () => getMarketingAssignees(), () => reorderCampaignSteps({ campaignId: id, sequenceId: id, expected: [id], order: [id] })])('rejects unauthorized calls before any RPC', async call => {
         mocks.access.mockRejectedValue(new Error('Access denied'))
         expect((await call()).success).toBe(false); expect(mocks.rpc).not.toHaveBeenCalled()

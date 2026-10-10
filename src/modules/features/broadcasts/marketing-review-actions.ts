@@ -22,10 +22,13 @@ export async function confirmMarketingImport(input: unknown) {
     try {
         const access = await requireMarketingAccess('import')
         if (!access.canExecute) throw new Error('La importación con evidencia también requiere permiso para registrar autorizaciones de marketing.')
-        const data = z.object({ token: z.string().uuid(), rows: z.array(z.number().int().min(2).max(10002)).min(1).max(100), confirmed: z.literal(true) }).strict().parse(input)
-        const result = await supabaseAdmin.rpc('confirm_marketing_import', { p_org: access.organizationId, p_actor: access.userId, p_ticket: data.token, p_rows: data.rows })
+        const data = z.object({ token: z.string().uuid(), rows: z.array(z.number().int().min(2).max(10002)).min(1).max(100), confirmed: z.literal(true), listName: z.string().trim().min(1).max(160).optional() }).strict().parse(input)
+        const args = { p_org: access.organizationId, p_actor: access.userId, p_ticket: data.token, p_rows: data.rows }
+        const result = data.listName
+            ? await supabaseAdmin.rpc('confirm_marketing_list_import', { ...args, p_name: data.listName })
+            : await supabaseAdmin.rpc('confirm_marketing_import', args)
         if (result.error || !result.data) throw new Error('No se pudo confirmar: la revisión caducó, cambió un destinatario o tus permisos. Revisa de nuevo; una ejecución fallida se revierte completa.')
-        return { success: true as const, result: result.data as { created: number; existing: number; consents: number } }
+        return { success: true as const, result: result.data as { created: number; existing: number; consents: number; listId?: string; listName?: string } }
     } catch (error) { return { success: false as const, error: publicMarketingError(error) } }
 }
 

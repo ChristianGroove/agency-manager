@@ -251,12 +251,14 @@ export async function getCRMStats(days: number = 30): Promise<{ success: boolean
             .from('leads')
             .select('id', { count: 'exact', head: true })
             .eq('organization_id', orgId)
+            .eq('contact_type', 'lead')
 
         // New leads this period
         const { count: newLeads } = await (await createClient())
             .from('leads')
             .select('id', { count: 'exact', head: true })
             .eq('organization_id', orgId)
+            .eq('contact_type', 'lead')
             .gte('created_at', startDateStr)
 
         // Pipeline value (sum of all open deals)
@@ -264,6 +266,7 @@ export async function getCRMStats(days: number = 30): Promise<{ success: boolean
             .from('leads')
             .select('value')
             .eq('organization_id', orgId)
+            .eq('contact_type', 'lead')
             .in('status', ['new', 'contacted', 'qualified', 'negotiation'])
 
         const pipelineValue = dealsData?.reduce((sum, d) => sum + (d.value || 0), 0) || 0
@@ -273,6 +276,7 @@ export async function getCRMStats(days: number = 30): Promise<{ success: boolean
             .from('leads')
             .select('id', { count: 'exact', head: true })
             .eq('organization_id', orgId)
+            .eq('contact_type', 'lead')
             .eq('status', 'won')
 
         // All closed deals (won + lost)
@@ -280,6 +284,7 @@ export async function getCRMStats(days: number = 30): Promise<{ success: boolean
             .from('leads')
             .select('id', { count: 'exact', head: true })
             .eq('organization_id', orgId)
+            .eq('contact_type', 'lead')
             .in('status', ['won', 'lost'])
 
         const conversionRate = closedDeals && closedDeals > 0
@@ -291,6 +296,7 @@ export async function getCRMStats(days: number = 30): Promise<{ success: boolean
             .from('leads')
             .select('value')
             .eq('organization_id', orgId)
+            .eq('contact_type', 'lead')
             .eq('status', 'won')
 
         const avgDealSize = wonDealsData && wonDealsData.length > 0
@@ -349,6 +355,7 @@ export async function getLeadsBySource(days: number = 30): Promise<{ success: bo
             .from('leads')
             .select('source')
             .eq('organization_id', orgId)
+            .eq('contact_type', 'lead')
             .gte('created_at', startDate.toISOString())
 
         if (error) throw error
@@ -390,6 +397,7 @@ export async function getLeadsByStatus(): Promise<{ success: boolean, data?: Lea
             .from('leads')
             .select('status, value')
             .eq('organization_id', orgId)
+            .eq('contact_type', 'lead')
 
         if (error) throw error
 
@@ -436,6 +444,7 @@ export async function getRecentActivity(limit: number = 10): Promise<{ success: 
             .from('leads')
             .select('id, name, status, created_at, updated_at')
             .eq('organization_id', orgId)
+            .eq('contact_type', 'lead')
             .order('updated_at', { ascending: false })
             .limit(limit)
 
@@ -487,6 +496,7 @@ export async function getAgentPerformance(): Promise<{ success: boolean, data?: 
                 .from('leads')
                 .select('id', { count: 'exact', head: true })
                 .eq('organization_id', orgId)
+                .eq('contact_type', 'lead')
                 .eq('user_id', member.user_id)
 
             // Count won deals and calculate avg response time
@@ -502,6 +512,7 @@ export async function getAgentPerformance(): Promise<{ success: boolean, data?: 
                 .from('leads')
                 .select('value, status')
                 .eq('organization_id', orgId)
+                .eq('contact_type', 'lead')
                 .eq('assigned_to', member.user_id)
 
             const wonLeads = leadsData?.filter(l => l.status === 'won') || []

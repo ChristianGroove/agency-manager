@@ -3,7 +3,9 @@ import { ContactService } from './contact-service'
 
 const mocks = vi.hoisted(() => ({
     startProcess: vi.fn(),
+    validatePipelineMove: vi.fn(),
 }))
+vi.mock('./process-engine/map-service', () => ({ ProcessMapper: { validatePipelineMove: mocks.validatePipelineMove } }))
 
 vi.mock('./process-engine/engine', () => ({
     ProcessEngine: {
@@ -37,6 +39,37 @@ function createSupabaseMock(queues: Record<string, any[]>) {
 }
 
 describe('ContactService tenant safety', () => {
+    it('qualifies a marketing prospect only on an explicit active commercial stage, with a tenant-scoped write', async () => {
+        const find = createQuery({ data: { id: 'contact-1', contact_type: 'prospect', source: 'marketing_import', status: 'marketing_contact' } })
+        const stage = createQuery({ data: { id: 'stage-1', pipeline_id: 'pipeline-1', is_active: true } })
+        const pipeline = createQuery({ data: { process_enabled: false } })
+        const update = createQuery({ data: { id: 'contact-1', contact_type: 'lead', status: 'qualified' } })
+        const service = new ContactService(createSupabaseMock({ leads: [find, update], pipeline_stages: [stage], pipelines: [pipeline] }), 'org-current')
+        await service.updateContactStatus('contact-1', 'qualified')
+        expect(find.eq).toHaveBeenCalledWith('organization_id', 'org-current')
+        expect(stage.eq).toHaveBeenCalledWith('organization_id', 'org-current')
+        expect(update.update).toHaveBeenCalledWith({ status: 'qualified', contact_type: 'lead' })
+        expect(update.eq).toHaveBeenCalledWith('organization_id', 'org-current')
+        expect(update.eq).toHaveBeenCalledWith('contact_type', 'prospect')
+        expect(update.eq).toHaveBeenCalledWith('source', 'marketing_import')
+    })
+    it.each([null, { id: 'stage-1', pipeline_id: 'pipeline-1', is_active: false }])('does not qualify marketing prospects into a missing or inactive stage', async target => {
+        const supabase = createSupabaseMock({ leads: [createQuery({ data: { contact_type: 'prospect', source: 'marketing_import' } })], pipeline_stages: [createQuery({ data: target })] })
+        await expect(new ContactService(supabase, 'org-current').updateContactStatus('contact-1', 'invalid')).rejects.toThrow('etapa comercial activa')
+        expect(supabase.from.mock.calls.filter(([table]: string[]) => table === 'leads')).toHaveLength(1)
+    })
+    it('preserves process restrictions when qualifying a marketing contact', async () => {
+        mocks.validatePipelineMove.mockResolvedValue({ allowed: false, reason: 'Process restriction' })
+        const supabase = createSupabaseMock({ leads: [createQuery({ data: { contact_type: 'prospect', source: 'marketing_import' } })], pipeline_stages: [createQuery({ data: { id: 'stage-1', pipeline_id: 'pipeline-1', is_active: true } })], pipelines: [createQuery({ data: { process_enabled: true } })] })
+        await expect(new ContactService(supabase, 'org-current').updateContactStatus('contact-1', 'qualified')).rejects.toThrow('Process restriction')
+        expect(supabase.from.mock.calls.filter(([table]: string[]) => table === 'leads')).toHaveLength(1)
+    })
+    it('keeps ordinary lead status updates free of contact-type changes', async () => {
+        const update = createQuery({ data: { status: 'contacted', contact_type: 'lead' } })
+        const supabase = createSupabaseMock({ leads: [createQuery({ data: { contact_type: 'lead', source: 'original' } }), update], pipeline_stages: [createQuery({ data: null })] })
+        await new ContactService(supabase, 'org-current').updateContactStatus('contact-1', 'contacted')
+        expect(update.update).toHaveBeenCalledWith({ status: 'contacted' })
+    })
     it('scopes process-start contact updates to the current organization', async () => {
         mocks.startProcess.mockResolvedValue({
             success: true,

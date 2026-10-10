@@ -28,6 +28,7 @@ import { toast } from 'sonner'
 const CampaignImport = dynamic(() => import('./campaign-import').then(module => module.CampaignImport))
 const CampaignActivationReview = dynamic(() => import('./campaign-activation-review').then(module => module.CampaignActivationReview))
 const CampaignResults = dynamic(() => import('./campaign-results').then(module => module.CampaignResults))
+const CampaignContactLists = dynamic(() => import('./campaign-contact-lists').then(module => module.CampaignContactLists))
 const CampaignSavedSegments = dynamic(() => import('./campaign-saved-segments').then(module => module.CampaignSavedSegments))
 const defaultDelivery: DeliveryConfig = { mode: 'growth', humanize: true, timezone: 'America/Bogota', schedule_window: { start: 9, end: 18 } }
 const localInput = (iso: string | null) => iso ? new Date(Date.parse(iso) - new Date(iso).getTimezoneOffset() * 60000).toISOString().slice(0, 16) : ''
@@ -246,8 +247,7 @@ function CampaignEditor({ campaignId, campaignName, onClose, onDirtyChange, onBu
                     {!loading && status === 'draft' && !executionEnabled && <p className="rounded-xl border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-xs text-amber-800 dark:text-amber-200">Los envíos masivos están deshabilitados en este entorno. Puedes preparar y guardar el borrador.</p>}
                     <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
                         <div className="min-w-0 space-y-4">
-                            <CampaignSection title="Canal y destinatarios" icon={<Users className="h-4 w-4 text-primary" />}
-                                action={<Button className="h-7 text-[11px]" size="sm" variant="ghost" disabled={!canImport || loading || busy || !!error} onClick={() => setImportOpen(true)}>Importar contactos</Button>}>
+                            <CampaignSection title="1. Canal" icon={<Users className="h-4 w-4 text-primary" />}>
                                 <div className="space-y-2">
                                     <Label>Número emisor de WhatsApp</Label>
                                     <div className="flex items-center gap-2">
@@ -260,13 +260,8 @@ function CampaignEditor({ campaignId, campaignName, onClose, onDirtyChange, onBu
                                     {!channels.length && !loading && <p className="text-xs text-muted-foreground">No hay números activos disponibles. Revisa <Link href="/crm/settings/channels" className="underline">Canales</Link>.</p>}
                                     {savedConnection && !channels.some(channel => channel.id === savedConnection) && <p role="alert" className="text-xs text-amber-700">El emisor guardado ya no está disponible. Revisa su conexión.</p>}
                                 </div>
-                                <CampaignRecipientFilters value={filters} onChange={setFilters} disabled={!editable} refresh={revision} />
-                                <details className="rounded-xl border border-border/60 bg-muted/20 p-3" open={segmentsOpen} onToggle={event => setSegmentsOpen(event.currentTarget.open)}>
-                                    <summary className="cursor-pointer text-xs font-medium">Usar o guardar un segmento · opcional</summary>
-                                    {segmentsOpen && <CampaignSavedSegments disabled={!editable} filters={filters} onApply={setFilters} />}
-                                </details>
                             </CampaignSection>
-                            <CampaignSection title="Mensaje de la campaña" icon={<MessageSquare className="h-4 w-4 text-primary" />}>
+                            <CampaignSection title="2. Mensaje" icon={<MessageSquare className="h-4 w-4 text-primary" />}>
                                 {sequences.length > 1 && <details className="rounded-xl border border-border/60 p-3">
                                     <summary className="cursor-pointer text-xs">Secuencias existentes · avanzado</summary>
                                     <div className="space-y-3 pt-3">
@@ -303,8 +298,24 @@ function CampaignEditor({ campaignId, campaignName, onClose, onDirtyChange, onBu
                                     </details>}
                                 </>}
                             </CampaignSection>
+                            <CampaignSection title="3. Destinatarios" icon={<Users className="h-4 w-4 text-primary" />}
+                                action={<Button className="h-7 text-[11px]" size="sm" variant="ghost" disabled={!editable || !canImport} onClick={() => setImportOpen(true)}>Importar lista</Button>}>
+                                <CampaignContactLists value={filters.list_id} disabled={!editable} refresh={revision} onSelect={id => setFilters(id ? { has_phone: true, list_id: id } : { has_phone: true })} />
+                                <CampaignRecipientFilters value={filters} onChange={setFilters} disabled={!editable} refresh={revision} />
+                                <details className="rounded-xl border border-border/60 bg-muted/20 p-3" open={segmentsOpen} onToggle={event => setSegmentsOpen(event.currentTarget.open)}>
+                                    <summary className="cursor-pointer text-xs font-medium">Selecciones guardadas · opcional</summary>
+                                    {segmentsOpen && <CampaignSavedSegments disabled={!editable} filters={filters} onApply={setFilters} />}
+                                </details>
+                                <p className="text-[11px] text-muted-foreground">Enviar, entregar o leer no convierte un contacto en oportunidad. Desde Inbox puedes elegir una etapa comercial cuando corresponda.</p>
+                            </CampaignSection>
                         </div>
                         <aside className="space-y-4">
+                            <div className="rounded-xl border border-primary/15 bg-primary/5 p-4">
+                                <p className="text-sm font-semibold">4. Revisar y enviar</p>
+                                <p className="mt-2 text-xs text-muted-foreground">{scheduledFor ? `Inicio: ${new Date(scheduledFor).toLocaleString()}` : 'Inicio al confirmar'}{delivery.schedule_window ? ` · ${delivery.schedule_window.start}:00–${delivery.schedule_window.end}:00 (${delivery.timezone})` : ' · Sin ventana diaria'}</p>
+                                <p className="mt-2 text-xs text-muted-foreground">Guarda los cambios y abre la revisión final. Allí confirmarás destinatarios y mensaje antes de activar.</p>
+                            </div>
+                            <details className="space-y-3"><summary className="cursor-pointer text-xs font-medium">Programar envío · opcional</summary>
                             <CampaignSection title="Inicio y horario" icon={<CalendarClock className="h-4 w-4 text-primary" />}>
                                 <div className="space-y-2">
                                     <Label htmlFor="campaign-date">Fecha de inicio · hora local del navegador</Label>
@@ -318,6 +329,7 @@ function CampaignEditor({ campaignId, campaignName, onClose, onDirtyChange, onBu
                                 </div>}
                                 <div className="space-y-1"><Label htmlFor="campaign-timezone">Zona horaria de la ventana</Label><Input className="h-9 rounded-xl text-xs" id="campaign-timezone" disabled={!editable} value={delivery.timezone || 'America/Bogota'} onChange={event => setDelivery({ ...delivery, timezone: event.target.value })} /></div>
                             </CampaignSection>
+                            </details>
                             <CampaignSection title="Ritmo de envío" icon={<Send className="h-4 w-4 text-primary" />}>
                                 <CampaignPacing value={delivery} disabled={!editable} onChange={setDelivery} />
                             </CampaignSection>
@@ -328,8 +340,8 @@ function CampaignEditor({ campaignId, campaignName, onClose, onDirtyChange, onBu
                         </aside>
                     </div>
                     <details className="rounded-xl border border-border/60 bg-background">
-                        <summary className="cursor-pointer px-4 py-3 text-xs font-medium">Autorizaciones y revisión previa · herramientas</summary>
-                        <div className="border-t border-border/50 p-3"><CampaignReadiness campaignId={campaignId} revision={revision} canExecute={canExecute} /></div>
+                        <summary className="cursor-pointer px-4 py-3 text-xs font-medium">Gestionar autorizaciones · opcional</summary>
+                        <div className="border-t border-border/50 p-3"><CampaignReadiness permissionsOnly campaignId={campaignId} revision={revision} canExecute={canExecute} onChanged={() => setRevision(value => value + 1)} /></div>
                     </details>
                 </TabsContent>
                 <TabsContent value="results" className="mt-0"><CampaignResults key={`${campaignId}:${metrics?.channelHealth?.holdAt || ''}`} campaignId={campaignId} connectionId={savedConnection} metrics={metrics} canExecute={canExecute} onRefresh={refreshResults} /></TabsContent>
@@ -339,10 +351,10 @@ function CampaignEditor({ campaignId, campaignName, onClose, onDirtyChange, onBu
             <p className="text-[11px] text-muted-foreground">{status === 'draft' ? 'El contenido se guarda al editarlo. La configuración se guarda aquí.' : 'El diseño está protegido durante y después de la ejecución.'}</p>
             <div className="flex items-center gap-2">
                 {status === 'draft' && <Button size="sm" className="rounded-lg" variant="outline" disabled={!editable || !(audienceDirty || configDirty)} onClick={() => void edit(saveConfiguration)}><Save className="mr-2 h-3.5 w-3.5" />Guardar configuración</Button>}
-                {['draft', 'paused'].includes(status) && <Button size="sm" className="rounded-lg" disabled={!canExecute || busy || loading || !!error || (status === 'draft' && (audienceDirty || configDirty))} onClick={() => setActivationOpen(true)}><ShieldCheck className="mr-2 h-3.5 w-3.5" />{status === 'paused' ? 'Abrir revisión de reanudación' : 'Abrir revisión final'}</Button>}
+                {['draft', 'paused'].includes(status) && <Button size="sm" className="rounded-lg" disabled={!canExecute || busy || loading || !!error || (status === 'draft' && (audienceDirty || configDirty))} onClick={() => setActivationOpen(true)}><ShieldCheck className="mr-2 h-3.5 w-3.5" />{status === 'paused' ? 'Abrir revisión de reanudación' : 'Revisar y enviar'}</Button>}
             </div>
         </footer>
-        {importOpen && <CampaignImport onClose={() => { setImportOpen(false); setRevision(value => value + 1) }} />}
+        {importOpen && <CampaignImport onImported={list => { setFilters({ has_phone: true, list_id: list.id }); toast.success(`Lista seleccionada: ${list.name}. Guarda los destinatarios antes de revisar.`) }} onClose={() => { setImportOpen(false); setRevision(value => value + 1) }} />}
         {activationOpen && <CampaignActivationReview key={`${campaignId}:${revision}`} campaignId={campaignId} onClose={() => setActivationOpen(false)} onActivated={() => { setActivationOpen(false); setTab('results'); void refreshResults() }} />}
         <Dialog open={stepOpen} onOpenChange={open => { if (!open) closeStep() }}><DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl border-border bg-card"><DialogHeader><DialogTitle>{step.type === 'delay' ? 'Espera entre mensajes' : 'Configurar mensaje'}</DialogTitle><DialogDescription>Se guarda en el borrador. La revisión final valida nuevamente su disponibilidad y las variables.</DialogDescription></DialogHeader>
             <fieldset disabled={busy} className="space-y-4">{step.type === 'delay' ? <><Label htmlFor="step-delay">Tiempo de espera</Label><Input id="step-delay" type="number" min={1} max={365} value={step.delay} onChange={event => setStep({ ...step, delay: event.target.value })} /><Select disabled={busy} value={step.unit} onValueChange={unit => setStep({ ...step, unit })}><SelectTrigger aria-label="Unidad de espera"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="minutes">Minutos</SelectItem><SelectItem value="hours">Horas</SelectItem><SelectItem value="days">Días</SelectItem></SelectContent></Select></> : <MarketingTemplateEditor disabled={busy} connectionId={savedConnection} value={template} onChange={setTemplate} />}

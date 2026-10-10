@@ -4,7 +4,20 @@ import { z } from 'zod'
 import { revalidatePath } from 'next/cache'
 import { requireMarketingAccess } from './marketing-access'
 import { audienceFiltersSchema, publicMarketingError } from './marketing-contracts'
-import { campaignPageSchema, CampaignPage, CampaignPageInput, audiencePageSchema, AudiencePage, stepOrderSchema, assigneePageSchema, AssigneePage } from './marketing-workspace'
+import { campaignPageSchema, CampaignPage, CampaignPageInput, audiencePageSchema, AudiencePage, stepOrderSchema, assigneePageSchema, AssigneePage, contactListPageSchema, ContactListPage } from './marketing-workspace'
+
+export async function getMarketingContactListPage(input: z.input<typeof contactListPageSchema> = {}) {
+    try {
+        const access = await requireMarketingAccess('view')
+        const data = contactListPageSchema.parse(input)
+        const result = await access.session.rpc('read_marketing_contact_list_page', {
+            p_org: access.organizationId, p_search: data.search, p_before: data.cursor?.createdAt || null,
+            p_before_id: data.cursor?.id || null, p_selected: data.selected,
+        })
+        if (result.error || !result.data) throw new Error('No se pudieron consultar las listas importadas.')
+        return { success: true as const, page: result.data as ContactListPage }
+    } catch (error) { return { success: false as const, error: publicMarketingError(error) } }
+}
 
 export async function getMarketingCampaignPage(input: CampaignPageInput = {}) {
     try {

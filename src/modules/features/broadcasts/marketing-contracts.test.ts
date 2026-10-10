@@ -2,6 +2,10 @@ import { describe, it, expect, vi } from 'vitest'
 import { applyAudienceFilters, deliveryConfigSchema, normalizeDelay, normalizeMarketingPhone } from './marketing-contracts'
 
 describe('Marketing contracts', () => {
+    it('does not silently expand an imported list into the full CRM on legacy REST queries', () => {
+        expect(() => applyAudienceFilters({}, { list_id: '21000000-0000-4000-8000-000000000001' })).toThrow('listas requieren')
+        expect(() => applyAudienceFilters({}, { list_id: 'invalid' })).toThrow()
+    })
     it('normalizes the old duration format without producing an invalid date', () => {
         expect(normalizeDelay({duration:'3',unit:'days'})).toEqual({value:3,unit:'days'})
         expect(normalizeDelay({value:2,unit:'hours'})).toEqual({value:2,unit:'hours'})

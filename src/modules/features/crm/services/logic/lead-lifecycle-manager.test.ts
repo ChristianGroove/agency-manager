@@ -33,6 +33,17 @@ function createSupabaseMock(queues: Record<string, any[]>) {
 }
 
 describe('LeadLifecycleManager tenant safety', () => {
+    it('records a reply without promoting a marketing contact or changing its commercial status', async () => {
+        mocks.calculateLeadScore.mockResolvedValue({ score: 40 })
+        const update = createQuery({ data: { id: 'contact-1', status: 'marketing_contact', contact_type: 'prospect' } })
+        const score = createQuery({ data: { id: 'contact-1', score: 40 } })
+        const supabase = createSupabaseMock({ leads: [createQuery({ data: { id: 'contact-1', status: 'marketing_contact', contact_type: 'prospect' } }), update, score] })
+        await new LeadLifecycleManager(supabase).handleLeadIncomingActivity('contact-1', 'org-current')
+        await new Promise(resolve => setTimeout(resolve, 0))
+        expect(update.update).toHaveBeenCalledWith({ last_activity_at: expect.any(String), updated_at: expect.any(String) })
+        expect(score.update).toHaveBeenCalledWith({ score: 40 })
+        expect(update.eq).toHaveBeenCalledWith('organization_id', 'org-current')
+    })
     it('scopes background re-score writes to the activity organization', async () => {
         mocks.calculateLeadScore.mockResolvedValue({ score: 84 })
 

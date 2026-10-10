@@ -38,8 +38,9 @@ function collectConsoleCalls(...spies: ReturnType<typeof vi.spyOn>[]) {
 
 function eqQuery(result: unknown) {
     const query: any = {
-        eq: vi.fn(async () => result),
+        eq: vi.fn(() => query),
         select: vi.fn(() => query),
+        then: (resolve: (value: unknown) => unknown) => Promise.resolve(result).then(resolve),
     }
 
     return query
@@ -93,6 +94,7 @@ describe('analytics actions', () => {
             ],
         })
         expect(statusQuery.eq).toHaveBeenCalledWith('organization_id', 'org-current')
+        expect(statusQuery.eq).toHaveBeenCalledWith('contact_type', 'lead')
     })
 
     it('does not expose analytics query failures in deployed runtimes', async () => {

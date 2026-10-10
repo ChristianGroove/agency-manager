@@ -94,6 +94,7 @@ export async function getLeadsCountAction(userId?: string): Promise<ActionRespon
             .from('leads')
             .select('*', { count: 'exact', head: true })
             .eq('organization_id', orgId)
+            .eq('contact_type', 'lead')
         
         if (userId) {
             // Filter by creator or assignee

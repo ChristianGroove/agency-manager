@@ -46,8 +46,8 @@ describe('Explicit reviewed operations UI', () => {
         fireEvent.click(screen.getByLabelText('Importar fila 2'))
         fireEvent.click(screen.getByLabelText(/He revisado las filas/))
         fireEvent.click(screen.getByRole('button', { name: 'Confirmar importación (1)' }))
-        await screen.findByText(/1 contactos creados/)
-        expect(mocks.commit).toHaveBeenCalledWith({ token, rows: [2], confirmed: true })
+        await screen.findByText(/1 contactos de marketing creados/)
+        expect(mocks.commit).toHaveBeenCalledWith({ token, rows: [2], confirmed: true, listName: 'synthetic' })
     })
     it('invalidates the withdrawal review when the phone changes', async () => {
         mocks.renewal.mockResolvedValue({ success: true, review: { token, expiresAt, after: '2026-01-01T00:00:00Z' } })

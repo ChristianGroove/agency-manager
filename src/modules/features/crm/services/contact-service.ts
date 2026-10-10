@@ -117,12 +117,18 @@ export class ContactService {
     }
 
     async updateContactStatus(id: string, newStatus: string): Promise<Lead> {
+        const contact = await this.repo.findById(id, this.organizationId)
+        const marketingProspect = contact.contact_type === 'prospect' && contact.source === 'marketing_import'
         const { data: stage } = await this.supabase
             .from('pipeline_stages')
-            .select('id, pipeline_id')
+            .select('id, pipeline_id, is_active')
             .eq('organization_id', this.organizationId)
             .eq('status_key', newStatus)
             .maybeSingle()
+
+        if (marketingProspect && (!stage || stage.is_active !== true)) {
+            throw new Error('Elige una etapa comercial activa para convertir este contacto de marketing en lead.')
+        }
 
         if (stage) {
             // Logic for Process Sync (Strict Mode)
@@ -148,7 +154,8 @@ export class ContactService {
             }
         }
 
-        return this.repo.update(id, { status: newStatus }, this.organizationId)
+        return this.repo.update(id, { status: newStatus, ...(marketingProspect ? { contact_type: 'lead' as const } : {}) }, this.organizationId,
+            marketingProspect ? { contact_type: 'prospect', source: 'marketing_import' } : undefined)
     }
 
     async convertToClient(id: string): Promise<Client> {

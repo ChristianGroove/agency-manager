@@ -85,7 +85,7 @@ export type Lead = {
     email?: string
     phone?: string
     status: string // Dynamic status from pipeline_stages (e.g. 'open', 'contacted', 'won', 'lost')
-    contact_type?: 'lead' | 'client'
+    contact_type?: 'lead' | 'client' | 'prospect' | 'partner'
     notes?: string
     // Advanced fields
     score?: number

@@ -57,6 +57,7 @@ export async function getLeadsCount(userId?: string) {
             .from('leads')
             .select('*', { count: 'exact', head: true })
             .eq('organization_id', orgId)
+            .eq('contact_type', 'lead')
         
         if (userId) {
             query = query.eq('user_id', userId)

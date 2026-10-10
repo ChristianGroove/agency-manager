@@ -125,7 +125,7 @@ export class ContactRepository {
         }
     }
 
-    async update(id: string, updates: Record<string, any>, organizationId?: string): Promise<Lead> {
+    async update(id: string, updates: Record<string, any>, organizationId?: string, expected?: { contact_type: string; source: string }): Promise<Lead> {
         let query = this.supabase
             .from('leads')
             .update(updates)
@@ -135,6 +135,7 @@ export class ContactRepository {
             query = query.eq('organization_id', organizationId)
         }
 
+        if (expected) query = query.eq('contact_type', expected.contact_type).eq('source', expected.source)
         const { data, error } = await query.select().maybeSingle()
         if (error) throw error
         if (!data) throw new Error("Could not update contact")
