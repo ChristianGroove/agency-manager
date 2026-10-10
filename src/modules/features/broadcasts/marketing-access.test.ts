@@ -2,7 +2,9 @@ import { describe, it, expect, vi } from 'vitest'
 vi.mock('server-only', () => ({}))
 vi.mock('@/modules/core/database/supabase-server', () => ({ createClient: vi.fn() }))
 vi.mock('@/modules/core/organizations/organization-actions', () => ({ getCurrentOrganizationId: vi.fn() }))
-import { allowsMarketing, assertMarketingChannelAccess } from './marketing-access'
+import { allowsMarketing, assertMarketingChannelAccess, requireMarketingAccess } from './marketing-access'
+import { createClient } from '@/modules/core/database/supabase-server'
+import { getCurrentOrganizationId } from '@/modules/core/organizations/organization-actions'
 
 describe('Marketing permissions', () => {
     it('rejects removed and blocked members even when they were owners', () => {
@@ -25,5 +27,13 @@ describe('Marketing permissions', () => {
         const access = { inbox:{hasGlobalView:false,authorizedChannels:['channel-a']} } as any
         expect(()=>assertMarketingChannelAccess(access,'channel-a')).not.toThrow()
         expect(()=>assertMarketingChannelAccess(access,'channel-b')).toThrow('canal')
+    })
+    it('exposes contact import independently from permission to send or declare authorization', async () => {
+        const query = { select: vi.fn().mockReturnThis(), eq: vi.fn().mockReturnThis(), maybeSingle: vi.fn().mockResolvedValue({ data: { role: 'owner', status: 'active', permissions: { 'marketing.campaigns.execute': false } }, error: null }) }
+        vi.mocked(createClient).mockResolvedValue({ auth: { getUser: vi.fn().mockResolvedValue({ data: { user: { id: 'actor-a' } }, error: null }) }, from: vi.fn().mockReturnValue(query) } as any)
+        vi.mocked(getCurrentOrganizationId).mockResolvedValue('tenant-a')
+        const access = await requireMarketingAccess('view')
+        expect(access.canImport).toBe(true)
+        expect(access.canExecute).toBe(false)
     })
 })

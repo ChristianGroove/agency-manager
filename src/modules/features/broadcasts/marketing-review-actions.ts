@@ -5,7 +5,38 @@ import { supabaseAdmin } from '@/modules/core/database/supabase-admin'
 import { requireMarketingAccess, assertMarketingChannelAccess } from './marketing-access'
 import { publicMarketingError, audienceFiltersSchema, normalizeMarketingPhone } from './marketing-contracts'
 import { campaignDesignIssues } from './marketing-preflight'
-import { importRowSchema, ImportReview } from './marketing-import'
+import { importRowSchema, contactImportRowSchema, ImportReview } from './marketing-import'
+
+export async function prepareMarketingContactImport(rows: unknown) {
+    try {
+        const access = await requireMarketingAccess('import')
+        const data = z.array(contactImportRowSchema).min(1).max(1000).parse(rows)
+        const result = await supabaseAdmin.rpc('prepare_marketing_contact_import', { p_org: access.organizationId, p_actor: access.userId, p_rows: data })
+        if (result.error || !result.data) throw new Error('No se pudo revisar la lista. No se importaron contactos.')
+        return { success: true as const, review: result.data as ImportReview }
+    } catch (error) { return { success: false as const, error: publicMarketingError(error) } }
+}
+
+export interface ListAuthorizationReview { token: string; expiresAt: string; listName: string; contacts: number; toAuthorize: number; excluded: number }
+export async function prepareMarketingListAuthorization(listId: string) {
+    try {
+        const access = await requireMarketingAccess('execute')
+        z.string().uuid().parse(listId)
+        const result = await supabaseAdmin.rpc('prepare_marketing_list_authorization', { p_org: access.organizationId, p_actor: access.userId, p_list: listId })
+        if (result.error || !result.data) throw new Error('No se pudo consultar la lista o no tienes permiso para declarar su autorización.')
+        return { success: true as const, review: result.data as ListAuthorizationReview }
+    } catch (error) { return { success: false as const, error: publicMarketingError(error) } }
+}
+
+export async function confirmMarketingListAuthorization(input: unknown) {
+    try {
+        const access = await requireMarketingAccess('execute')
+        const data = z.object({ token: z.string().uuid(), confirmed: z.literal(true), reference: z.string().trim().max(1600).default('') }).strict().parse(input)
+        const result = await supabaseAdmin.rpc('confirm_marketing_list_authorization', { p_org: access.organizationId, p_actor: access.userId, p_ticket: data.token, p_confirmed: true, p_reference: data.reference })
+        if (result.error || !result.data) throw new Error('La lista, permisos o bajas cambiaron, o la revisión caducó. Revisa otra vez; no se confirmó la declaración.')
+        return { success: true as const, result: result.data as { authorized: number } }
+    } catch (error) { return { success: false as const, error: publicMarketingError(error) } }
+}
 
 export async function prepareMarketingImport(rows: unknown) {
     try {
@@ -21,10 +52,14 @@ export async function prepareMarketingImport(rows: unknown) {
 export async function confirmMarketingImport(input: unknown) {
     try {
         const access = await requireMarketingAccess('import')
-        if (!access.canExecute) throw new Error('La importación con evidencia también requiere permiso para registrar autorizaciones de marketing.')
-        const data = z.object({ token: z.string().uuid(), rows: z.array(z.number().int().min(2).max(10002)).min(1).max(100), confirmed: z.literal(true), listName: z.string().trim().min(1).max(160).optional() }).strict().parse(input)
+        const data = z.object({ token: z.string().uuid(), rows: z.array(z.number().int().min(2).max(10002)).min(1).max(1000), confirmed: z.literal(true), listName: z.string().trim().min(1).max(160).optional(), mode: z.enum(['contacts', 'consent']).default('consent') }).strict().parse(input)
+        if (data.mode === 'consent' && !access.canExecute) throw new Error('La importación con evidencia también requiere permiso para registrar autorizaciones de marketing.')
+        if (data.mode === 'consent' && data.rows.length > 100) throw new Error('La importación con evidencia por fila admite hasta 100 contactos.')
+        if (data.mode === 'contacts' && !data.listName) throw new Error('Indica el nombre de la lista.')
         const args = { p_org: access.organizationId, p_actor: access.userId, p_ticket: data.token, p_rows: data.rows }
-        const result = data.listName
+        const result = data.mode === 'contacts'
+            ? await supabaseAdmin.rpc('confirm_marketing_contact_import', { ...args, p_name: data.listName })
+            : data.listName
             ? await supabaseAdmin.rpc('confirm_marketing_list_import', { ...args, p_name: data.listName })
             : await supabaseAdmin.rpc('confirm_marketing_import', args)
         if (result.error || !result.data) throw new Error('No se pudo confirmar: la revisión caducó, cambió un destinatario o tus permisos. Revisa de nuevo; una ejecución fallida se revierte completa.')

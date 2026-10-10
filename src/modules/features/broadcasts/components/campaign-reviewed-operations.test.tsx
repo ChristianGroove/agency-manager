@@ -1,8 +1,8 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-const mocks = vi.hoisted(() => ({ preview: vi.fn(), commit: vi.fn(), activation: vi.fn(), enroll: vi.fn(), renewal: vi.fn(), renew: vi.fn() }))
+const mocks = vi.hoisted(() => ({ preview: vi.fn(), contacts: vi.fn(), commit: vi.fn(), activation: vi.fn(), enroll: vi.fn(), renewal: vi.fn(), renew: vi.fn() }))
 vi.mock('../marketing-review-actions', () => ({ prepareMarketingImport: mocks.preview, confirmMarketingImport: mocks.commit,
-    prepareCampaignActivation: mocks.activation, prepareMarketingRenewal: mocks.renewal, confirmMarketingRenewal: mocks.renew }))
+    prepareMarketingContactImport: mocks.contacts, prepareCampaignActivation: mocks.activation, prepareMarketingRenewal: mocks.renewal, confirmMarketingRenewal: mocks.renew }))
 vi.mock('../marketing-actions', () => ({ enrollAudienceInCampaign: mocks.enroll }))
 import { CampaignImport } from './campaign-import'
 import { CampaignActivationReview } from './campaign-activation-review'
@@ -48,6 +48,33 @@ describe('Explicit reviewed operations UI', () => {
         fireEvent.click(screen.getByRole('button', { name: 'Confirmar importación (1)' }))
         await screen.findByText(/1 contactos de marketing creados/)
         expect(mocks.commit).toHaveBeenCalledWith({ token, rows: [2], confirmed: true, listName: 'synthetic' })
+    })
+    it('imports a plain list including a withdrawn contact without granting permission or activating messages', async () => {
+        mocks.contacts.mockResolvedValue({ success: true, review: { token, expiresAt, rows: [
+            { row: 2, name: '573001234567', phone: '573001234567', eligible: true, reason: 'contact_new' },
+            { row: 3, name: 'Keep withdrawal', phone: '573001234568', eligible: true, reason: 'contact_withdrawn' },
+            { row: 4, name: 'Duplicate', phone: '573001234567', eligible: false, reason: 'duplicate' },
+        ] } })
+        mocks.commit.mockResolvedValue({ success: true, result: { created: 1, existing: 1, consents: 0, listId: token, listName: 'plain' } })
+        const useList = vi.fn()
+        render(<CampaignImport onClose={vi.fn()} onImported={useList} />)
+        const file = new File([''], 'plain.csv', { type: 'text/csv' })
+        Object.defineProperty(file, 'text', { value: async () => 'telefono\n+573001234567\n+573001234568\n+573001234567' })
+        fireEvent.change(screen.getByLabelText('Archivo CSV'), { target: { files: [file] } })
+        await screen.findByLabelText('Importar fila 3')
+        expect(screen.getByLabelText('Importar fila 2')).toBeChecked()
+        expect(screen.getByLabelText('Importar fila 3')).toBeChecked()
+        expect(screen.getByLabelText('Importar fila 4')).toBeDisabled()
+        expect(mocks.preview).not.toHaveBeenCalled()
+        expect(mocks.commit).not.toHaveBeenCalled()
+        fireEvent.click(screen.getByLabelText(/Confirmo la importación de los contactos/))
+        fireEvent.click(screen.getByRole('button', { name: 'Confirmar importación (2)' }))
+        await screen.findByText(/1 contactos de marketing creados y 1 contactos conservados/)
+        expect(mocks.commit).toHaveBeenCalledWith({ token, rows: [2, 3], confirmed: true, listName: 'plain', mode: 'contacts' })
+        expect(useList).not.toHaveBeenCalled()
+        expect(mocks.enroll).not.toHaveBeenCalled()
+        fireEvent.click(screen.getByRole('button', { name: 'Usar esta lista en la campaña' }))
+        expect(useList).toHaveBeenCalledWith({ id: token, name: 'plain' })
     })
     it('invalidates the withdrawal review when the phone changes', async () => {
         mocks.renewal.mockResolvedValue({ success: true, review: { token, expiresAt, after: '2026-01-01T00:00:00Z' } })

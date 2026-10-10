@@ -41,7 +41,7 @@ export async function requireMarketingAccess(permission: MarketingPermission = '
         permissions: { ...role?.permissions, ...member.permissions } })
     const canExecute = allowsMarketing(member, role, 'execute')
     return { organizationId, userId: user.id, session, inbox, canExport: allowsMarketing(member, role, 'export'),
-        canExecute, canManage: allowsMarketing(member, role, 'manage'), canImport: canExecute && allowsMarketing(member, role, 'import') }
+        canExecute, canManage: allowsMarketing(member, role, 'manage'), canImport: allowsMarketing(member, role, 'import') }
 }
 
 export function assertMarketingChannelAccess(access: Awaited<ReturnType<typeof requireMarketingAccess>>, connectionId: string) {

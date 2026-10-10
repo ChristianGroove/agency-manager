@@ -300,7 +300,7 @@ function CampaignEditor({ campaignId, campaignName, onClose, onDirtyChange, onBu
                             </CampaignSection>
                             <CampaignSection title="3. Destinatarios" icon={<Users className="h-4 w-4 text-primary" />}
                                 action={<Button className="h-7 text-[11px]" size="sm" variant="ghost" disabled={!editable || !canImport} onClick={() => setImportOpen(true)}>Importar lista</Button>}>
-                                <CampaignContactLists value={filters.list_id} disabled={!editable} refresh={revision} onSelect={id => setFilters(id ? { has_phone: true, list_id: id } : { has_phone: true })} />
+                                <CampaignContactLists value={filters.list_id} disabled={!editable} refresh={revision} canAuthorize={canExecute} onAuthorized={count => { setRevision(value => value + 1); toast.success(`Declaración registrada para ${count} contactos. Aún no se envían mensajes.`) }} onSelect={id => setFilters(id ? { has_phone: true, list_id: id } : { has_phone: true })} />
                                 <CampaignRecipientFilters value={filters} onChange={setFilters} disabled={!editable} refresh={revision} />
                                 <details className="rounded-xl border border-border/60 bg-muted/20 p-3" open={segmentsOpen} onToggle={event => setSegmentsOpen(event.currentTarget.open)}>
                                     <summary className="cursor-pointer text-xs font-medium">Selecciones guardadas · opcional</summary>

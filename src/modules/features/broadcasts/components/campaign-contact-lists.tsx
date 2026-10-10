@@ -6,10 +6,13 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { getMarketingContactListPage } from '../marketing-workspace-actions'
 import type { ContactListPage } from '../marketing-workspace'
+import dynamic from 'next/dynamic'
+const CampaignListAuthorization = dynamic(() => import('./campaign-list-authorization').then(module => module.CampaignListAuthorization))
 
-export function CampaignContactLists({ value, disabled, onSelect, refresh = 0 }: {
-    value?: string; disabled: boolean; onSelect: (id?: string) => void; refresh?: number;
+export function CampaignContactLists({ value, disabled, onSelect, refresh = 0, canAuthorize = false, onAuthorized }: {
+    value?: string; disabled: boolean; onSelect: (id?: string) => void; refresh?: number; canAuthorize?: boolean; onAuthorized?: (count: number) => void;
 }) {
+    const [authorizationOpen, setAuthorizationOpen] = useState(false)
     const [open, setOpen] = useState(false), [search, setSearch] = useState(''), [query, setQuery] = useState('')
     const [cursor, setCursor] = useState<ContactListPage['next']>(null), [page, setPage] = useState<ContactListPage | null>(null)
     const [loading, setLoading] = useState(false), [error, setError] = useState(''), [revision, setRevision] = useState(0)
@@ -33,6 +36,8 @@ export function CampaignContactLists({ value, disabled, onSelect, refresh = 0 }:
             <Button type="button" size="sm" variant="outline" disabled={disabled} onClick={() => setOpen(!open)} aria-expanded={open}>Elegir lista</Button>
         </div>
         {error && <p role="alert" className="text-xs text-destructive">{error}</p>}
+        {value && canAuthorize && <div className="flex flex-wrap items-center justify-between gap-2"><p className="text-xs text-muted-foreground">¿La empresa ya obtuvo el permiso fuera de Pixy?</p><Button size="sm" variant="outline" disabled={disabled} onClick={() => setAuthorizationOpen(true)}>Registrar autorización de la lista</Button></div>}
+        {authorizationOpen && value && <CampaignListAuthorization key={value} listId={value} onClose={() => setAuthorizationOpen(false)} onSaved={count => { setAuthorizationOpen(false); setRevision(n => n + 1); onAuthorized?.(count) }} />}
         {!loading && !error && value && page && !page.selected && <p role="alert" className="text-xs text-destructive">La lista guardada no está disponible. Elige otra antes de enviar.</p>}
         {open && <div className="space-y-3 rounded-xl border border-border/60 bg-muted/20 p-3">
             <form className="flex gap-2" onSubmit={event => { event.preventDefault(); setQuery(search.trim()); setCursor(null); setRevision(n => n + 1) }}>
