@@ -66,7 +66,7 @@ export function CampaignBuilder({ campaignId, campaignName }: CampaignBuilderPro
     // Add Step State
     const [isAddStepOpen, setIsAddStepOpen] = useState(false)
     const [editingStepId, setEditingStepId] = useState<string | null>(null)
-    const [stepForm, setStepForm] = useState({ type: 'email', name: '', content: '', delay: '1' })
+    const [stepForm, setStepForm] = useState({ type: 'whatsapp', name: '', content: '', delay: '1' })
 
     // Audience Manager State
     const [isCreateAudienceOpen, setIsCreateAudienceOpen] = useState(false)
@@ -90,12 +90,6 @@ export function CampaignBuilder({ campaignId, campaignName }: CampaignBuilderPro
 
         if (seqResult.success) {
             let loadedSeqs = seqResult.sequences!
-            if (loadedSeqs.length === 0) {
-                const created = await createSequence({ name: 'Flujo Principal', campaign_id: campaignId, trigger_type: 'manual' })
-                if (created.success) {
-                    loadedSeqs = [{...created.sequence, steps: []}] as any[]
-                }
-            }
             setSequences(loadedSeqs)
             if (loadedSeqs.length > 0 && !activeSequence) {
                 setActiveSequence(loadedSeqs[0].id)
@@ -114,7 +108,8 @@ export function CampaignBuilder({ campaignId, campaignName }: CampaignBuilderPro
             })
             // Load linked audience
             setSelectedAudienceId((campResult.campaign as any).audience_id || null)
-            setScheduledFor((campResult.campaign as any).scheduled_for || '')
+            const date = campResult.campaign.scheduled_for ? new Date(campResult.campaign.scheduled_for) : null
+            setScheduledFor(date ? new Date(date.getTime() - date.getTimezoneOffset()*60000).toISOString().slice(0,16) : '')
         }
         if (statsResult.success) {
             setStats(statsResult)
@@ -292,7 +287,7 @@ export function CampaignBuilder({ campaignId, campaignName }: CampaignBuilderPro
             type: step.type,
             name: step.name,
             content: step.type === 'delay' ? '' : (step.content?.body || ''),
-            delay: step.type === 'delay' ? (step.delay_config?.duration || '1') : '1'
+            delay: step.type === 'delay' ? (step.delay_config?.value ?? step.delay_config?.duration ?? '1') : '1'
         })
         setIsAddStepOpen(true)
     }
@@ -307,7 +302,7 @@ export function CampaignBuilder({ campaignId, campaignName }: CampaignBuilderPro
         const content = stepForm.type === 'delay' ? { duration: stepForm.delay } : { body: stepForm.content }
         const stepData = {
             type: stepForm.type, name: stepForm.name, content,
-            delay_config: stepForm.type === 'delay' ? { duration: stepForm.delay, unit: 'days' } : undefined
+            delay_config: stepForm.type === 'delay' ? { value: Number(stepForm.delay), unit: 'days' } : undefined
         }
 
         let result
@@ -338,7 +333,7 @@ export function CampaignBuilder({ campaignId, campaignName }: CampaignBuilderPro
     }
 
     async function handleSaveConfig() {
-        const result = await updateCampaign(campaignId, { delivery_config: deliveryConfig } as any)
+        const result = await updateCampaign(campaignId, { delivery_config: deliveryConfig, scheduled_for: scheduledFor ? new Date(scheduledFor).toISOString() : null })
         if (result.success) {
             toast.success('Configuración guardada')
         } else {
@@ -370,6 +365,8 @@ export function CampaignBuilder({ campaignId, campaignName }: CampaignBuilderPro
                 <div className="flex gap-2">
                     <Button
                         onClick={handleToggleStatus}
+                        disabled={isEnrolling || campaignStatus !== 'active'}
+                        title={t("marketing.dashboard.preparation_notice")}
                         className={cn("transition-all", campaignStatus === 'active' ? "bg-amber-500 hover:bg-amber-600 text-white" : "bg-brand-pink text-white hover:bg-brand-pink/90")}
                     >
                         {campaignStatus === 'active' ? <><div className="w-2 h-2 rounded-full bg-white mr-2 animate-pulse" /> {t("marketing.campaign_builder.pause_funnel")}</> : <><Play className="w-4 h-4 mr-2" /> {t("marketing.campaign_builder.activate_funnel")}</>}
@@ -418,7 +415,7 @@ export function CampaignBuilder({ campaignId, campaignName }: CampaignBuilderPro
                                                     <SelectTrigger className="dark:bg-zinc-800 dark:border-zinc-700 dark:text-white"><SelectValue /></SelectTrigger>
                                                     <SelectContent className="dark:bg-zinc-800 dark:border-zinc-700">
                                                         <SelectItem value="whatsapp">{t("marketing.campaign_builder.whatsapp_msg")}</SelectItem>
-                                                        <SelectItem value="email">{t("marketing.campaign_builder.email_msg")}</SelectItem>
+                                                        <SelectItem value="email" disabled>{t("marketing.campaign_builder.email_msg")}</SelectItem>
                                                         <SelectItem value="delay">{t("marketing.campaign_builder.delay_action")}</SelectItem>
                                                     </SelectContent>
                                                 </Select>

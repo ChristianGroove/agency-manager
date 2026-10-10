@@ -1,312 +1,103 @@
+import { supabaseAdmin } from '@/modules/core/database/supabase-admin'
+import { outboundService } from '@/modules/features/messaging/outbound-service'
+import { normalizeDelay, normalizeMarketingPhone } from './marketing-contracts'
+import { enforceScheduleWindow } from './marketing-utils'
 
-import { resolveConnectionCredentials } from '@/modules/infrastructure/integrations/connection-secrets'
-import { sendOutboundMessage } from "@/modules/features/messaging/messaging-actions"
-import { addMinutes, addHours, addDays, isBefore } from "date-fns"
-import { createClient } from "@/modules/core/database/supabase-server";
-import { addJitter, enforceScheduleWindow } from './marketing-utils'
-
-/**
- * MARKETING RUNNER (Execution Engine)
- * -----------------------------------
- * This service runs periodically (via Cron) to process active marketing enrollments.
- * It enforces Tenant Isolation by strictly validating organization IDs.
- */
-
+/** Internal cron worker. Session cookies are never used as worker credentials. */
 export async function runMarketingCycle() {
-    const supabase = (await createClient())
-    const now = new Date().toISOString()
-    const logs: string[] = []
-
-    logs.push(`[Runner] Starting cycle at ${now}`)
-
-    // 1. Poll Active Enrollments ready to run
-    // STRICT FILTER: Only 'active' enrollments where next_run_at is past or null (immediate)
-    const { data: enrollments, error } = await supabase
-        .from('marketing_enrollments')
-        .select(`
-            *,
-            step:marketing_steps!current_step_id(*),
-            campaign:marketing_campaigns!campaign_id(id, organization_id, delivery_config, scheduled_for),
-            lead:leads!contact_id(id, organization_id, phone, name, marketing_opted_out)
-        `)
-        .eq('status', 'active')
-        .lte('next_run_at', now)
-        .order('next_run_at', { ascending: true })
-        .limit(50) // Batch size to prevent timeout
-
-    if (error) {
-        console.error('[Runner] Poll Error:', error)
-        return { success: false, error: error.message }
-    }
-
-    if (!enrollments || enrollments.length === 0) {
-        logs.push('[Runner] No enrollments pending.')
-        return { success: true, processed: 0, logs }
-    }
-
-    logs.push(`[Runner] Processing ${enrollments.length} enrollments...`)
-
-    // 2. Process Batch
-    let processedCount = 0
-    for (const enrollment of enrollments) {
+    const db = supabaseAdmin
+    const started = Date.now()
+    const result = await db.rpc('claim_marketing_enrollments', { p_limit: 25 })
+    if (result.error) throw new Error('No se pudieron adquirir los trabajos de Marketing.')
+    let processed = 0, failed = 0, deferred = 0
+    for (const claim of result.data || []) {
+        // Leave unprocessed leases to expire; never run beyond the request budget.
+        if (Date.now() - started > 45_000) break
         try {
-            await processEnrollment(supabase, enrollment, logs)
-            processedCount++
-        } catch (e: any) {
-            console.error(`[Runner] Failed enrollment ${enrollment.id}:`, e)
-            const errorMsg = e.message || 'Unknown Error'
-            
-            // QoS Monitor: Auto-pause on critical Meta errors to protect WhatsApp number
-            const isCritical = errorMsg.toLowerCase().includes('rate limit') || 
-                               errorMsg.toLowerCase().includes('spam') || 
-                               errorMsg.toLowerCase().includes('restricted') ||
-                               errorMsg.toLowerCase().includes('template') ||
-                               errorMsg.toLowerCase().includes('not approved')
-
-            if (isCritical) {
-                console.warn(`[QoS Monitor] Auto-paused campaign ${enrollment.campaign.id} due to critical error: ${errorMsg}`)
-                await supabase.from('marketing_campaigns').update({
-                    status: 'paused'
-                }).eq('id', enrollment.campaign.id)
-            }
-
-            await supabase.from('marketing_enrollments').update({
-                status: 'failed',
-                execution_logs: [...(enrollment.execution_logs || []), { date: new Date().toISOString(), error: errorMsg }]
-            }).eq('id', enrollment.id)
+            const state = await processClaim(db, claim)
+            if (state === 'processed') processed++
+            else deferred++
+        } catch {
+            const checkpoint = await db.from('marketing_enrollments').update({
+                status: 'failed', last_error: 'No se pudo ejecutar el paso. Requiere revisión antes de reintentar.',
+                claim_token: null, claimed_until: null, last_run_at: new Date().toISOString(),
+            }).eq('id', claim.id).eq('organization_id', claim.organization_id).eq('claim_token', claim.claim_token).select('id').single()
+            if (checkpoint.error || !checkpoint.data) throw new Error('No se pudo persistir el resultado del trabajo de Marketing.')
+            failed++
         }
     }
-
-    return { success: true, processed: processedCount, logs }
+    return { success: true, processed, failed, deferred, logs: [] as string[] }
 }
 
-async function processEnrollment(supabase: any, enrollment: any, debugLogs: string[]) {
-    const { step, lead, campaign } = enrollment
+async function checkpoint(db: any, claim: any, data: Record<string, unknown>) {
+    const result = await db.from('marketing_enrollments').update({ ...data, claim_token: null, claimed_until: null })
+        .eq('id', claim.id).eq('organization_id', claim.organization_id).eq('claim_token', claim.claim_token)
+        .select('id').single()
+    if (result.error || !result.data) throw new Error('No se pudo guardar el avance de la campaña.')
+}
 
-    // TENANT ISOLATION CHECK
-    if (campaign.organization_id !== lead.organization_id) {
-        throw new Error(`Integrity Error: Campaign Org ${campaign.organization_id} != Lead Org ${lead.organization_id}`)
+async function processClaim(db: any, claim: any): Promise<'processed' | 'deferred'> {
+    const result = await db.from('marketing_enrollments').select(`*,
+        step:marketing_steps!current_step_id(*),
+        sequence:marketing_sequences!sequence_id(id,campaign_id,organization_id,is_active),
+        campaign:marketing_campaigns!campaign_id(id,organization_id,status,connection_id,execution_version,delivery_config,scheduled_for),
+        lead:leads!contact_id(id,organization_id,phone,name,company,marketing_opted_out)`)
+        .eq('id', claim.id).eq('organization_id', claim.organization_id).eq('claim_token', claim.claim_token).single()
+    if (result.error || !result.data) throw new Error('Trabajo no disponible.')
+    const row = result.data, { campaign, sequence, step, lead } = row
+    if (!campaign || !sequence || !step || !lead || campaign.organization_id !== row.organization_id ||
+        sequence.organization_id !== row.organization_id || step.organization_id !== row.organization_id ||
+        lead.organization_id !== row.organization_id || sequence.campaign_id !== campaign.id || step.sequence_id !== sequence.id) {
+        throw new Error('Relaciones de campaña inválidas.')
     }
-
-    // CAMPAIGN STATUS CHECK
-    if (campaign.status === 'paused') {
-        debugLogs.push(`[${enrollment.id}] Campaign is paused. Skipping.`)
-        return
+    if (row.status !== 'active' || campaign.status !== 'active' || campaign.execution_version !== 2 || !sequence.is_active ||
+        !campaign.connection_id || (campaign.scheduled_for && Date.parse(campaign.scheduled_for) > Date.now())) {
+        await checkpoint(db, claim, { next_run_at: new Date(Date.now() + 300_000).toISOString() })
+        return 'deferred'
     }
-
-    // SCHEDULED CAMPAIGN CHECK
-    if (campaign.scheduled_for && new Date(campaign.scheduled_for) > new Date()) {
-        debugLogs.push(`[${enrollment.id}] Campaign scheduled for future, skipping.`)
-        return
-    }
-
-    // OPT-OUT CHECK
     if (lead.marketing_opted_out) {
-        debugLogs.push(`[${enrollment.id}] Lead opted out, cancelling enrollment.`)
-        await supabase.from('marketing_enrollments').update({
-            status: 'cancelled',
-            execution_logs: [...(enrollment.execution_logs || []), {
-                date: new Date().toISOString(),
-                action: 'cancelled_opted_out'
-            }]
-        }).eq('id', enrollment.id)
-        return
+        await checkpoint(db, claim, { status: 'cancelled', next_run_at: null, last_error: 'Consentimiento revocado.' })
+        return 'processed'
     }
-
-    if (!step) {
-        // No current step? Should verify if finished.
-        debugLogs.push(`[${enrollment.id}] No step found. Completing.`)
-        await completeEnrollment(supabase, enrollment.id)
-        return
+    const nextAllowed = enforceScheduleWindow(new Date(), campaign.delivery_config || {mode:'growth',humanize:false})
+    if (nextAllowed.getTime() > Date.now() + 1000) {
+        await checkpoint(db, claim, { next_run_at: nextAllowed.toISOString() })
+        return 'deferred'
     }
-
-    // --- STEP LOGIC ---
-
+    const next = await db.from('marketing_steps').select('id').eq('organization_id', row.organization_id)
+        .eq('sequence_id', sequence.id).gt('order_index', step.order_index).order('order_index').limit(1).maybeSingle()
+    if (next.error) throw new Error('No se pudo obtener el siguiente paso.')
+    let nextRun = new Date()
     if (step.type === 'delay') {
-        const delayConfig = step.delay_config || { value: 1, unit: 'days' }
-        let nextTime = calculateDelay(delayConfig)
-        
-        if (campaign.delivery_config) {
-            nextTime = addJitter(nextTime, campaign.delivery_config)
-            nextTime = enforceScheduleWindow(nextTime, campaign.delivery_config)
-        }
-
-        debugLogs.push(`[${enrollment.id}] Processing Delay: ${delayConfig.value} ${delayConfig.unit}. Next run: ${nextTime.toISOString()}`)
-
-        // Move to NEXT step immediately after setting the delay?
-        // NO. The delay step IS the waiting period.
-        // We advance the pointer to the NEXT step, and set the run time.
-
-        const nextStep = await getNextStep(supabase, step)
-
-        if (nextStep) {
-            await supabase.from('marketing_enrollments').update({
-                current_step_id: nextStep.id,
-                next_run_at: nextTime.toISOString(),
-                last_run_at: new Date().toISOString()
-            }).eq('id', enrollment.id)
-        } else {
-            await completeEnrollment(supabase, enrollment.id)
-        }
-        return
+        const delay = normalizeDelay(step.delay_config)
+        const multiplier = delay.unit === 'days' ? 86400 : delay.unit === 'hours' ? 3600 : 60
+        nextRun = new Date(Date.now() + delay.value * multiplier * 1000)
+    } else {
+        if (step.type !== 'whatsapp' || !step.content?.template_name) throw new Error('Solo se admiten plantillas WhatsApp validadas.')
+        const recipient = normalizeMarketingPhone(lead.phone)
+        if (!recipient || recipient !== row.recipient) throw new Error('El destinatario cambió; revisa la campaña.')
+        const conversationId = await getConversation(db, row.organization_id, lead.id, campaign.connection_id, recipient)
+        const parameters = Object.entries(step.content.template_params || {}).sort(([a],[b])=>Number(a.replace(/\D/g,''))-Number(b.replace(/\D/g,'')))
+            .map(([,value])=>String(value).replaceAll('{{nombre}}',lead.name || '').replaceAll('{{empresa}}',lead.company || '').replaceAll('{{telefono}}',recipient))
+        const sent = await outboundService.sendSystemMessage(conversationId, {
+            type: 'template', templateName: step.content.template_name, templateLanguage: step.content.template_language || 'es',
+            templateComponents: parameters.length ? [{ type:'body', parameters: parameters.map(text=>({type:'text',text})) }] : [],
+        }, 'whatsapp', campaign.connection_id, 'System', `campaign:${row.id}:${step.id}`)
+        if (!sent.success || !sent.externalId) throw new Error('No se confirmó la aceptación del envío.')
     }
-
-    if (['whatsapp', 'sms', 'email'].includes(step.type)) {
-        debugLogs.push(`[${enrollment.id}] Sending Message (${step.type})...`)
-
-        // 1. Get/Create Conversation
-        const conversationId = await getOrCreateOutboundConversation(
-            supabase,
-            lead.id,
-            lead.organization_id,
-            step.type,
-            lead.phone
-        )
-
-        if (!conversationId) {
-            throw new Error('Could not create/find conversation for message dispatch')
-        }
-
-        // 2. Dispatch Message
-        const content = step.content
-        const operationKey = `campaign:${enrollment.id}:${step.id}`
-
-        let result: any
-
-        if (content.template_name && step.type === 'whatsapp') {
-            // Scheduled sends use the same tenant binding and suppression policy as inbox sends.
-            const { outboundService } = await import('@/modules/features/messaging/outbound-service')
-            const parameters = Object.values(content.template_params || {}).map((value: any) => String(value)
-                .replace('{{nombre}}', lead.name || '').replace('{{empresa}}', lead.company || '').replace('{{telefono}}', lead.phone || ''))
-            result = await outboundService.sendSystemMessage(conversationId, {
-                type: 'template', templateName: content.template_name,
-                templateLanguage: content.template_language || 'es', templateComponents: parameters.length ? [{type:'body',parameters:parameters.map(text=>({type:'text',text}))}] : [],
-            }, 'whatsapp', undefined, 'System', operationKey)
-        } else {
-            // Plain text dispatch (non-template or non-WhatsApp)
-            result = await sendOutboundMessage(conversationId, content, step.type, undefined, 'System', operationKey)
-        }
-
-        if (!result.success) {
-            throw new Error(`Send Failed: ${result.error}`)
-        }
-
-        debugLogs.push(`[${enrollment.id}] Message Sent (ID: ${result.externalId || 'Internal'}). Advancing...`)
-
-        // 3. Advance to Next Step (Immediate)
-        const nextStep = await getNextStep(supabase, step)
-
-        if (nextStep) {
-            let nextRun = new Date()
-            if (campaign.delivery_config) {
-                nextRun = addJitter(nextRun, campaign.delivery_config)
-                nextRun = enforceScheduleWindow(nextRun, campaign.delivery_config)
-            }
-
-            await supabase.from('marketing_enrollments').update({
-                current_step_id: nextStep.id,
-                next_run_at: nextRun.toISOString(),
-                last_run_at: new Date().toISOString(),
-                execution_logs: [...(enrollment.execution_logs || []), {
-                    date: new Date().toISOString(),
-                    action: 'message_sent',
-                    step_id: step.id,
-                    status: 'success'
-                }]
-            }).eq('id', enrollment.id)
-        } else {
-            await completeEnrollment(supabase, enrollment.id)
-        }
-    }
+    await checkpoint(db, claim, next.data ? {
+        current_step_id: next.data.id, next_run_at: nextRun.toISOString(), last_run_at: new Date().toISOString(),
+    } : { status: 'completed', next_run_at: null, completed_at: new Date().toISOString(), last_run_at: new Date().toISOString() })
+    return 'processed'
 }
 
-// --- HELPERS ---
-
-function calculateDelay(config: { value: number, unit: string }) {
-    const now = new Date()
-    const val = Number(config.value)
-    if (config.unit === 'minutes') return addMinutes(now, val)
-    if (config.unit === 'hours') return addHours(now, val)
-    return addDays(now, val)
-}
-
-async function getNextStep(supabase: any, currentStep: any) {
-    // Find step with higher order_index in same sequence
-    const { data } = await supabase
-        .from('marketing_steps')
-        .select('id, type, order_index')
-        .eq('sequence_id', currentStep.sequence_id)
-        .gt('order_index', currentStep.order_index)
-        .order('order_index', { ascending: true })
-        .limit(1)
-        .single()
-    return data
-}
-
-async function completeEnrollment(supabase: any, enrollmentId: string) {
-    await supabase.from('marketing_enrollments').update({
-        status: 'completed',
-        completed_at: new Date().toISOString(),
-        next_run_at: null
-    }).eq('id', enrollmentId)
-}
-
-/**
- * Resolves or creates a conversation ensuring strict Tenant Isolation
- */
-async function getOrCreateOutboundConversation(
-    supabase: any,
-    leadId: string,
-    organizationId: string,
-    channel: string,
-    leadPhone: string
-) {
-    // 1. Try Find Existing Active Conversation
-    const { data: existing } = await supabase
-        .from('conversations')
-        .select('id,connection_id')
-        .eq('organization_id', organizationId) // Strict Tenant
-        .eq('lead_id', leadId)
-        .eq('channel', channel)
-        .order('updated_at', { ascending: false })
-        .limit(1)
-        .single()
-
-    if (existing?.connection_id || (existing && channel !== 'whatsapp')) return existing.id
-    let connectionId: string | null = null
-    if (channel === 'whatsapp') {
-        const { data: channels, error: channelError } = await supabase.from('integration_connections').select('id')
-            .eq('organization_id',organizationId).eq('status','active').in('provider_key',['whatsapp_cloud','meta_whatsapp']).limit(2)
-        if (channelError || channels?.length !== 1) throw new Error('Selecciona un canal de WhatsApp para la campaña; no hay un único canal disponible.')
-        connectionId = channels[0].id
-        if (existing) {
-            const bound = await supabase.from('conversations').update({connection_id:connectionId}).eq('id',existing.id).eq('organization_id',organizationId).is('connection_id',null).select('id').single()
-            if (bound.error || !bound.data) throw new Error('Could not bind the campaign conversation')
-            return existing.id
-        }
-    }
-    // 2. Create New
-    // We need to resolve a default connection to bind it if possible, 
-    // but inbox-service handles auto-binding if we leave it null.
-    // However, for strictness, let's just create it and let sendOutboundMessage internal logic find the connection.
-    const { data: newConv, error } = await supabase
-        .from('conversations')
-        .insert({
-            organization_id: organizationId,
-            lead_id: leadId,
-            channel: channel,
-            phone: leadPhone,
-            status: 'open',
-            state: 'active',
-            source: 'marketing_campaign',
-            connection_id: connectionId
-        })
-        .select('id')
-        .single()
-
-    if (error) {
-        console.error('[Runner] Conversation Creation Failed:', error)
-        return null
-    }
-    return newConv.id
+async function getConversation(db: any, org: string, leadId: string, connectionId: string, recipient: string) {
+    const existing = await db.from('conversations').select('id').eq('organization_id', org).eq('lead_id', leadId)
+        .eq('channel', 'whatsapp').eq('connection_id', connectionId).order('updated_at', { ascending: false }).limit(1).maybeSingle()
+    if (existing.error) throw new Error('No se pudo obtener la conversación.')
+    if (existing.data) return existing.data.id
+    const created = await db.from('conversations').insert({ organization_id: org, lead_id: leadId, connection_id: connectionId,
+        phone: recipient, channel: 'whatsapp', status: 'open', state: 'active', source: 'marketing_campaign' }).select('id').single()
+    if (created.error || !created.data) throw new Error('No se pudo crear la conversación de campaña.')
+    return created.data.id
 }

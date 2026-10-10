@@ -46,6 +46,27 @@ beforeEach(() => {
 })
 
 describe('Meta outbound outbox', () => {
+    it('does not recover a queued campaign operation when its campaign is paused', async () => {
+        const sendMessage = vi.fn()
+        mocks.getAdapter.mockReturnValue({ sendMessage })
+        const deferred = query({ data: null, error: null })
+        mocks.rpc.mockResolvedValueOnce({ data: false, error: null })
+        mocks.from.mockReturnValueOnce(query({ data: { ...queued, operation_key: 'campaign:enrollment-a:step-a' }, error: null }))
+            .mockReturnValueOnce(deferred)
+        const { dispatchMetaOutbound } = await import('./meta-outbox')
+        expect((await dispatchMetaOutbound('outbox-1')).status).toBe('queued')
+        expect(mocks.rpc).toHaveBeenCalledWith('marketing_outbound_allowed', expect.objectContaining({p_org:'tenant-a',p_connection:'channel-a'}))
+        expect(sendMessage).not.toHaveBeenCalled()
+        expect(mocks.assertSend).not.toHaveBeenCalled()
+    })
+
+    it('fails closed when campaign permission cannot be checked', async () => {
+        mocks.rpc.mockResolvedValueOnce({ data: null, error: {message:'database unavailable'} })
+        mocks.from.mockReturnValueOnce(query({ data: { ...queued, operation_key: 'campaign:enrollment-a:step-a' }, error: null }))
+        const { dispatchMetaOutbound } = await import('./meta-outbox')
+        await expect(dispatchMetaOutbound('outbox-1')).rejects.toThrow('marketing dispatch')
+        expect(mocks.getAdapter).not.toHaveBeenCalled()
+    })
     it('persists before dispatching and leaves cron able to recover event failures', async () => {
         mocks.rpc.mockResolvedValueOnce({ data: [{ outbox_id: 'outbox-1', message_id: 'message-a',
             delivery_status: 'queued', external_id: null }], error: null })

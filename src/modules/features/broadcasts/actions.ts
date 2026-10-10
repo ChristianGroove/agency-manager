@@ -2,6 +2,8 @@
 
 import { createClient } from "@/modules/core/database/supabase-server"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
+import { requireMarketingAccess } from './marketing-access'
+import { getRecipientCount as countMarketingRecipients } from './marketing-actions'
 import { revalidatePath } from "next/cache"
 
 export type Broadcast = {
@@ -25,6 +27,8 @@ export type Broadcast = {
 
 // Get all broadcasts for the organization
 export async function getBroadcasts() {
+    await requireMarketingAccess('view')
+
     try {
         const supabase = await createClient()
         const orgId = await getCurrentOrganizationId()
@@ -48,6 +52,8 @@ export async function getBroadcasts() {
 
 // Get a single broadcast by ID
 export async function getBroadcast(id: string) {
+    await requireMarketingAccess('view')
+
     try {
         const supabase = await createClient()
         const orgId = await getCurrentOrganizationId()
@@ -78,6 +84,8 @@ export async function createBroadcast(data: {
     filters: Record<string, unknown>
     scheduled_at?: string
 }) {
+    await requireMarketingAccess('manage')
+
     try {
         const supabase = await createClient()
         const orgId = await getCurrentOrganizationId()
@@ -136,64 +144,14 @@ export async function createBroadcast(data: {
 
 // Send a broadcast (start sending)
 export async function sendBroadcast(id: string) {
-    try {
-        const supabase = await createClient()
-        const orgId = await getCurrentOrganizationId()
-
-        if (!orgId) throw new Error("Unauthorized")
-
-        // Get the broadcast
-        const { data: broadcast, error: fetchError } = await supabase
-            .from('broadcasts')
-            .select('*')
-            .eq('id', id)
-            .eq('organization_id', orgId)
-            .single()
-
-        if (fetchError || !broadcast) {
-            throw new Error('Broadcast not found')
-        }
-
-        if (broadcast.status !== 'draft' && broadcast.status !== 'scheduled') {
-            throw new Error('Broadcast cannot be sent in current status')
-        }
-
-        // Update status to sending
-        const { error: updateError } = await supabase
-            .from('broadcasts')
-            .update({
-                status: 'sending',
-                sent_at: new Date().toISOString()
-            })
-            .eq('id', id)
-
-        if (updateError) throw updateError
-
-        // In a real implementation, this would queue messages for each recipient
-        // For now, we simulate completion after a delay
-        setTimeout(async () => {
-            const supabaseInternal = await createClient()
-            await supabaseInternal
-                .from('broadcasts')
-                .update({
-                    status: 'completed',
-                    completed_at: new Date().toISOString(),
-                    sent_count: broadcast.total_recipients,
-                    delivered_count: Math.floor(broadcast.total_recipients * 0.95)
-                })
-                .eq('id', id)
-        }, 3000)
-
-        revalidatePath('/crm/broadcasts')
-        return { success: true, message: 'Broadcast started' }
-    } catch (error) {
-        console.error("Error sending broadcast:", error)
-        return { success: false, error: String(error) }
-    }
+    await requireMarketingAccess('execute')
+    return { success: false, error: 'Este emisor simulado fue retirado. Usa una campaña validada de Marketing.' }
 }
 
 // Delete a broadcast
 export async function deleteBroadcast(id: string) {
+    await requireMarketingAccess('manage')
+
     try {
         const supabase = await createClient()
         const orgId = await getCurrentOrganizationId()
@@ -218,38 +176,6 @@ export async function deleteBroadcast(id: string) {
 
 // Get recipient count for given filters
 export async function getRecipientCount(filters: Record<string, unknown>) {
-    try {
-        const supabase = await createClient()
-        const orgId = await getCurrentOrganizationId()
-
-        if (!orgId) throw new Error("Unauthorized")
-
-        let query = supabase
-            .from('leads')
-            .select('id', { count: 'exact', head: true })
-            .eq('organization_id', orgId)
-
-        if (filters.status) {
-            query = query.eq('status', filters.status)
-        }
-        if (filters.has_phone) {
-            query = query.not('phone', 'is', null)
-        }
-        if (filters.has_email) {
-            query = query.not('email', 'is', null)
-        }
-        if (filters.score_min) {
-            query = query.gte('score', filters.score_min)
-        }
-
-        const { count, error } = await query
-
-        if (error) throw error
-
-        return { success: true, count: count || 0 }
-    } catch (error) {
-        console.error("Error counting recipients:", error)
-        return { success: false, error: String(error), count: 0 }
-    }
+    return countMarketingRecipients(filters)
 }
 

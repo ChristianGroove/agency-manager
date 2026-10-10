@@ -24,6 +24,7 @@ import { useSearchParams } from 'next/navigation'
 import { SplitText } from "@/components/ui/split-text"
 import { CreateBroadcastSheet } from './create-broadcast-sheet'
 import { CampaignsList } from './campaigns-list'
+import { toast } from 'sonner'
 import { getMarketingStats } from '../marketing-actions'
 import { SectionHeader } from "@/components/layout/section-header"
 import { useTranslation } from "@/modules/core/i18n/use-translation"
@@ -35,6 +36,7 @@ export function MarketingDashboard() {
     const tabParam = searchParams.get('tab')
     
     const [activeTab, setActiveTab] = useState(tabParam === 'insights' ? 'insights' : 'campaigns')
+    const [refreshVersion, setRefreshVersion] = useState(0)
     const [createBroadcastOpen, setCreateBroadcastOpen] = useState(false)
     const [stats, setStats] = useState({
         totalCampaigns: 0,
@@ -57,35 +59,8 @@ export function MarketingDashboard() {
 
     async function loadStats() {
         const data = await getMarketingStats()
-        setStats(data)
-    }
-
-    async function handleRunCycle() {
-        try {
-            const res = await fetch('/api/marketing/run')
-            const data = await res.json()
-            if (data.success) {
-                // Determine message based on logs/processed
-                const count = data.processed || 0
-                if (count > 0) {
-                    // Show detailed toast
-                    // Force refresh stats
-                    loadStats()
-                } else {
-                    // No pending items
-                }
-                // We'll use a simple alert/toast for now or just log
-                // Ideally this component should use 'sonner' toast but it's not imported.
-                // Assuming global toast or just console for now, or imported if available.
-                // Let's rely on re-fetching stats to show impact.
-                loadStats()
-                alert(`Ciclo ejecutado: ${count} envíos procesados.\nLogs: ${data.logs?.length} entradas.`)
-            } else {
-                alert('Error al ejecutar ciclo: ' + data.error)
-            }
-        } catch (e) {
-            alert('Error de conexión con Runner')
-        }
+        if ('error' in data) toast.error(data.error)
+        else setStats(data)
     }
 
     return (
@@ -99,15 +74,6 @@ export function MarketingDashboard() {
                     <div className="flex gap-3">
                         {activeTab !== 'insights' && (
                             <>
-                                <Button
-                                    onClick={handleRunCycle}
-                                    variant="ghost"
-                                    className="text-muted-foreground hover:text-brand-pink"
-                                    title="Forzar ciclo de ejecución (Debug)"
-                                >
-                                    <Workflow className="h-4 w-4 mr-2" />
-                                    {t("marketing.dashboard.run_cycle")}
-                                </Button>
                                 <Button onClick={() => setCreateBroadcastOpen(true)} className="bg-brand-pink hover:bg-brand-pink/90 text-white">
                                     <Zap className="h-4 w-4 mr-2" />
                                     {t("marketing.dashboard.quick_campaign")}
@@ -122,6 +88,8 @@ export function MarketingDashboard() {
                     </div>
                 }
             />
+
+            <p role="status" className="rounded-xl border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900 dark:border-amber-900 dark:bg-amber-950 dark:text-amber-100">{t("marketing.dashboard.preparation_notice")}</p>
 
             {/* KPI Cards */}
             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -144,7 +112,7 @@ export function MarketingDashboard() {
                         </div>
                         <div>
                             <p className="text-3xl font-bold text-gray-900 dark:text-white">{stats.totalMessages}</p>
-                            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{t("marketing.dashboard.kpis.messages_sent")}</p>
+                            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{t("marketing.dashboard.kpis.messages_accepted")}</p>
                         </div>
                     </div>
                 </Card>
@@ -156,7 +124,7 @@ export function MarketingDashboard() {
                         </div>
                         <div>
                             <p className="text-3xl font-bold text-gray-900 dark:text-white">{stats.deliveryRate}%</p>
-                            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{t("marketing.dashboard.kpis.engagement")}</p>
+                            <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{t("marketing.dashboard.kpis.delivery_rate")}</p>
                         </div>
                     </div>
                 </Card>
@@ -187,7 +155,7 @@ export function MarketingDashboard() {
                 </TabsList>
 
                 <TabsContent value="campaigns" className="mt-0">
-                    <CampaignsList />
+                    <CampaignsList key={refreshVersion} />
                 </TabsContent>
 
                 <TabsContent value="history" className="mt-0">
@@ -202,7 +170,7 @@ export function MarketingDashboard() {
             <CreateBroadcastSheet
                 open={createBroadcastOpen}
                 onOpenChange={setCreateBroadcastOpen}
-                onSuccess={loadStats}
+                onSuccess={() => { setRefreshVersion(v => v + 1); void loadStats() }}
             />
         </div>
     )

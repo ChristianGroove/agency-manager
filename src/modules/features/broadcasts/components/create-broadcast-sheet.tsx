@@ -37,7 +37,7 @@ import {
 import { createQuickCampaign } from '../marketing-actions'
 import { getRecipientCount } from '../actions'
 import { toast } from 'sonner'
-import { getTemplates, syncTemplatesFromMeta, MessageTemplate } from '@/modules/features/messaging/messaging-actions'
+import { getTemplates, MessageTemplate } from '@/modules/features/messaging/messaging-actions'
 import { useTranslation } from "@/modules/core/i18n/use-translation"
 
 interface CreateBroadcastSheetProps {
@@ -54,7 +54,6 @@ export function CreateBroadcastSheet({ open, onOpenChange, onSuccess }: CreateBr
     const [templates, setTemplates] = useState<MessageTemplate[]>([])
     const [selectedTemplate, setSelectedTemplate] = useState<MessageTemplate | null>(null)
     const [templateVarValues, setTemplateVarValues] = useState<Record<string, string>>({})
-    const [ttlSeconds, setTtlSeconds] = useState(86400) // Default 24h
     const [showAdvanced, setShowAdvanced] = useState(false)
 
     const [deliveryConfig, setDeliveryConfig] = useState<{
@@ -96,7 +95,6 @@ export function CreateBroadcastSheet({ open, onOpenChange, onSuccess }: CreateBr
             setRecipientCount(0)
             setSelectedTemplate(null)
             setTemplateVarValues({})
-            setTtlSeconds(86400)
             // Load approved templates
             loadTemplates()
         }
@@ -104,12 +102,10 @@ export function CreateBroadcastSheet({ open, onOpenChange, onSuccess }: CreateBr
 
     const loadTemplates = async () => {
         try {
-            // Sync from Meta first to get latest templates
-            try { await syncTemplatesFromMeta() } catch { /* ignore sync errors */ }
             const all = await getTemplates()
             // Only show templates that are APPROVED and genuinely exist in Meta
             setTemplates(all.filter(t => t.status === 'APPROVED' && t.meta_id))
-        } catch { /* ignore */ }
+        } catch { toast.error('No se pudieron cargar las plantillas.') }
     }
 
     // Detect variables in selected template body
@@ -143,7 +139,7 @@ export function CreateBroadcastSheet({ open, onOpenChange, onSuccess }: CreateBr
         setCountLoading(true)
         const result = await getRecipientCount(newFilters)
         if (result.success) {
-            setRecipientCount(result.count)
+            setRecipientCount(result.count || 0)
         }
         setCountLoading(false)
     }
@@ -177,12 +173,11 @@ export function CreateBroadcastSheet({ open, onOpenChange, onSuccess }: CreateBr
             template_name: selectedTemplate?.name,
             template_language: selectedTemplate?.language,
             template_params: templateVarValues,
-            ttl_seconds: form.channel === 'whatsapp' ? ttlSeconds : undefined,
             delivery_config: deliveryConfig
         })
 
         if (result.success) {
-            toast.success(t("marketing.create_broadcast.success"))
+            toast.success(t("marketing.create_broadcast.draft_saved"))
             onOpenChange(false)
             onSuccess()
         } else {
@@ -268,13 +263,13 @@ export function CreateBroadcastSheet({ open, onOpenChange, onSuccess }: CreateBr
                                                 WhatsApp
                                             </div>
                                         </SelectItem>
-                                        <SelectItem value="sms">
+                                        <SelectItem value="sms" disabled>
                                             <div className="flex items-center gap-2">
                                                 <Phone className="h-4 w-4 text-blue-600" />
                                                 SMS
                                             </div>
                                         </SelectItem>
-                                        <SelectItem value="email">
+                                        <SelectItem value="email" disabled>
                                             <div className="flex items-center gap-2">
                                                 <Mail className="h-4 w-4 text-purple-600" />
                                                 Email
@@ -354,27 +349,6 @@ export function CreateBroadcastSheet({ open, onOpenChange, onSuccess }: CreateBr
                                         </div>
                                     )}
 
-                                    {/* TTL Selector */}
-                                    <div className="space-y-2">
-                                        <Label className="flex items-center gap-2">
-                                            <Clock className="h-4 w-4 text-blue-600" />
-                                            {t("marketing.create_broadcast.ttl")}
-                                        </Label>
-                                        <Select
-                                            value={String(ttlSeconds)}
-                                            onValueChange={(v) => setTtlSeconds(Number(v))}
-                                        >
-                                            <SelectTrigger className="h-11">
-                                                <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="43200">{t("marketing.create_broadcast.ttl_12h")}</SelectItem>
-                                                <SelectItem value="86400">{t("marketing.create_broadcast.ttl_24h")}</SelectItem>
-                                                <SelectItem value="604800">{t("marketing.create_broadcast.ttl_7d")}</SelectItem>
-                                                <SelectItem value="2592000">{t("marketing.create_broadcast.ttl_30d")}</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                    </div>
                                 </div>
                             ) : (
                                 <div className="space-y-2">
@@ -400,7 +374,7 @@ export function CreateBroadcastSheet({ open, onOpenChange, onSuccess }: CreateBr
                                 </h3>
 
                                 <div className="space-y-2">
-                                    <Label className="text-gray-700 dark:text-gray-300 font-semibold">{t("marketing.create_broadcast.tags")}</Label>
+                                    <Label className="text-gray-700 dark:text-gray-300 font-semibold">{t("marketing.create_broadcast.status_filter")}</Label>
                                     <Select
                                         value={form.filters.status}
                                         onValueChange={(v) => updateFilters({ ...form.filters, status: v === 'all' ? '' : v })}
@@ -437,7 +411,7 @@ export function CreateBroadcastSheet({ open, onOpenChange, onSuccess }: CreateBr
                                 </div>
                             </div>
 
-                            {/* Advanced Anti-Ban Delivery Options */}
+                            {/* Schedule and delivery intervals */}
                             <div className="space-y-4 p-4 bg-slate-50/50 dark:bg-zinc-900/50 rounded-xl border border-slate-100 dark:border-zinc-800">
                                 <button
                                     onClick={() => setShowAdvanced(!showAdvanced)}
@@ -567,7 +541,7 @@ export function CreateBroadcastSheet({ open, onOpenChange, onSuccess }: CreateBr
                             {loading ? (
                                 <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> {t("marketing.create_broadcast.creating")}</>
                             ) : (
-                                <>{t("marketing.create_broadcast.continue")} <ArrowRight className="w-4 h-4 ml-2" /></>
+                                <>{t("marketing.create_broadcast.save_draft")} <ArrowRight className="w-4 h-4 ml-2" /></>
                             )}
                         </Button>
                     </div>

@@ -1,4 +1,11 @@
 export const PERMISSIONS = {
+    MARKETING: {
+        VIEW: 'marketing.campaigns.view',
+        MANAGE: 'marketing.campaigns.manage',
+        EXECUTE: 'marketing.campaigns.execute',
+        IMPORT: 'marketing.campaigns.import',
+        EXPORT: 'marketing.campaigns.export',
+    },
     // 1. CRM & Sales
     CRM: {
         VIEW_LEADS: 'crm.leads.view',
@@ -69,6 +76,19 @@ export type PermissionString = PermissionValues<PermissionObject>;
 
 // UI Metadata for the Role Editor (Accordion Groups)
 export const PERMISSION_GROUPS = [
+    {
+        id: 'marketing',
+        moduleKey: 'crm_broadcasts',
+        label: 'Campañas de Marketing',
+        description: 'Diseño, activación y datos de campañas.',
+        permissions: [
+            { id: PERMISSIONS.MARKETING.VIEW, label: 'Ver campañas', description: 'Consultar audiencias, campañas y resultados' },
+            { id: PERMISSIONS.MARKETING.MANAGE, label: 'Diseñar campañas', description: 'Crear y editar borradores y audiencias' },
+            { id: PERMISSIONS.MARKETING.EXECUTE, label: 'Activar y pausar', description: 'Controlar los envíos masivos' },
+            { id: PERMISSIONS.MARKETING.IMPORT, label: 'Importar contactos', description: 'Importar contactos y registrar evidencia de consentimiento' },
+            { id: PERMISSIONS.MARKETING.EXPORT, label: 'Exportar resultados', description: 'Descargar resultados de campañas' },
+        ],
+    },
     {
         id: 'crm',
         moduleKey: 'core_clients',

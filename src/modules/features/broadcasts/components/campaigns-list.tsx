@@ -35,6 +35,7 @@ export function CampaignsList() {
     const router = useRouter()
     const [campaigns, setCampaigns] = useState<Campaign[]>([])
     const [loading, setLoading] = useState(true)
+    const [error, setError] = useState<string | null>(null)
     const [isCreateOpen, setIsCreateOpen] = useState(false)
     const [newCampaignName, setNewCampaignName] = useState('')
 
@@ -44,9 +45,12 @@ export function CampaignsList() {
 
     async function loadCampaigns() {
         setLoading(true)
+        setError(null)
         const result = await getCampaigns()
         if (result.success) {
             setCampaigns(result.campaigns!)
+        } else {
+            setError(result.error || 'No se pudieron cargar las campañas.')
         }
         setLoading(false)
     }
@@ -84,6 +88,8 @@ export function CampaignsList() {
     if (loading) {
         return <div className="p-8 text-center text-gray-500">{t("marketing.campaigns_list.loading")}</div>
     }
+
+    if (error) return <div role="alert" className="p-8 text-center text-red-600"><p>{error}</p><Button variant="outline" onClick={loadCampaigns} className="mt-4">{t("marketing.campaign_builder.refresh")}</Button></div>
 
     if (campaigns.length === 0) {
         return (
