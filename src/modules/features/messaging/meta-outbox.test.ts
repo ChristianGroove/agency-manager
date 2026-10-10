@@ -1,4 +1,4 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mocks = vi.hoisted(() => ({
     from: vi.fn(), rpc: vi.fn(), sendEvent: vi.fn(), getAdapter: vi.fn(), assertSend: vi.fn(),
@@ -38,14 +38,54 @@ const connection = {
 }
 
 beforeEach(() => {
-    vi.clearAllMocks()
+    vi.resetAllMocks()
+    vi.stubEnv('MARKETING_EXECUTION_ENABLED', 'true')
     mocks.assertSend.mockResolvedValue(undefined)
     mocks.sendEvent.mockResolvedValue(undefined)
     mocks.rpc.mockResolvedValue({ data: true, error: null })
     mocks.signedUrl.mockResolvedValue({ data: { signedUrl: 'https://storage.test/signed/image' }, error: null })
 })
+afterEach(() => vi.unstubAllEnvs())
 
 describe('Meta outbound outbox', () => {
+    it('keeps campaign recovery disabled without changing other operation types', async () => {
+        vi.stubEnv('MARKETING_EXECUTION_ENABLED', '')
+        mocks.from.mockReturnValueOnce(query({ data: { ...queued, operation_key: 'campaign:e:s' }, error: null }))
+            .mockReturnValueOnce(query({ data: null, error: null }))
+        const { dispatchMetaOutbound } = await import('./meta-outbox')
+        expect((await dispatchMetaOutbound('outbox-1')).status).toBe('queued')
+        expect(mocks.rpc).not.toHaveBeenCalled()
+        expect(mocks.getAdapter).not.toHaveBeenCalled()
+    })
+    it('does not bypass the pacing deadline during campaign recovery', async () => {
+        mocks.from.mockReturnValueOnce(query({ data: { ...queued, operation_key: 'campaign:e:s', available_at: new Date(Date.now() + 60_000).toISOString() }, error: null }))
+        const { dispatchMetaOutbound } = await import('./meta-outbox')
+        expect((await dispatchMetaOutbound('outbox-1')).status).toBe('queued')
+        expect(mocks.rpc).not.toHaveBeenCalled()
+        expect(mocks.getAdapter).not.toHaveBeenCalled()
+    })
+    it.each(['reserved', 'waiting', 'unavailable'])('reserves the number immediately before campaign emission: %s', async state => {
+        const campaign = { ...queued, operation_key: 'campaign:e:s' }
+        const sendMessage = vi.fn(async () => ({ messageId: 'wamid-campaign' }))
+        mocks.getAdapter.mockReturnValue({ sendMessage })
+        const retryAt = new Date(Date.now() + 30_000).toISOString()
+        mocks.rpc.mockResolvedValueOnce({ data: true, error: null }).mockResolvedValueOnce(state === 'unavailable'
+            ? { data: null, error: { message: 'database unavailable' } }
+            : { data: { allowed: state === 'reserved', retryAt }, error: null })
+        const deferred = query({ data: null, error: null })
+        mocks.from.mockReturnValueOnce(query({ data: campaign, error: null }))
+            .mockReturnValueOnce(query({ data: connection, error: null }))
+            .mockReturnValueOnce(query({ data: { ...campaign, status: 'sending' }, error: null }))
+            .mockReturnValueOnce(query({ data: { status: 'active' }, error: null }))
+            .mockReturnValueOnce(query({ data: { id: 'conversation-a' }, error: null })).mockReturnValueOnce(deferred)
+        const { dispatchMetaOutbound } = await import('./meta-outbox')
+        expect((await dispatchMetaOutbound('outbox-1')).status).toBe(state === 'reserved' ? 'accepted' : 'queued')
+        expect(mocks.rpc).toHaveBeenCalledWith('reserve_marketing_dispatch', {
+            p_org: 'tenant-a', p_connection: 'channel-a', p_operation: 'campaign:e:s', p_outbox: 'outbox-1',
+        })
+        expect(sendMessage).toHaveBeenCalledTimes(state === 'reserved' ? 1 : 0)
+        if (state === 'waiting') expect(deferred.update).toHaveBeenCalledWith({ status: 'queued', claimed_at: null, available_at: retryAt })
+    })
     it('does not recover a queued campaign operation when its campaign is paused', async () => {
         const sendMessage = vi.fn()
         mocks.getAdapter.mockReturnValue({ sendMessage })

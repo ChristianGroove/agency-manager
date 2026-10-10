@@ -1,6 +1,6 @@
 # Marketing: destinatarios, plantillas y revisión previa
 
-Etapa implementada en `codex/marketing-campaign-hardening`. **No habilita envíos reales todavía**: la activación transaccional del motor sigue bloqueada.
+Etapa implementada en `codex/marketing-campaign-hardening`. **No habilita envíos reales todavía**. La activación transaccional y el ritmo del motor se desarrollan en [la etapa 3](implementation-stage-3.md), con ejecución deshabilitada por defecto.
 
 ## Cambios verificables
 

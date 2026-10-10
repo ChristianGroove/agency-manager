@@ -6,6 +6,9 @@ import { buildCampaignTemplateMessage } from './marketing-template-contract'
 
 /** Internal cron worker. Session cookies are never used as worker credentials. */
 export async function runMarketingCycle() {
+    if (process.env.MARKETING_EXECUTION_ENABLED !== 'true') {
+        return { success: true, disabled: true, processed: 0, failed: 0, deferred: 0, logs: [] as string[] }
+    }
     const db = supabaseAdmin
     const started = Date.now()
     const result = await db.rpc('claim_marketing_enrollments', { p_limit: 25 })
@@ -86,11 +89,25 @@ async function processClaim(db: any, claim: any): Promise<'processed' | 'deferre
         const template = await db.from('messaging_templates').select('id,channel_id,name,language,status,category,meta_id,components')
             .eq('organization_id', row.organization_id).eq('channel_id', campaign.connection_id).eq('id', step.content.template_id).single()
         if (template.error || !template.data) throw new Error('Plantilla no disponible en el número emisor.')
-        const message = buildCampaignTemplateMessage(template.data, step.content, campaign.connection_id, { ...lead, phone: recipient })
+        const message = buildCampaignTemplateMessage(template.data, step.content, campaign.connection_id, { ...lead, ...row.recipient_snapshot, phone: recipient })
         const conversationId = await getConversation(db, row.organization_id, lead.id, campaign.connection_id, recipient)
         const sent = await outboundService.sendSystemMessage(conversationId, message,
             'whatsapp', campaign.connection_id, 'System', `campaign:${row.id}:${step.id}`)
-        if (!sent.success || !sent.externalId) throw new Error('No se confirmó la aceptación del envío.')
+        if (!sent.success || !sent.externalId) {
+            // A committed queue item is recoverable; an ambiguous send must never be blindly repeated.
+            const delivery = await db.from('meta_outbound_outbox').select('status,available_at,external_id')
+                .eq('organization_id', row.organization_id).eq('connection_id', campaign.connection_id)
+                .eq('operation_key', `campaign:${row.id}:${step.id}`).maybeSingle()
+            if (delivery.error || !delivery.data) throw new Error('No se confirmó la aceptación del envío.')
+            if (['queued', 'sending'].includes(delivery.data.status)) {
+                await checkpoint(db, claim, { next_run_at: new Date(Math.max(Date.now() + 30_000,
+                    Date.parse(delivery.data.available_at) || 0)).toISOString(), last_error: null })
+                return 'deferred'
+            }
+            if (delivery.data.status !== 'accepted' || !delivery.data.external_id) {
+                throw new Error('El envío requiere revisión antes de reintentar.')
+            }
+        }
     }
     await checkpoint(db, claim, next.data ? {
         current_step_id: next.data.id, next_run_at: nextRun.toISOString(), last_run_at: new Date().toISOString(),
@@ -99,12 +116,8 @@ async function processClaim(db: any, claim: any): Promise<'processed' | 'deferre
 }
 
 async function getConversation(db: any, org: string, leadId: string, connectionId: string, recipient: string) {
-    const existing = await db.from('conversations').select('id').eq('organization_id', org).eq('lead_id', leadId)
-        .eq('channel', 'whatsapp').eq('connection_id', connectionId).order('updated_at', { ascending: false }).limit(1).maybeSingle()
-    if (existing.error) throw new Error('No se pudo obtener la conversación.')
-    if (existing.data) return existing.data.id
-    const created = await db.from('conversations').insert({ organization_id: org, lead_id: leadId, connection_id: connectionId,
-        phone: recipient, channel: 'whatsapp', status: 'open', state: 'active', source: 'marketing_campaign' }).select('id').single()
-    if (created.error || !created.data) throw new Error('No se pudo crear la conversación de campaña.')
-    return created.data.id
+    const result = await db.rpc('marketing_get_conversation', { p_org: org, p_contact: leadId,
+        p_connection: connectionId, p_recipient: recipient })
+    if (result.error || !result.data) throw new Error('No se pudo obtener la conversación de campaña.')
+    return result.data
 }

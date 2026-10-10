@@ -1,5 +1,7 @@
 'use server'
 
+import { campaignDesignIssues } from './marketing-preflight'
+
 import { createClient } from '@/modules/core/database/supabase-server'
 import { requireMarketingAccess, assertMarketingChannelAccess } from './marketing-access'
 import { audienceFiltersSchema, deliveryConfigSchema, normalizeDelay, publicMarketingError } from './marketing-contracts'
@@ -91,7 +93,7 @@ export async function getCampaign(id: string) {
             .single()
 
         if (error) return { success: false, error: error.message }
-        return { success: true, campaign: data as Campaign }
+        return { success: true, campaign: data as Campaign, executionEnabled: process.env.MARKETING_EXECUTION_ENABLED === 'true' }
 
     } catch (error) { return { success: false as const, error: publicMarketingError(error) } }
 }
@@ -351,9 +353,28 @@ export async function enrollAudienceInCampaign(campaignId: string) {
     try {
         const access = await requireMarketingAccess('execute')
 
-        // Until transactional activation, consent and selected-channel validation are
-        // installed, a legacy action must not silently enable real campaigns.
-        return { success: false, enrolled: 0, error: 'La activación está bloqueada mientras se completa la validación del motor de campañas.' }
+        // Deployment opt-in stays off until scheduling, incoming opt-outs and live validation are ready.
+        if (process.env.MARKETING_EXECUTION_ENABLED !== 'true') return {
+            success: false, enrolled: 0, error: 'El motor de campañas aún no está habilitado en este entorno.'
+        }
+        z.string().uuid().parse(campaignId)
+        const visible = await access.session.from('marketing_campaigns').select('connection_id')
+            .eq('organization_id', access.organizationId).eq('id', campaignId).single()
+        if (visible.error || !visible.data?.connection_id) throw new Error('Campaña o número emisor no disponible.')
+        assertMarketingChannelAccess(access, visible.data.connection_id)
+        const prepared = await supabaseAdmin.rpc('read_marketing_activation', { p_org: access.organizationId, p_campaign: campaignId })
+        if (prepared.error || !prepared.data) throw new Error('No se pudo revisar el diseño antes de activar.')
+        assertMarketingChannelAccess(access, prepared.data.design.campaign.connection_id)
+        audienceFiltersSchema.parse(prepared.data.design.filters)
+        const existingRecipients = prepared.data.review.campaign.execution_version === 2
+            && ['paused', 'active'].includes(prepared.data.review.campaign.status)
+        const issues = campaignDesignIssues(prepared.data.review, existingRecipients)
+        if (issues.length) return { success: false, enrolled: 0, error: issues.join(' ') }
+        const activated = await supabaseAdmin.rpc('activate_marketing_campaign', { p_org: access.organizationId,
+            p_campaign: campaignId, p_fingerprint: prepared.data.fingerprint, p_actor: access.userId })
+        if (activated.error || !activated.data) throw new Error('No se pudo activar. El diseño o los permisos pudieron cambiar; revisa de nuevo.')
+        revalidatePath('/crm/marketing')
+        return { success: true, enrolled: activated.data.enrolled, resumed: activated.data.resumed }
 
     } catch (error) { return { success: false as const, error: publicMarketingError(error) } }
 }

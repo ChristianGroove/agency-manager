@@ -70,9 +70,21 @@ export async function dispatchMetaOutbound(outboxId: string): Promise<OutboxResu
         return { outboxId, messageId: pending.message_id, status: pending.status, externalId: pending.external_id }
     }
 
+    if (typeof pending.operation_key === 'string' && pending.operation_key.startsWith('campaign:')
+        && Date.parse(pending.available_at) > Date.now()) {
+        return { outboxId, messageId: pending.message_id, status: 'queued', externalId: null }
+    }
+
     // Campaign recovery uses the same pause gate as the runner. Other senders
     // retain their existing behavior and do not depend on Marketing tables.
     if (typeof pending.operation_key === 'string' && pending.operation_key.startsWith('campaign:')) {
+        if (process.env.MARKETING_EXECUTION_ENABLED !== 'true') {
+            const deferred = await supabaseAdmin.from('meta_outbound_outbox')
+                .update({ available_at: new Date(Date.now() + 5 * 60_000).toISOString() })
+                .eq('id', outboxId).eq('status', 'queued')
+            if (deferred.error) throw new Error('Could not defer disabled campaign operation')
+            return { outboxId, messageId: pending.message_id, status: 'queued', externalId: null }
+        }
         const gate = await supabaseAdmin.rpc('marketing_outbound_allowed', {
             p_org: pending.organization_id, p_connection: pending.connection_id, p_operation: pending.operation_key,
         })
@@ -145,12 +157,14 @@ export async function dispatchMetaOutbound(outboxId: string): Promise<OutboxResu
     }
 
     if (typeof claimed.operation_key === 'string' && claimed.operation_key.startsWith('campaign:')) {
-        const gate = await supabaseAdmin.rpc('marketing_outbound_allowed', {
-            p_org: claimed.organization_id, p_connection: claimed.connection_id, p_operation: claimed.operation_key,
+        // Reserve one physical-number slot only after this operation owns its outbox claim.
+        const gate = await supabaseAdmin.rpc('reserve_marketing_dispatch', {
+            p_org: claimed.organization_id, p_connection: claimed.connection_id,
+            p_operation: claimed.operation_key, p_outbox: outboxId,
         })
-        if (gate.error || gate.data !== true) {
+        if (process.env.MARKETING_EXECUTION_ENABLED !== 'true' || gate.error || gate.data?.allowed !== true) {
             const deferred = await supabaseAdmin.from('meta_outbound_outbox')
-                .update({ status: 'queued', claimed_at: null, available_at: new Date(Date.now() + 5 * 60_000).toISOString() })
+                .update({ status: 'queued', claimed_at: null, available_at: gate.data?.retryAt || new Date(Date.now() + 5 * 60_000).toISOString() })
                 .eq('id', outboxId).eq('status', 'sending')
             if (deferred.error) throw new Error('Could not defer claimed campaign operation')
             return { outboxId, messageId: claimed.message_id, status: 'queued', externalId: null }

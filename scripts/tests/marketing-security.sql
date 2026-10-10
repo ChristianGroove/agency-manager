@@ -47,7 +47,7 @@ INSERT INTO public.integration_connections(id,organization_id,provider_key,conne
  ('03000000-0000-4000-8000-000000000001','01000000-0000-4000-8000-000000000001','whatsapp_cloud','Synthetic channel A','active','{}'),
  ('03000000-0000-4000-8000-000000000002','01000000-0000-4000-8000-000000000002','whatsapp_cloud','Synthetic channel B','active','{}');
 SELECT pg_temp.expect_error($q$UPDATE public.marketing_campaigns SET connection_id='03000000-0000-4000-8000-000000000002' WHERE id='02000000-0000-4000-8000-000000000001'$q$,'Invalid marketing channel');
-UPDATE public.marketing_campaigns SET connection_id='03000000-0000-4000-8000-000000000001'
+UPDATE public.marketing_campaigns SET connection_id='03000000-0000-4000-8000-000000000001',delivery_config='{"mode":"growth","humanize":false,"timezone":"America/Bogota"}'
  WHERE id='02000000-0000-4000-8000-000000000001';
 INSERT INTO public.marketing_sequences(id,organization_id,campaign_id,name,trigger_type,is_active) VALUES
  ('04000000-0000-4000-8000-000000000001','01000000-0000-4000-8000-000000000001','02000000-0000-4000-8000-000000000001','Fixture sequence','manual',true);
@@ -124,6 +124,50 @@ INSERT INTO public.marketing_steps(id,organization_id,sequence_id,name,type) VAL
 DELETE FROM public.marketing_campaigns WHERE id='02000000-0000-4000-8000-000000000002';
 SELECT pg_temp.assert_true(NOT EXISTS(SELECT 1 FROM public.marketing_steps WHERE id='05000000-0000-4000-8000-000000000002'),'draft child cascade remains usable');
 
+-- Transactional activation and physical-number pacing. These operations never call Meta.
+SELECT pg_temp.assert_true(public.marketing_schedule_open('{"mode":"growth","timezone":"America/Bogota","schedule_window":{"start":9,"end":17}}','2026-10-09 14:00Z'),'Bogota window opens at local 09');
+SELECT pg_temp.assert_true(NOT public.marketing_schedule_open('{"mode":"growth","timezone":"America/Bogota","schedule_window":{"start":9,"end":17}}','2026-10-09 22:00Z'),'closing hour is excluded');
+SELECT pg_temp.assert_true(NOT public.marketing_schedule_open('{"mode":"growth","timezone":"Invalid/Zone"}',now()),'invalid zone fails closed');
+SELECT pg_temp.assert_true(public.marketing_schedule_open('{"mode":"growth","timezone":"America/New_York","schedule_window":{"start":1,"end":2}}','2026-11-01 06:30Z'),'DST repeated local hour is allowed');
+UPDATE public.integration_connections SET metadata='{"phone_number_id":"synthetic-number-stage3"}' WHERE id='03000000-0000-4000-8000-000000000001';
+INSERT INTO public.marketing_audiences(id,organization_id,name,filter_config) VALUES('09000000-0000-4000-8000-000000000001','01000000-0000-4000-8000-000000000001','Activation fixture','{}');
+INSERT INTO public.marketing_campaigns(id,organization_id,name,connection_id,audience_id,delivery_config)
+VALUES('02000000-0000-4000-8000-000000000003','01000000-0000-4000-8000-000000000001','Activation fixture','03000000-0000-4000-8000-000000000001','09000000-0000-4000-8000-000000000001','{"mode":"growth","humanize":false,"timezone":"America/Bogota"}');
+INSERT INTO public.marketing_sequences(id,organization_id,campaign_id,name,trigger_type) VALUES('04000000-0000-4000-8000-000000000004','01000000-0000-4000-8000-000000000001','02000000-0000-4000-8000-000000000003','Activation sequence','manual');
+INSERT INTO public.marketing_steps(id,organization_id,sequence_id,name,type,content) VALUES('05000000-0000-4000-8000-000000000004','01000000-0000-4000-8000-000000000001','04000000-0000-4000-8000-000000000004','Activation template','whatsapp','{"template_id":"08000000-0000-4000-8000-000000000001","template_name":"fixture_promo","template_language":"es","bindings":{}}');
+SELECT set_config('marketing.test_fingerprint',public.read_marketing_activation('01000000-0000-4000-8000-000000000001','02000000-0000-4000-8000-000000000003')->>'fingerprint',true);
+SELECT pg_temp.expect_error($q$SELECT public.activate_marketing_campaign('01000000-0000-4000-8000-000000000001','02000000-0000-4000-8000-000000000003','stale',current_setting('marketing.test_user')::uuid)$q$,'Campaign changed');
+SELECT pg_temp.expect_error($q$SELECT public.activate_marketing_campaign('01000000-0000-4000-8000-000000000001','02000000-0000-4000-8000-000000000003',current_setting('marketing.test_fingerprint'),NULL)$q$,'execution denied');
+CREATE FUNCTION pg_temp.reject_fixture_activation() RETURNS trigger LANGUAGE plpgsql AS $q$
+BEGIN IF NEW.name='Activation fixture' AND NEW.execution_version=2 THEN RAISE EXCEPTION 'Synthetic activation failure'; END IF; RETURN NEW; END $q$;
+CREATE TRIGGER marketing_activation_test BEFORE UPDATE ON public.marketing_campaigns FOR EACH ROW EXECUTE FUNCTION pg_temp.reject_fixture_activation();
+SELECT pg_temp.expect_error($q$SELECT public.activate_marketing_campaign('01000000-0000-4000-8000-000000000001','02000000-0000-4000-8000-000000000003',current_setting('marketing.test_fingerprint'),current_setting('marketing.test_user')::uuid)$q$,'Synthetic activation failure');
+SELECT pg_temp.assert_true(NOT EXISTS(SELECT 1 FROM public.marketing_enrollments WHERE campaign_id='02000000-0000-4000-8000-000000000003'),'activation final-write failure leaves no recipients');
+DROP TRIGGER marketing_activation_test ON public.marketing_campaigns;
+SELECT pg_temp.assert_true((public.activate_marketing_campaign('01000000-0000-4000-8000-000000000001','02000000-0000-4000-8000-000000000003',current_setting('marketing.test_fingerprint'),current_setting('marketing.test_user')::uuid)->>'enrolled')::int=1,'activation deduplicates 1101 contacts');
+SELECT pg_temp.assert_true((public.activate_marketing_campaign('01000000-0000-4000-8000-000000000001','02000000-0000-4000-8000-000000000003',current_setting('marketing.test_fingerprint'),current_setting('marketing.test_user')::uuid)->>'enrolled')::int=0,'duplicate activation is idempotent');
+UPDATE public.marketing_audiences SET filter_config='{"source":"non_matching_fixture"}' WHERE id='09000000-0000-4000-8000-000000000001';
+SELECT set_config('marketing.test_fingerprint',public.read_marketing_activation('01000000-0000-4000-8000-000000000001','02000000-0000-4000-8000-000000000003')->>'fingerprint',true);
+UPDATE public.marketing_campaigns SET status='paused' WHERE id='02000000-0000-4000-8000-000000000003';
+SELECT pg_temp.assert_true((public.activate_marketing_campaign('01000000-0000-4000-8000-000000000001','02000000-0000-4000-8000-000000000003',current_setting('marketing.test_fingerprint'),current_setting('marketing.test_user')::uuid)->>'resumed')::boolean,'resume preserves recipients');
+SELECT pg_temp.assert_true((SELECT count(*)=1 AND bool_and(recipient_snapshot IS NOT NULL) FROM public.marketing_enrollments WHERE campaign_id='02000000-0000-4000-8000-000000000003'),'resume does not duplicate enrollment or overwrite recipient data');
+SELECT pg_temp.expect_error($q$UPDATE public.marketing_enrollments SET recipient_snapshot='{}' WHERE campaign_id='02000000-0000-4000-8000-000000000003'$q$,'snapshot is immutable');
+SELECT pg_temp.expect_error($q$UPDATE public.marketing_campaigns SET execution_snapshot='{}' WHERE id='02000000-0000-4000-8000-000000000003'$q$,'execution is immutable');
+SELECT set_config('marketing.test_conversation',public.marketing_get_conversation('01000000-0000-4000-8000-000000000001','06000000-0000-4000-8000-000000000001','03000000-0000-4000-8000-000000000001','11234567890')::text,true);
+SELECT pg_temp.assert_true(public.marketing_get_conversation('01000000-0000-4000-8000-000000000001','06000000-0000-4000-8000-000000000001','03000000-0000-4000-8000-000000000001','11234567890')=current_setting('marketing.test_conversation')::uuid,'conversation creation is idempotent');
+SELECT pg_temp.expect_error($q$SELECT public.marketing_get_conversation('01000000-0000-4000-8000-000000000002','06000000-0000-4000-8000-000000000001','03000000-0000-4000-8000-000000000001','11234567890')$q$,'context unavailable');
+UPDATE public.marketing_campaigns SET status='active' WHERE id='02000000-0000-4000-8000-000000000001';
+UPDATE public.marketing_enrollments SET claim_token=NULL,claimed_until=NULL WHERE campaign_id='02000000-0000-4000-8000-000000000001';
+SELECT pg_temp.assert_true((SELECT count(*)=1 FROM public.claim_marketing_enrollments(25)),'one number cannot occupy the whole claim batch across campaigns');
+SELECT set_config('marketing.test_operation','campaign:'||(SELECT id::text FROM public.marketing_enrollments WHERE campaign_id='02000000-0000-4000-8000-000000000003')||':05000000-0000-4000-8000-000000000004',true);
+SELECT set_config('marketing.test_outbox',(SELECT outbox_id::text FROM public.enqueue_meta_outbound('01000000-0000-4000-8000-000000000001','03000000-0000-4000-8000-000000000001',NULL,NULL,current_setting('marketing.test_operation'),'11234567890','{"type":"template","templateName":"fixture_promo"}','System','whatsapp')),true);
+UPDATE public.meta_outbound_outbox SET status='sending' WHERE id=current_setting('marketing.test_outbox')::uuid;
+SELECT pg_temp.assert_true((public.reserve_marketing_dispatch('01000000-0000-4000-8000-000000000001','03000000-0000-4000-8000-000000000001',current_setting('marketing.test_operation'),current_setting('marketing.test_outbox')::uuid)->>'allowed')::boolean,'first operation reserves a number slot');
+SELECT set_config('marketing.test_outbox2',(SELECT outbox_id::text FROM public.enqueue_meta_outbound('01000000-0000-4000-8000-000000000001','03000000-0000-4000-8000-000000000001',NULL,NULL,'campaign:07000000-0000-4000-8000-000000000001:05000000-0000-4000-8000-000000000001','11234567890','{"type":"template","templateName":"fixture_promo"}','System','whatsapp')),true);
+UPDATE public.meta_outbound_outbox SET status='sending' WHERE id=current_setting('marketing.test_outbox2')::uuid;
+SELECT pg_temp.assert_true(NOT (public.reserve_marketing_dispatch('01000000-0000-4000-8000-000000000001','03000000-0000-4000-8000-000000000001','campaign:07000000-0000-4000-8000-000000000001:05000000-0000-4000-8000-000000000001',current_setting('marketing.test_outbox2')::uuid)->>'allowed')::boolean,'different campaigns cannot spend the same number slot');
+SELECT pg_temp.assert_true((SELECT next_dispatch_at>clock_timestamp()+interval '25 seconds' FROM public.marketing_number_pacing WHERE number_key='synthetic-number-stage3'),'minimum pacing persists in SQL');
+UPDATE public.marketing_campaigns SET status='paused' WHERE id='02000000-0000-4000-8000-000000000001';
 SELECT public.record_marketing_consent('01000000-0000-4000-8000-000000000001','11234567890','revoked','fixture','Synthetic opt-out',now(),current_setting('marketing.test_user')::uuid);
 SELECT pg_temp.assert_true((SELECT status='cancelled' AND claim_token IS NULL FROM public.marketing_enrollments WHERE id='07000000-0000-4000-8000-000000000001'),'revocation cancels enrollment and lease');
 SELECT pg_temp.assert_true(NOT EXISTS(SELECT 1 FROM public.leads WHERE organization_id='01000000-0000-4000-8000-000000000001' AND marketing_opted_out IS NOT TRUE),'all duplicate contacts revoked');

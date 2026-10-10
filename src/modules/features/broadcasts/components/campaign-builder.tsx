@@ -56,6 +56,7 @@ export function CampaignBuilder({ campaignId, campaignName }: CampaignBuilderPro
     const [selectedAudienceId, setSelectedAudienceId] = useState<string | null>(null)
     const [scheduledFor, setScheduledFor] = useState<string>('')
     const [isEnrolling, setIsEnrolling] = useState(false)
+    const [executionEnabled, setExecutionEnabled] = useState(false)
 
     // Insights State
     const [stats, setStats] = useState<{
@@ -94,6 +95,7 @@ export function CampaignBuilder({ campaignId, campaignName }: CampaignBuilderPro
     async function loadData() {
         setLoading(true)
         setLoadError('')
+        setExecutionEnabled(false)
         try {
         const [seqResult, audResult, campResult, statsResult, setupResult] = await Promise.all([
             getSequences(campaignId),
@@ -119,6 +121,7 @@ export function CampaignBuilder({ campaignId, campaignName }: CampaignBuilderPro
         }
         if (campResult.success && campResult.campaign) {
             setCampaignStatus(campResult.campaign.status)
+            setExecutionEnabled(campResult.executionEnabled === true)
             setConnectionId(campResult.campaign.connection_id || '')
             const dbConfig = campResult.campaign.delivery_config as any;
             setDeliveryConfig({
@@ -141,7 +144,8 @@ export function CampaignBuilder({ campaignId, campaignName }: CampaignBuilderPro
 
     async function handleToggleStatus() {
         const newStatus = campaignStatus === 'active' ? 'paused' : 'active'
-
+        setIsEnrolling(true)
+        try {
         if (newStatus === 'active') {
             // When activating, enroll the linked audience
             if (!selectedAudienceId) {
@@ -149,18 +153,16 @@ export function CampaignBuilder({ campaignId, campaignName }: CampaignBuilderPro
                 return
             }
 
-            setIsEnrolling(true)
-            toast.info('Inscribiendo leads...')
+            toast.info(campaignStatus === 'paused' ? 'Revalidando la campaña...' : 'Validando el diseño guardado y los destinatarios...')
 
             const enrollResult = await enrollAudienceInCampaign(campaignId)
-            setIsEnrolling(false)
 
             if (!enrollResult.success) {
                 toast.error(enrollResult.error || 'Error al inscribir')
                 return
             }
 
-            toast.success(`¡${enrollResult.enrolled} leads inscritos! Campaña Activada 🚀`)
+            toast.success(enrollResult.resumed ? 'Campaña reanudada con sus destinatarios originales.' : `Campaña activada: ${enrollResult.enrolled} destinatarios únicos inscritos.`)
             setCampaignStatus('active')
             loadData() // Refresh stats
         } else {
@@ -172,6 +174,11 @@ export function CampaignBuilder({ campaignId, campaignName }: CampaignBuilderPro
             } else {
                 toast.error(result.error)
             }
+        }
+        } catch {
+            toast.error('No se pudo confirmar el estado de la campaña. Actualiza antes de reintentar.')
+        } finally {
+            setIsEnrolling(false)
         }
     }
 
@@ -394,11 +401,11 @@ export function CampaignBuilder({ campaignId, campaignName }: CampaignBuilderPro
                 <div className="flex gap-2">
                     <Button
                         onClick={handleToggleStatus}
-                        disabled={isEnrolling || campaignStatus !== 'active'}
-                        title={t("marketing.dashboard.preparation_notice")}
+                        disabled={isEnrolling || loading || !!loadError || (campaignStatus !== 'active' && (!executionEnabled || !['draft', 'paused'].includes(campaignStatus)))}
+                        title={executionEnabled ? 'Activa o reanuda el diseño guardado, previa validación del servidor.' : t("marketing.dashboard.preparation_notice")}
                         className={cn("transition-all", campaignStatus === 'active' ? "bg-amber-500 hover:bg-amber-600 text-white" : "bg-brand-pink text-white hover:bg-brand-pink/90")}
                     >
-                        {campaignStatus === 'active' ? <><div className="w-2 h-2 rounded-full bg-white mr-2 animate-pulse" /> {t("marketing.campaign_builder.pause_funnel")}</> : <><Play className="w-4 h-4 mr-2" /> {t("marketing.campaign_builder.activate_funnel")}</>}
+                        {campaignStatus === 'active' ? <><div className="w-2 h-2 rounded-full bg-white mr-2 animate-pulse" /> {t("marketing.campaign_builder.pause_funnel")}</> : <><Play className="w-4 h-4 mr-2" /> {campaignStatus === 'paused' ? 'Reanudar campaña' : 'Activar diseño guardado'}</>}
                     </Button>
                 </div>
             </div>

@@ -2,8 +2,9 @@
 
 import { z } from 'zod'
 import { requireMarketingAccess, assertMarketingChannelAccess } from './marketing-access'
-import { audienceFiltersSchema, deliveryConfigSchema, normalizeDelay, normalizeMarketingPhone, publicMarketingError } from './marketing-contracts'
-import { CampaignTemplate, validateCampaignTemplate } from './marketing-template-contract'
+import { audienceFiltersSchema, normalizeMarketingPhone, publicMarketingError } from './marketing-contracts'
+import { CampaignTemplate } from './marketing-template-contract'
+import { campaignDesignIssues } from './marketing-preflight'
 import { supabaseAdmin } from '@/modules/core/database/supabase-admin'
 
 export interface MarketingChannel { id: string; name: string }
@@ -48,29 +49,9 @@ export async function reviewCampaign(campaignId: string) {
         z.string().uuid().parse(campaignId)
         const result = await access.session.rpc('read_marketing_preflight', { p_org: access.organizationId, p_campaign: campaignId })
         if (result.error || !result.data) throw new Error('No se pudo revisar la campaña. Comprueba el canal y los filtros de la audiencia.')
-        const { campaign, channel, sequences, templates, audience, missingData } = result.data
-        const issues: string[] = []
-        if (!channel || channel.status !== 'active' || !['whatsapp_cloud', 'meta_whatsapp'].includes(channel.provider)) issues.push('Selecciona y guarda un número WhatsApp activo.')
-        if (campaign.connection_id) assertMarketingChannelAccess(access, campaign.connection_id)
-        if (!audience) issues.push('Vincula una audiencia guardada.')
-        else if (!audience.eligible) issues.push('La audiencia no contiene destinatarios con autorización vigente.')
-        try { deliveryConfigSchema.parse(campaign.delivery_config) } catch { issues.push('Revisa el horario y la zona horaria de envío.') }
-        const active = sequences.filter((sequence: any) => sequence.is_active)
-        if (active.length !== 1) issues.push('La campaña requiere exactamente una secuencia activa; elige un único flujo principal.')
-        const steps = active.length === 1 ? active[0].steps : []
-        if (!steps.some((step: any) => step.type === 'whatsapp')) issues.push('Añade al menos un paso con una plantilla WhatsApp.')
-        if (new Set(steps.map((step: any) => step.order_index)).size !== steps.length) issues.push('La secuencia tiene posiciones duplicadas; corrige el orden antes de activarla.')
-        for (const step of steps) {
-            try {
-                if (step.type === 'delay') normalizeDelay(step.delay_config)
-                else if (step.type === 'whatsapp') {
-                    const template = templates.find((item: CampaignTemplate) => item.id === step.content?.template_id)
-                    if (!template) throw new Error('Selecciona una plantilla aprobada del número emisor; un mensaje libre no sirve para una campaña.')
-                    validateCampaignTemplate(template, step.content, campaign.connection_id)
-                } else throw new Error(`El tipo ${step.type} no está soportado en este motor.`)
-            } catch (error) { issues.push(`${step.name}: ${publicMarketingError(error)}`) }
-        }
-        if (missingData) issues.push(`${missingData} destinatarios autorizados no tienen datos requeridos por las variables de la plantilla.`)
+        if (result.data.campaign.connection_id) assertMarketingChannelAccess(access, result.data.campaign.connection_id)
+        const issues = campaignDesignIssues(result.data)
+        const { audience, missingData } = result.data
         // This read-only review never enrolls recipients or calls Meta.
         return { success: true as const, review: { audience, issues, missingData: missingData || 0, checkedAt: new Date().toISOString() } as CampaignPreflight }
     } catch (error) { return { success: false as const, error: publicMarketingError(error) } }
