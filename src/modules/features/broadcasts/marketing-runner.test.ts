@@ -17,6 +17,9 @@ const enrollment={...claim,status:'active',recipient:'573006705958',
 }
 beforeEach(()=>{vi.resetAllMocks();mocks.rpc.mockResolvedValue({data:[claim],error:null})})
 describe('Marketing worker safety',()=>{
+    const selection = { template_id: '08000000-0000-4000-8000-000000000001', template_name: 'promo', template_language: 'es', bindings: { 'body.1': '{{nombre}}' } }
+    const prepared = { ...enrollment, step: { ...enrollment.step, content: selection }, lead: { ...enrollment.lead, name: 'Ana' } }
+    const template = { id: selection.template_id, channel_id: 'channel-a', name: 'promo', language: 'es', status: 'APPROVED', category: 'MARKETING', meta_id: 'fixture', components: [{ type: 'BODY', text: 'Hola {{1}}' }] }
     it('does not use a session client and does not hide claim failures as an empty successful cycle',async()=>{
         mocks.rpc.mockResolvedValueOnce({data:null,error:{message:'RLS failure'}})
         await expect(runMarketingCycle()).rejects.toThrow('adquirir')
@@ -60,5 +63,39 @@ describe('Marketing worker safety',()=>{
             .mockReturnValueOnce(query({data:null,error:{code:'42501'}}))
             .mockReturnValueOnce(query({data:{id:claim.id},error:null}))
         expect(await runMarketingCycle()).toMatchObject({processed:0,failed:1})
+    })
+    it('cancels a recipient without consent before creating a conversation or emitting', async () => {
+        const saved = query({ data: { id: claim.id }, error: null })
+        mocks.rpc.mockResolvedValueOnce({ data: [claim], error: null }).mockResolvedValueOnce({ data: false, error: null })
+        mocks.from.mockReturnValueOnce(query({ data: prepared, error: null })).mockReturnValueOnce(query({ data: null, error: null })).mockReturnValueOnce(saved)
+        expect(await runMarketingCycle()).toMatchObject({ processed: 1 })
+        expect(saved.update).toHaveBeenCalledWith(expect.objectContaining({ status: 'cancelled' }))
+        expect(mocks.send).not.toHaveBeenCalled()
+        expect(mocks.from).not.toHaveBeenCalledWith('conversations')
+    })
+    it('passes a complete validated template through the existing outbox service', async () => {
+        const saved = query({ data: { id: claim.id }, error: null })
+        mocks.rpc.mockResolvedValueOnce({ data: [claim], error: null }).mockResolvedValueOnce({ data: true, error: null })
+        mocks.from.mockReturnValueOnce(query({ data: prepared, error: null })).mockReturnValueOnce(query({ data: null, error: null }))
+            .mockReturnValueOnce(query({ data: template, error: null })).mockReturnValueOnce(query({ data: { id: 'conversation-a' }, error: null })).mockReturnValueOnce(saved)
+        mocks.send.mockResolvedValue({ success: true, externalId: 'wamid.fixture' })
+        expect(await runMarketingCycle()).toMatchObject({ processed: 1, failed: 0 })
+        expect(mocks.send).toHaveBeenCalledWith('conversation-a', expect.objectContaining({ templateComponents: [{ type: 'body', parameters: [{ type: 'text', text: 'Ana' }] }] }), 'whatsapp', 'channel-a', 'System', 'campaign:enrollment-a:step-a')
+        expect(saved.update).toHaveBeenCalledWith(expect.objectContaining({ status: 'completed' }))
+    })
+    it('does not emit when Meta pauses the selected template', async () => {
+        mocks.rpc.mockResolvedValueOnce({ data: [claim], error: null }).mockResolvedValueOnce({ data: true, error: null })
+        mocks.from.mockReturnValueOnce(query({ data: prepared, error: null })).mockReturnValueOnce(query({ data: null, error: null }))
+            .mockReturnValueOnce(query({ data: { ...template, status: 'PAUSED' }, error: null })).mockReturnValueOnce(query({ data: { id: claim.id }, error: null }))
+        expect(await runMarketingCycle()).toMatchObject({ failed: 1 })
+        expect(mocks.send).not.toHaveBeenCalled()
+    })
+    it('fails closed if the consent store is unavailable', async () => {
+        mocks.rpc.mockResolvedValueOnce({ data: [claim], error: null }).mockResolvedValueOnce({ data: null, error: { message: 'unavailable' } })
+        mocks.from.mockReturnValueOnce(query({ data: prepared, error: null })).mockReturnValueOnce(query({ data: null, error: null }))
+            .mockReturnValueOnce(query({ data: { id: claim.id }, error: null }))
+        expect(await runMarketingCycle()).toMatchObject({ failed: 1 })
+        expect(mocks.send).not.toHaveBeenCalled()
+        expect(mocks.from).not.toHaveBeenCalledWith('conversations')
     })
 })

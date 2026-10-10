@@ -1,8 +1,10 @@
-import { addSeconds, addDays, setHours, setMinutes, setSeconds } from 'date-fns'
+import { addSeconds } from 'date-fns'
+import { deliveryConfigSchema } from './marketing-contracts'
 
 export interface DeliveryConfig {
     mode: 'stealth' | 'growth' | 'turbo'
     humanize: boolean
+    timezone?: string
     schedule_window?: {
         start: number
         end: number
@@ -23,22 +25,21 @@ export function addJitter(date: Date, config: DeliveryConfig): Date {
 }
 
 export function enforceScheduleWindow(date: Date, config: DeliveryConfig): Date {
-    if (!config.schedule_window) return date;
-    
-    let nextTime = new Date(date);
-    const currentHour = nextTime.getHours();
-    const startH = config.schedule_window.start;
-    const endH = config.schedule_window.end;
-    
-    if (currentHour < startH || currentHour >= endH) {
-        // Shift to next valid day at start time
-        nextTime = setHours(nextTime, startH);
-        nextTime = setMinutes(nextTime, Math.floor(Math.random() * 30)); // Random minute start
-        nextTime = setSeconds(nextTime, 0);
-        
-        if (currentHour >= endH) {
-            nextTime = addDays(nextTime, 1);
-        }
+    const parsed = deliveryConfigSchema.parse(config)
+    if (!Number.isFinite(date.getTime())) throw new Error('Fecha de envío inválida.')
+    if (!parsed.schedule_window) return date
+    const formatter = new Intl.DateTimeFormat('en-GB', { timeZone: parsed.timezone, hour: '2-digit', hourCycle: 'h23' })
+    const allowed = (instant: Date) => {
+        const hour = Number(formatter.format(instant))
+        return hour >= parsed.schedule_window!.start && hour < parsed.schedule_window!.end
     }
-    return nextTime;
+    if (allowed(date)) return date
+    // Search UTC instants, rather than adding local days/hours. This handles DST
+    // gaps and repeated hours without depending on the worker host's timezone.
+    const firstMinute = Math.ceil(date.getTime() / 60_000) * 60_000
+    for (let minute = 0; minute <= 72 * 60; minute++) {
+        const candidate = new Date(firstMinute + minute * 60_000)
+        if (allowed(candidate)) return candidate
+    }
+    throw new Error('No se pudo calcular la próxima ventana de envío.')
 }

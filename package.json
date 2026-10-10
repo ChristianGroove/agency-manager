@@ -75,6 +75,7 @@
     "jspdf": "^3.0.4",
     "jspdf-autotable": "^5.0.2",
     "leaflet": "^1.9.4",
+    "libphonenumber-js": "1.13.15",
     "lottie-react": "^2.4.1",
     "lucide-react": "^0.561.0",
     "motion": "^12.23.26",

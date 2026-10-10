@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Campaign, Sequence, Audience, getSequences, createSequence, addStepToSequence, deleteStep, updateCampaign, getAudiences, createAudience, deleteAudience, previewAudienceCount, importLeads, getCampaign, getCampaignStats, updateStep, deleteSequence, linkAudienceToCampaign, enrollAudienceInCampaign } from '../marketing-actions'
+import { Campaign, Sequence, Audience, getSequences, createSequence, setPrincipalSequence, addStepToSequence, deleteStep, updateCampaign, getAudiences, createAudience, deleteAudience, previewAudienceCount, importLeads, getCampaign, getCampaignStats, updateStep, deleteSequence, linkAudienceToCampaign, enrollAudienceInCampaign } from '../marketing-actions'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import {
@@ -30,6 +30,11 @@ import { toast } from 'sonner'
 import { cn } from '@/modules/infrastructure/utils/utils'
 import { useTranslation } from "@/modules/core/i18n/use-translation"
 
+import { MarketingTemplateEditor } from './marketing-template-editor'
+import { CampaignReadiness } from './campaign-readiness'
+import { TemplateSelection } from '../marketing-template-contract'
+import { getMarketingSetup, MarketingChannel } from '../marketing-preflight-actions'
+
 interface CampaignBuilderProps {
     campaignId: string
     campaignName: string
@@ -39,9 +44,15 @@ export function CampaignBuilder({ campaignId, campaignName }: CampaignBuilderPro
     const { t } = useTranslation()
     const [sequences, setSequences] = useState<Sequence[]>([])
     const [loading, setLoading] = useState(true)
+    const [loadError, setLoadError] = useState('')
     const [activeSequence, setActiveSequence] = useState<string | null>(null)
     const [audiences, setAudiences] = useState<Audience[]>([])
     const [campaignStatus, setCampaignStatus] = useState<'draft' | 'active' | 'paused' | 'completed' | 'archived'>('draft')
+    const [connectionId, setConnectionId] = useState('')
+    const [channels, setChannels] = useState<MarketingChannel[]>([])
+    const [setupError, setSetupError] = useState('')
+    const [revision, setRevision] = useState(0)
+    const [stepTemplate, setStepTemplate] = useState<TemplateSelection | null>(null)
     const [selectedAudienceId, setSelectedAudienceId] = useState<string | null>(null)
     const [scheduledFor, setScheduledFor] = useState<string>('')
     const [isEnrolling, setIsEnrolling] = useState(false)
@@ -56,6 +67,7 @@ export function CampaignBuilder({ campaignId, campaignName }: CampaignBuilderPro
     const [deliveryConfig, setDeliveryConfig] = useState({
         mode: 'stealth' as 'stealth' | 'growth' | 'turbo',
         humanize: true,
+        timezone: 'America/Bogota',
         schedule_window: { start: 9, end: 18 }
     })
 
@@ -81,13 +93,20 @@ export function CampaignBuilder({ campaignId, campaignName }: CampaignBuilderPro
 
     async function loadData() {
         setLoading(true)
-        const [seqResult, audResult, campResult, statsResult] = await Promise.all([
+        setLoadError('')
+        try {
+        const [seqResult, audResult, campResult, statsResult, setupResult] = await Promise.all([
             getSequences(campaignId),
             getAudiences(),
             getCampaign(campaignId),
-            getCampaignStats(campaignId)
+            getCampaignStats(campaignId),
+            getMarketingSetup()
         ])
 
+        if (![seqResult, audResult, campResult, statsResult].every(result => result.success)) setLoadError('No se pudo cargar toda la campaña. Reintenta antes de editarla.')
+
+        setRevision(value => value + 1)
+        if (setupResult.success) { setChannels(setupResult.channels); setSetupError('') } else setSetupError(setupResult.error)
         if (seqResult.success) {
             let loadedSeqs = seqResult.sequences!
             setSequences(loadedSeqs)
@@ -100,10 +119,12 @@ export function CampaignBuilder({ campaignId, campaignName }: CampaignBuilderPro
         }
         if (campResult.success && campResult.campaign) {
             setCampaignStatus(campResult.campaign.status)
+            setConnectionId(campResult.campaign.connection_id || '')
             const dbConfig = campResult.campaign.delivery_config as any;
             setDeliveryConfig({
                 mode: dbConfig?.mode || deliveryConfig.mode,
                 humanize: dbConfig?.humanize ?? deliveryConfig.humanize,
+                timezone: dbConfig?.timezone || 'America/Bogota',
                 schedule_window: dbConfig?.schedule_window || deliveryConfig.schedule_window
             })
             // Load linked audience
@@ -114,7 +135,8 @@ export function CampaignBuilder({ campaignId, campaignName }: CampaignBuilderPro
         if (statsResult.success) {
             setStats(statsResult)
         }
-        setLoading(false)
+        } catch { setLoadError('No se pudo cargar la campaña. Reintenta.') }
+        finally { setLoading(false) }
     }
 
     async function handleToggleStatus() {
@@ -157,6 +179,7 @@ export function CampaignBuilder({ campaignId, campaignName }: CampaignBuilderPro
         const result = await linkAudienceToCampaign(campaignId, audienceId)
         if (result.success) {
             setSelectedAudienceId(audienceId)
+            setRevision(value => value + 1)
             toast.success('Audiencia vinculada')
         } else {
             toast.error(result.error)
@@ -168,6 +191,7 @@ export function CampaignBuilder({ campaignId, campaignName }: CampaignBuilderPro
         const result = await createSequence({ name: newSeqName, campaign_id: campaignId, trigger_type: 'manual' })
         if (result.success) {
             toast.success('Secuencia creada')
+            setActiveSequence(result.sequence.id)
             setIsCreateSeqOpen(false)
             setNewSeqName('')
             loadData()
@@ -277,12 +301,14 @@ export function CampaignBuilder({ campaignId, campaignName }: CampaignBuilderPro
 
     function openAddStep() {
         setEditingStepId(null)
-        setStepForm({ type: 'email', name: '', content: '', delay: '1' })
+        setStepTemplate(null)
+        setStepForm({ type: 'whatsapp', name: '', content: '', delay: '1' })
         setIsAddStepOpen(true)
     }
 
     function openEditStep(step: any) {
         setEditingStepId(step.id)
+        setStepTemplate(step.content?.template_id ? step.content : null)
         setStepForm({
             type: step.type,
             name: step.name,
@@ -299,7 +325,8 @@ export function CampaignBuilder({ campaignId, campaignName }: CampaignBuilderPro
             return
         }
 
-        const content = stepForm.type === 'delay' ? { duration: stepForm.delay } : { body: stepForm.content }
+        if (stepForm.type === 'whatsapp' && !stepTemplate) { toast.error('Selecciona una plantilla del número emisor guardado.'); return }
+        const content = stepForm.type === 'delay' ? {} : stepTemplate!
         const stepData = {
             type: stepForm.type, name: stepForm.name, content,
             delay_config: stepForm.type === 'delay' ? { value: Number(stepForm.delay), unit: 'days' } : undefined
@@ -316,7 +343,8 @@ export function CampaignBuilder({ campaignId, campaignName }: CampaignBuilderPro
             toast.success(editingStepId ? 'Paso actualizado' : 'Paso añadido')
             setIsAddStepOpen(false)
             setEditingStepId(null)
-            setStepForm({ type: 'email', name: '', content: '', delay: '1' })
+            setStepTemplate(null)
+            setStepForm({ type: 'whatsapp', name: '', content: '', delay: '1' })
             loadData()
         } else {
             toast.error(result.error)
@@ -333,9 +361,10 @@ export function CampaignBuilder({ campaignId, campaignName }: CampaignBuilderPro
     }
 
     async function handleSaveConfig() {
-        const result = await updateCampaign(campaignId, { delivery_config: deliveryConfig, scheduled_for: scheduledFor ? new Date(scheduledFor).toISOString() : null })
+        const result = await updateCampaign(campaignId, { connection_id: connectionId || null, delivery_config: deliveryConfig, scheduled_for: scheduledFor ? new Date(scheduledFor).toISOString() : null })
         if (result.success) {
             toast.success('Configuración guardada')
+            setRevision(value => value + 1)
         } else {
             toast.error(result.error)
         }
@@ -374,6 +403,8 @@ export function CampaignBuilder({ campaignId, campaignName }: CampaignBuilderPro
                 </div>
             </div>
 
+            {loadError && <p role="alert" className="text-sm text-red-600 mb-3">{loadError} <button type="button" className="underline" onClick={loadData}>Reintentar</button></p>}
+
             {/* Main Tabs */}
             <Tabs defaultValue="design" className="flex-1 flex flex-col overflow-hidden">
                 <TabsList className="bg-white dark:bg-zinc-900 border border-gray-100 dark:border-zinc-800 px-2 justify-start w-fit rounded-lg mb-4">
@@ -397,6 +428,23 @@ export function CampaignBuilder({ campaignId, campaignName }: CampaignBuilderPro
                 <TabsContent value="design" className="flex-1 flex gap-6 overflow-hidden mt-0">
                     {/* Full Width Canvas */}
                     <Card className="flex-1 glass-card flex flex-col overflow-hidden relative">
+                        <div className="flex flex-wrap items-center gap-3 p-4 border-b">
+                            <Select value={activeSequence || ''} onValueChange={setActiveSequence}>
+                                <SelectTrigger className="w-64" aria-label="Secuencia de campaña"><SelectValue placeholder="Selecciona una secuencia" /></SelectTrigger>
+                                <SelectContent>{sequences.map(sequence => <SelectItem key={sequence.id} value={sequence.id}>{sequence.name}{sequence.is_active ? ' · Principal' : ''}</SelectItem>)}</SelectContent>
+                            </Select>
+                            <Dialog open={isCreateSeqOpen} onOpenChange={setIsCreateSeqOpen}>
+                                <Button variant="outline" disabled={campaignStatus !== 'draft'} onClick={() => setIsCreateSeqOpen(true)}>Crear secuencia</Button>
+                                <DialogContent><DialogHeader><DialogTitle>Crear secuencia de campaña</DialogTitle><DialogDescription>La primera secuencia será el flujo principal. Puedes elegir otro mientras la campaña sea un borrador.</DialogDescription></DialogHeader>
+                                    <Label htmlFor="sequence-name">Nombre</Label><Input id="sequence-name" value={newSeqName} maxLength={160} onChange={event => setNewSeqName(event.target.value)} />
+                                    <Button disabled={!newSeqName.trim()} onClick={handleCreateSequence}>Guardar secuencia</Button>
+                                </DialogContent>
+                            </Dialog>
+                            {currentSequence && !currentSequence.is_active && <Button variant="outline" disabled={campaignStatus !== 'draft'} onClick={async () => {
+                                const result = await setPrincipalSequence(campaignId, currentSequence.id)
+                                if (result.success) { toast.success('Flujo principal seleccionado'); await loadData() } else toast.error(result.error)
+                            }}>Usar como flujo principal</Button>}
+                        </div>
                         {!currentSequence ? (
                             <div className="flex-1 flex flex-col items-center justify-center text-muted-foreground"><Sparkles className="w-12 h-12 mb-4 text-gray-300 dark:text-zinc-700" /><p>{t("marketing.campaign_builder.empty_sequence")}</p></div>
                         ) : (
@@ -404,7 +452,7 @@ export function CampaignBuilder({ campaignId, campaignName }: CampaignBuilderPro
                                 <div className="p-4 border-b border-gray-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 flex justify-between items-center shadow-sm z-10">
                                     <h3 className="font-bold flex items-center gap-2 text-gray-800 dark:text-gray-100"><GitMerge className="w-4 h-4 text-brand-pink" />{currentSequence.name}</h3>
                                     <Dialog open={isAddStepOpen} onOpenChange={setIsAddStepOpen}>
-                                        <Button size="sm" onClick={openAddStep} className="bg-white hover:bg-gray-50 text-gray-900 border border-gray-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 dark:text-white dark:border-zinc-700 shadow-sm">
+                                        <Button size="sm" disabled={campaignStatus !== 'draft' || !!loadError} onClick={openAddStep} className="bg-white hover:bg-gray-50 text-gray-900 border border-gray-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 dark:text-white dark:border-zinc-700 shadow-sm">
                                             <Plus className="w-3 h-3 mr-2" />{t("marketing.campaign_builder.add_step")}
                                         </Button>
                                         <DialogContent className="dark:bg-zinc-900 dark:border-zinc-800">
@@ -428,7 +476,7 @@ export function CampaignBuilder({ campaignId, campaignName }: CampaignBuilderPro
                                                         <span className="text-sm text-muted-foreground">{t("marketing.campaign_builder.days")}</span>
                                                     </div>
                                                 ) : (
-                                                    <Textarea value={stepForm.content} onChange={(e) => setStepForm({ ...stepForm, content: e.target.value })} className="dark:bg-zinc-800 dark:border-zinc-700 dark:text-white" placeholder={t("marketing.campaign_builder.message_placeholder")} />
+                                                    <MarketingTemplateEditor connectionId={connectionId} value={stepTemplate} onChange={setStepTemplate} />
                                                 )}
                                                 <Button onClick={handleSaveStep} className="w-full bg-brand-pink hover:bg-brand-pink/90 text-white">{editingStepId ? t("common.save") : t("marketing.campaign_builder.add_to_funnel")}</Button>
                                             </div>
@@ -487,7 +535,7 @@ export function CampaignBuilder({ campaignId, campaignName }: CampaignBuilderPro
                                                             </div>
                                                             <h4 className="font-semibold text-gray-900 dark:text-gray-100 text-base">{step.name}</h4>
                                                             <p className="text-sm text-muted-foreground line-clamp-2 mt-1">
-                                                                {step.type === 'delay' ? `${t("marketing.campaign_builder.wait")} ${step.delay_config?.value || '1'} ${t("marketing.campaign_builder.days")}` : (typeof step.content === 'string' ? step.content : step.content?.body)}
+                                                                {step.type === 'delay' ? `${t("marketing.campaign_builder.wait")} ${step.delay_config?.value || '1'} ${t("marketing.campaign_builder.days")}` : (typeof step.content === 'string' ? step.content : step.content?.template_name || step.content?.body)}
                                                             </p>
                                                         </div>
                                                         <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
@@ -645,10 +693,11 @@ export function CampaignBuilder({ campaignId, campaignName }: CampaignBuilderPro
                                 <h3 className="text-xl font-bold dark:text-gray-100">{t("marketing.campaign_builder.settings_title")}</h3>
                                 <p className="text-sm text-muted-foreground">{t("marketing.campaign_builder.settings_desc")}</p>
                             </div>
-                            <Button onClick={handleSaveConfig} className="bg-brand-pink text-white hover:bg-brand-pink/90 shadow-sm">{t("common.save")}</Button>
+                            <Button disabled={campaignStatus !== 'draft' || !!loadError} onClick={handleSaveConfig} className="bg-brand-pink text-white hover:bg-brand-pink/90 shadow-sm">{t("common.save")}</Button>
                         </div>
                         <ScrollArea className="flex-1">
                             <div className="flex flex-col gap-8 p-6 pb-16 max-w-[1400px]">
+                                <CampaignReadiness campaignId={campaignId} revision={revision} />
                                 {/* Top Section: Basic & Advanced Settings in 2 columns */}
                                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
                                 {/* Audience Selector */}
@@ -662,6 +711,15 @@ export function CampaignBuilder({ campaignId, campaignName }: CampaignBuilderPro
                                     </div>
                                         <div className="space-y-4">
                                             <div className="space-y-1.5">
+                                                <Label>Número emisor de WhatsApp</Label>
+                                                <Select value={connectionId} disabled={campaignStatus !== 'draft'} onValueChange={id => { setConnectionId(id); setRevision(value => value + 1) }}>
+                                                    <SelectTrigger aria-label="Número emisor de WhatsApp"><SelectValue placeholder="Selecciona el canal conectado" /></SelectTrigger>
+                                                    <SelectContent>{channels.map(channel => <SelectItem key={channel.id} value={channel.id}>{channel.name}</SelectItem>)}</SelectContent>
+                                                </Select>
+                                                {setupError && <p role="alert" className="text-xs text-red-600">{setupError}</p>}
+                                                <p className="text-xs text-muted-foreground">Guarda el número antes de configurar sus plantillas. Cambiarlo requiere revisar los pasos existentes.</p>
+                                            </div>
+                                            <div className="space-y-1.5">
                                                 <Label className="text-sm dark:text-gray-200">{t("marketing.campaign_builder.audience_tab")}</Label>
                                                 <Select value={selectedAudienceId || ''} onValueChange={handleLinkAudience}>
                                                     <SelectTrigger className="bg-white dark:bg-zinc-800 dark:border-zinc-700 dark:text-white h-9">
@@ -670,7 +728,7 @@ export function CampaignBuilder({ campaignId, campaignName }: CampaignBuilderPro
                                                     <SelectContent className="dark:bg-zinc-800 dark:border-zinc-700">
                                                         {audiences.map(aud => (
                                                             <SelectItem key={aud.id} value={aud.id} className="dark:text-gray-200 dark:focus:bg-zinc-700">
-                                                                {aud.name} ({aud.cached_count} contactos)
+                                                                {aud.name} ({aud.cached_count} autorizados al guardar)
                                                             </SelectItem>
                                                         ))}
                                                     </SelectContent>
@@ -684,7 +742,7 @@ export function CampaignBuilder({ campaignId, campaignName }: CampaignBuilderPro
                                                     onChange={(e) => setScheduledFor(e.target.value)}
                                                     className="bg-white dark:bg-zinc-800 dark:border-zinc-700 dark:text-white dark:[color-scheme:dark] h-9"
                                                 />
-                                                <p className="text-[11px] text-muted-foreground">Deja vacío para iniciar inmediatamente al activar</p>
+                                                <p className="text-[11px] text-muted-foreground">Fecha en tu hora local. Deja vacío para iniciar al activar; la ventana diaria usa la zona horaria configurada.</p>
                                             </div>
                                         </div>
                                         {selectedAudienceId && (
@@ -696,6 +754,8 @@ export function CampaignBuilder({ campaignId, campaignName }: CampaignBuilderPro
                                     </Card>
 
                                     <Card className="p-5 space-y-4 bg-white/40 dark:bg-zinc-900/40 backdrop-blur-md border border-white/20 dark:border-zinc-800/50 shadow-sm rounded-xl">
+                                        <Label htmlFor="campaign-timezone">Zona horaria de la ventana de envío</Label>
+                                        <Input id="campaign-timezone" value={deliveryConfig.timezone} onChange={event => setDeliveryConfig({ ...deliveryConfig, timezone: event.target.value })} placeholder="America/Bogota" />
                                         <h4 className="font-semibold flex items-center gap-2 text-sm dark:text-gray-200"><Settings className="w-4 h-4" /> {t("marketing.campaign_builder.advanced_config")}</h4>
                                         <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-zinc-900 rounded-lg border dark:border-zinc-800">
                                             <div>
@@ -725,7 +785,7 @@ export function CampaignBuilder({ campaignId, campaignName }: CampaignBuilderPro
                                                     <Select value={String(deliveryConfig.schedule_window.end)} onValueChange={(v) => setDeliveryConfig({ ...deliveryConfig, schedule_window: { ...deliveryConfig.schedule_window, end: Number(v) } })}>
                                                         <SelectTrigger className="w-[80px] h-8 text-xs bg-white dark:bg-zinc-800 dark:border-zinc-700 dark:text-white"><SelectValue /></SelectTrigger>
                                                         <SelectContent className="dark:bg-zinc-800 dark:border-zinc-700 dark:text-white">
-                                                            {[...Array(24)].map((_, i) => <SelectItem key={i} value={String(i)} className="text-xs dark:focus:bg-zinc-700">{String(i).padStart(2, '0')}:00</SelectItem>)}
+                                                            {[...Array(24)].map((_, i) => <SelectItem key={i} value={String(i + 1)} className="text-xs dark:focus:bg-zinc-700">{String(i + 1).padStart(2, '0')}:00</SelectItem>)}
                                                         </SelectContent>
                                                     </Select>
                                                 </div>
@@ -735,7 +795,7 @@ export function CampaignBuilder({ campaignId, campaignName }: CampaignBuilderPro
                                         <div className="flex items-center justify-between p-3 bg-slate-50 dark:bg-zinc-900 rounded-lg border dark:border-zinc-800 opacity-70">
                                             <div>
                                                 <Label className="text-sm font-semibold dark:text-gray-200">{t("marketing.campaign_builder.circuit_breaker")}</Label>
-                                                <p className="text-[11px] text-muted-foreground mt-0.5">{t("marketing.campaign_builder.circuit_breaker_desc")}</p>
+                                                <p className="text-[11px] text-muted-foreground mt-0.5">Protección automática por salud del canal: pendiente de implementación. No está activa.</p>
                                             </div>
                                             <Clock className="w-4 h-4 text-gray-400" />
                                         </div>

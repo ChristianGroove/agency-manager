@@ -7,6 +7,8 @@ import { allowsMarketing, assertMarketingChannelAccess } from './marketing-acces
 describe('Marketing permissions', () => {
     it('rejects removed and blocked members even when they were owners', () => {
         expect(allowsMarketing({role:'owner',status:'blocked'}, null, 'execute')).toBe(false)
+        expect(allowsMarketing({role:'owner',status:'pending'}, null, 'execute')).toBe(false)
+        expect(allowsMarketing({role:'owner',status:'invited'}, null, 'view')).toBe(false)
         expect(allowsMarketing({role:'owner',deleted_at:'2026-10-09'}, null, 'view')).toBe(false)
         expect(allowsMarketing(null, {hierarchy_level:100}, 'execute')).toBe(false)
     })

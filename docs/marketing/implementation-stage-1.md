@@ -1,6 +1,7 @@
 # Marketing: seguridad de borradores y control del worker
 
 Estado: primera etapa implementada; **no habilitar campañas reales todavía**.
+La continuación y el estado actualizado de los bloqueos están en [implementation-stage-2.md](./implementation-stage-2.md).
 Rama: `codex/marketing-campaign-hardening`, basada en `b4a2428a` (ajustes del Inbox).
 La auditoría del 9 de octubre tiene 28 hallazgos. Este cambio cierra la primera etapa, no certifica todo el módulo.
 

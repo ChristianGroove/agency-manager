@@ -6,7 +6,7 @@ import { evaluateInboxPermissions } from '@/modules/core/iam/utils/inbox-permiss
 export type MarketingPermission = 'view' | 'manage' | 'execute' | 'import' | 'export'
 
 export function allowsMarketing(member: any, role: any, permission: MarketingPermission): boolean {
-    if (!member || member.status === 'blocked' || member.deleted_at) return false
+    if (!member || (member.status != null && member.status !== 'active') || member.deleted_at) return false
     const overrides = member.permissions || {}
     const permissions = role?.permissions || {}
     const key = `marketing.campaigns.${permission}`
@@ -28,7 +28,7 @@ export async function requireMarketingAccess(permission: MarketingPermission = '
     const { data: member, error } = await session.from('organization_members')
         .select('role,role_id,permissions,status,deleted_at')
         .eq('organization_id', organizationId).eq('user_id', user.id).maybeSingle()
-    if (error || !member || member.status === 'blocked' || member.deleted_at) throw new Error('No tienes acceso a esta organización.')
+    if (error || !member || (member.status != null && member.status !== 'active') || member.deleted_at) throw new Error('No tienes acceso a esta organización.')
     let role: any = null
     if (member.role_id) {
         const result = await session.from('organization_roles').select('permissions,hierarchy_level')

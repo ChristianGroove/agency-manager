@@ -2,6 +2,7 @@ import { supabaseAdmin } from '@/modules/core/database/supabase-admin'
 import { outboundService } from '@/modules/features/messaging/outbound-service'
 import { normalizeDelay, normalizeMarketingPhone } from './marketing-contracts'
 import { enforceScheduleWindow } from './marketing-utils'
+import { buildCampaignTemplateMessage } from './marketing-template-contract'
 
 /** Internal cron worker. Session cookies are never used as worker credentials. */
 export async function runMarketingCycle() {
@@ -41,7 +42,7 @@ async function processClaim(db: any, claim: any): Promise<'processed' | 'deferre
         step:marketing_steps!current_step_id(*),
         sequence:marketing_sequences!sequence_id(id,campaign_id,organization_id,is_active),
         campaign:marketing_campaigns!campaign_id(id,organization_id,status,connection_id,execution_version,delivery_config,scheduled_for),
-        lead:leads!contact_id(id,organization_id,phone,name,company,marketing_opted_out)`)
+        lead:leads!contact_id(id,organization_id,phone,name,company:company_name,marketing_opted_out)`)
         .eq('id', claim.id).eq('organization_id', claim.organization_id).eq('claim_token', claim.claim_token).single()
     if (result.error || !result.data) throw new Error('Trabajo no disponible.')
     const row = result.data, { campaign, sequence, step, lead } = row
@@ -73,16 +74,22 @@ async function processClaim(db: any, claim: any): Promise<'processed' | 'deferre
         const multiplier = delay.unit === 'days' ? 86400 : delay.unit === 'hours' ? 3600 : 60
         nextRun = new Date(Date.now() + delay.value * multiplier * 1000)
     } else {
-        if (step.type !== 'whatsapp' || !step.content?.template_name) throw new Error('Solo se admiten plantillas WhatsApp validadas.')
+        if (step.type !== 'whatsapp' || !step.content?.template_id) throw new Error('Solo se admiten plantillas WhatsApp validadas.')
         const recipient = normalizeMarketingPhone(lead.phone)
         if (!recipient || recipient !== row.recipient) throw new Error('El destinatario cambió; revisa la campaña.')
+        const consent = await db.rpc('marketing_recipient_allowed', { p_org: row.organization_id, p_recipient: recipient })
+        if (consent.error) throw new Error('No se pudo verificar la autorización vigente.')
+        if (consent.data !== true) {
+            await checkpoint(db, claim, { status: 'cancelled', next_run_at: null, last_error: 'No hay autorización vigente de marketing.' })
+            return 'processed'
+        }
+        const template = await db.from('messaging_templates').select('id,channel_id,name,language,status,category,meta_id,components')
+            .eq('organization_id', row.organization_id).eq('channel_id', campaign.connection_id).eq('id', step.content.template_id).single()
+        if (template.error || !template.data) throw new Error('Plantilla no disponible en el número emisor.')
+        const message = buildCampaignTemplateMessage(template.data, step.content, campaign.connection_id, { ...lead, phone: recipient })
         const conversationId = await getConversation(db, row.organization_id, lead.id, campaign.connection_id, recipient)
-        const parameters = Object.entries(step.content.template_params || {}).sort(([a],[b])=>Number(a.replace(/\D/g,''))-Number(b.replace(/\D/g,'')))
-            .map(([,value])=>String(value).replaceAll('{{nombre}}',lead.name || '').replaceAll('{{empresa}}',lead.company || '').replaceAll('{{telefono}}',recipient))
-        const sent = await outboundService.sendSystemMessage(conversationId, {
-            type: 'template', templateName: step.content.template_name, templateLanguage: step.content.template_language || 'es',
-            templateComponents: parameters.length ? [{ type:'body', parameters: parameters.map(text=>({type:'text',text})) }] : [],
-        }, 'whatsapp', campaign.connection_id, 'System', `campaign:${row.id}:${step.id}`)
+        const sent = await outboundService.sendSystemMessage(conversationId, message,
+            'whatsapp', campaign.connection_id, 'System', `campaign:${row.id}:${step.id}`)
         if (!sent.success || !sent.externalId) throw new Error('No se confirmó la aceptación del envío.')
     }
     await checkpoint(db, claim, next.data ? {

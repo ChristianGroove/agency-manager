@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
-const mocks = vi.hoisted(()=>({ access:vi.fn(), session:vi.fn(), admin:vi.fn(), revalidate:vi.fn() }))
-vi.mock('./marketing-access',()=>({requireMarketingAccess:mocks.access}))
+const mocks = vi.hoisted(()=>({ access:vi.fn(), channel:vi.fn(), session:vi.fn(), admin:vi.fn(), revalidate:vi.fn() }))
+vi.mock('./marketing-access',()=>({requireMarketingAccess:mocks.access,assertMarketingChannelAccess:mocks.channel}))
 vi.mock('@/modules/core/database/supabase-server',()=>({createClient:mocks.session}))
 vi.mock('@/modules/core/database/supabase-admin',()=>({supabaseAdmin:{from:mocks.admin}}))
 vi.mock('next/cache',()=>({revalidatePath:mocks.revalidate}))
@@ -14,6 +14,7 @@ describe('Marketing server action boundaries',()=>{
         ['updateStep',['step-b',{}]], ['deleteStep',['step-b']], ['linkAudienceToCampaign',['campaign-b','audience-b']],
         ['createQuickCampaign',[{name:'test'}]], ['enrollAudienceInCampaign',['campaign-b']], ['optOutLead',['lead-b']],
         ['importLeads',[[{phone:'573006705958'}]]], ['previewAudienceCount',[{}]],
+        ['setPrincipalSequence',['campaign-b','sequence-b']],
     ])('rejects %s before touching privileged data',async(name,args)=>{
         const result = await (actions as any)[name](...args)
         expect(result.success).toBe(false)
@@ -44,5 +45,20 @@ describe('Marketing server action boundaries',()=>{
         expect((await actions.enrollAudienceInCampaign('campaign-a')).success).toBe(false)
         expect((await actions.importLeads([{phone:'573006705958'}])).success).toBe(false)
         expect(from).not.toHaveBeenCalled()
+    })
+    it('saves the selected channel, template and audience with exactly one transactional RPC', async () => {
+        const channel = '03000000-0000-4000-8000-000000000001', templateId = '08000000-0000-4000-8000-000000000001'
+        const q:any = {}; for (const fn of ['select','eq']) q[fn] = vi.fn(() => q)
+        q.single = vi.fn(async () => ({ data: { id: templateId, channel_id: channel, name: 'promo', language: 'es', status: 'APPROVED', category: 'MARKETING', meta_id: 'fixture', components: [{ type: 'BODY', text: 'Oferta' }] }, error: null }))
+        const rpc = vi.fn(async () => ({ data: { id: 'campaign-a' }, error: null }))
+        const session = { from: vi.fn(() => q), rpc }
+        mocks.access.mockResolvedValue({ organizationId: 'tenant-a', session })
+        const result = await actions.createQuickCampaign({ name: 'Oferta', channel: 'whatsapp', filters: { has_phone: true }, connection_id: channel,
+            template_id: templateId, template_name: 'promo', template_language: 'es', bindings: {} })
+        expect(result.success).toBe(true)
+        expect(rpc).toHaveBeenCalledTimes(1)
+        expect(rpc).toHaveBeenCalledWith('create_marketing_quick_draft', expect.objectContaining({ p_org: 'tenant-a', p_connection: channel, p_filters: { has_phone: true } }))
+        expect(mocks.channel).toHaveBeenCalledWith(expect.objectContaining({ organizationId: 'tenant-a' }), channel)
+        expect(mocks.admin).not.toHaveBeenCalled()
     })
 })

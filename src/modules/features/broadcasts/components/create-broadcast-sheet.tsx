@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useMemo } from 'react'
+import { useState, useEffect } from 'react'
 import { cn } from '@/modules/infrastructure/utils/utils'
 import { Sheet, SheetContent, SheetTitle } from '@/components/ui/sheet'
 import { Button } from '@/components/ui/button'
@@ -35,9 +35,11 @@ import {
     SelectValue
 } from '@/components/ui/select'
 import { createQuickCampaign } from '../marketing-actions'
-import { getRecipientCount } from '../actions'
+import { getAudienceReadiness, AudienceReadiness } from '../marketing-preflight-actions'
+import { MarketingTemplateEditor } from './marketing-template-editor'
+import { TemplateSelection } from '../marketing-template-contract'
 import { toast } from 'sonner'
-import { getTemplates, MessageTemplate } from '@/modules/features/messaging/messaging-actions'
+
 import { useTranslation } from "@/modules/core/i18n/use-translation"
 
 interface CreateBroadcastSheetProps {
@@ -51,18 +53,21 @@ export function CreateBroadcastSheet({ open, onOpenChange, onSuccess }: CreateBr
     const [loading, setLoading] = useState(false)
     const [recipientCount, setRecipientCount] = useState(0)
     const [countLoading, setCountLoading] = useState(false)
-    const [templates, setTemplates] = useState<MessageTemplate[]>([])
-    const [selectedTemplate, setSelectedTemplate] = useState<MessageTemplate | null>(null)
-    const [templateVarValues, setTemplateVarValues] = useState<Record<string, string>>({})
+    const [connectionId, setConnectionId] = useState('')
+    const [selectedTemplate, setSelectedTemplate] = useState<TemplateSelection | null>(null)
+    const [readiness, setReadiness] = useState<AudienceReadiness | null>(null)
+    const [countError, setCountError] = useState('')
     const [showAdvanced, setShowAdvanced] = useState(false)
 
     const [deliveryConfig, setDeliveryConfig] = useState<{
         mode: 'stealth' | 'growth' | 'turbo',
         humanize: boolean,
+        timezone: string,
         schedule_window: { start: number, end: number }
     }>({
         mode: 'growth',
         humanize: true,
+        timezone: 'America/Bogota',
         schedule_window: { start: 9, end: 17 } // 9 AM to 5 PM
     })
 
@@ -94,55 +99,26 @@ export function CreateBroadcastSheet({ open, onOpenChange, onSuccess }: CreateBr
             })
             setRecipientCount(0)
             setSelectedTemplate(null)
-            setTemplateVarValues({})
-            // Load approved templates
-            loadTemplates()
+            setConnectionId(''); setReadiness(null); setCountError('')
         }
     }, [open])
 
-    const loadTemplates = async () => {
-        try {
-            const all = await getTemplates()
-            // Only show templates that are APPROVED and genuinely exist in Meta
-            setTemplates(all.filter(t => t.status === 'APPROVED' && t.meta_id))
-        } catch { toast.error('No se pudieron cargar las plantillas.') }
-    }
+    useEffect(() => {
+        if (!open) return
+        let current = true
+        setCountLoading(true); setReadiness(null); setCountError('')
+        const timer = setTimeout(() => {
+            void getAudienceReadiness(form.filters).then(result => {
+                if (!current) return
+                if (result.success) { setReadiness(result.audience); setRecipientCount(result.audience.eligible) }
+                else { setCountError(result.error); setRecipientCount(0) }
+                setCountLoading(false)
+            }).catch(() => { if (current) { setCountError('No se pudo revisar la audiencia.'); setCountLoading(false) } })
+        }, 250)
+        return () => { current = false; clearTimeout(timer) }
+    }, [open, form.filters])
 
-    // Detect variables in selected template body
-    const templateBodyText = selectedTemplate?.components?.find(c => c.type === 'BODY')?.text || ''
-    const templateVars = useMemo(() => {
-        const regex = /\{\{(\d+)\}\}/g
-        const matches: string[] = []
-        let match
-        while ((match = regex.exec(templateBodyText)) !== null) {
-            if (!matches.includes(match[0])) matches.push(match[0])
-        }
-        return matches.sort()
-    }, [templateBodyText])
-
-    const handleTemplateSelect = (templateId: string) => {
-        const tmpl = templates.find(t => t.id === templateId) || null
-        setSelectedTemplate(tmpl)
-        setTemplateVarValues({})
-    }
-
-    const filledPreview = useMemo(() => {
-        let text = templateBodyText
-        Object.entries(templateVarValues).forEach(([key, val]) => {
-            text = text.replace(key, val || key)
-        })
-        return text
-    }, [templateBodyText, templateVarValues])
-
-    const updateFilters = async (newFilters: typeof form.filters) => {
-        setForm(prev => ({ ...prev, filters: newFilters }))
-        setCountLoading(true)
-        const result = await getRecipientCount(newFilters)
-        if (result.success) {
-            setRecipientCount(result.count || 0)
-        }
-        setCountLoading(false)
-    }
+    const updateFilters = (filters: typeof form.filters) => setForm(previous => ({ ...previous, filters }))
 
     const handleSubmit = async () => {
         if (!form.name.trim()) {
@@ -152,7 +128,7 @@ export function CreateBroadcastSheet({ open, onOpenChange, onSuccess }: CreateBr
 
         // WhatsApp requires a template
         if (form.channel === 'whatsapp') {
-            if (!selectedTemplate) {
+            if (!selectedTemplate || !connectionId) {
                 toast.error(t("marketing.create_broadcast.error_template"))
                 return
             }
@@ -166,13 +142,13 @@ export function CreateBroadcastSheet({ open, onOpenChange, onSuccess }: CreateBr
         setLoading(true)
         const result = await createQuickCampaign({
             name: form.name,
-            message: form.channel === 'whatsapp' ? filledPreview : form.message,
             channel: form.channel,
             filters: form.filters,
-            // Template-specific data for WhatsApp HSM
-            template_name: selectedTemplate?.name,
-            template_language: selectedTemplate?.language,
-            template_params: templateVarValues,
+            connection_id: connectionId,
+            template_id: selectedTemplate!.template_id,
+            template_name: selectedTemplate!.template_name,
+            template_language: selectedTemplate!.template_language,
+            bindings: selectedTemplate!.bindings,
             delivery_config: deliveryConfig
         })
 
@@ -282,72 +258,13 @@ export function CreateBroadcastSheet({ open, onOpenChange, onSuccess }: CreateBr
                             {/* Message: Template for WA, Free text for others */}
                             {form.channel === 'whatsapp' ? (
                                 <div className="space-y-4">
-                                    {/* Template Selector */}
-                                    <div className="space-y-2">
-                                        <Label className="flex items-center gap-2">
-                                            <FileText className="h-4 w-4 text-green-600" />
-                                            {t("marketing.create_broadcast.wa_template")}
-                                        </Label>
-                                        <Select
-                                            value={selectedTemplate?.id || ''}
-                                            onValueChange={handleTemplateSelect}
-                                        >
-                                            <SelectTrigger className="h-11">
-                                                <SelectValue placeholder={t("marketing.create_broadcast.select_template")} />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                {templates.length === 0 ? (
-                                                    <div className="p-3 text-center text-sm text-muted-foreground">
-                                                        {t("marketing.create_broadcast.no_templates")}
-                                                    </div>
-                                                ) : (
-                                                    templates.map(t => (
-                                                        <SelectItem key={t.id} value={t.id}>
-                                                            <div className="flex items-center gap-2">
-                                                                <span className="font-mono text-xs">{t.name}</span>
-                                                                <Badge variant="outline" className="text-[9px] border-0 bg-green-100 text-green-700">
-                                                                    {t.category}
-                                                                </Badge>
-                                                            </div>
-                                                        </SelectItem>
-                                                    ))
-                                                )}
-                                            </SelectContent>
-                                        </Select>
-                                        <p className="text-xs text-muted-foreground flex items-center gap-1">
-                                            <AlertCircle className="h-3 w-3" />
-                                            {t("marketing.create_broadcast.meta_approved")}
-                                        </p>
-                                    </div>
-
-                                    {/* Variable Inputs */}
-                                    {selectedTemplate && templateVars.length > 0 && (
-                                        <div className="space-y-3 p-4 bg-amber-50/50 dark:bg-amber-950/20 rounded-xl border border-amber-100 dark:border-amber-900/30">
-                                            <Label className="text-xs font-semibold text-amber-800 dark:text-amber-300 flex items-center gap-1">
-                                                <AlertCircle className="h-3.5 w-3.5" />
-                                                {t("marketing.create_broadcast.var_defaults")}
-                                            </Label>
-                                            <p className="text-[11px] text-muted-foreground">
-                                                {t("marketing.create_broadcast.var_desc")}
-                                            </p>
-                                            {templateVars.map(varName => (
-                                                <div key={varName} className="flex items-center gap-3">
-                                                    <Badge variant="secondary" className="text-xs font-mono shrink-0 w-12 justify-center">
-                                                        {varName}
-                                                    </Badge>
-                                                    <Input
-                                                        placeholder={t("marketing.create_broadcast.var_placeholder").replace('{var}', varName)}
-                                                        value={templateVarValues[varName] || ''}
-                                                        onChange={(e) => setTemplateVarValues(prev => ({
-                                                            ...prev,
-                                                            [varName]: e.target.value
-                                                        }))}
-                                                        className="h-9"
-                                                    />
-                                                </div>
-                                            ))}
-                                        </div>
-                                    )}
+                                    <MarketingTemplateEditor connectionId={connectionId} onConnectionChange={setConnectionId} value={selectedTemplate} onChange={setSelectedTemplate} />
+                                    {countError && <p role="alert" className="text-sm text-red-600">{countError}</p>}
+                                    {readiness && <p className="text-xs text-muted-foreground">
+                                        {readiness.matched} contactos del filtro; {readiness.eligible} destinatarios únicos con autorización vigente.
+                                        Excluidos: {readiness.missingConsent} sin autorización, {readiness.optedOut} con baja,
+                                        {' '}{readiness.invalidFormat} sin teléfono utilizable y {readiness.duplicates} duplicados.
+                                    </p>}
 
                                 </div>
                             ) : (
@@ -366,6 +283,10 @@ export function CreateBroadcastSheet({ open, onOpenChange, onSuccess }: CreateBr
                                 </div>
                             )}
 
+                            <div className="space-y-2">
+                                <Label htmlFor="quick-campaign-timezone">Zona horaria de la ventana de envío</Label>
+                                <Input id="quick-campaign-timezone" value={deliveryConfig.timezone} onChange={event => setDeliveryConfig({ ...deliveryConfig, timezone: event.target.value })} placeholder="America/Bogota" />
+                            </div>
                             {/* Segmentation */}
                             <div className="space-y-4 p-4 bg-slate-50/50 dark:bg-zinc-900/50 rounded-xl border border-slate-100 dark:border-zinc-800">
                                 <h3 className="font-semibold text-sm text-gray-900 dark:text-gray-100 flex items-center gap-2">
@@ -498,7 +419,7 @@ export function CreateBroadcastSheet({ open, onOpenChange, onSuccess }: CreateBr
                                                         </SelectTrigger>
                                                         <SelectContent>
                                                             {[...Array(24)].map((_, i) => (
-                                                                <SelectItem key={i} value={String(i)}>{String(i).padStart(2, '0')}:00</SelectItem>
+                                                                <SelectItem key={i} value={String(i + 1)}>{String(i + 1).padStart(2, '0')}:00</SelectItem>
                                                             ))}
                                                         </SelectContent>
                                                     </Select>
@@ -509,22 +430,7 @@ export function CreateBroadcastSheet({ open, onOpenChange, onSuccess }: CreateBr
                                 )}
                             </div>
 
-                            {/* Preview */}
-                            {(form.channel === 'whatsapp' ? selectedTemplate : form.message) && (
-                                <div className="space-y-2">
-                                    <Label className="text-xs text-muted-foreground">{t("marketing.create_broadcast.preview")}</Label>
-                                    <div className="bg-[#e5ddd5] dark:bg-zinc-800 rounded-2xl p-4">
-                                        <div className="max-w-[85%] ml-auto">
-                                            <div className="bg-[#dcf8c6] dark:bg-green-900/60 rounded-xl rounded-tr-sm p-3 shadow-sm">
-                                                <p className="text-[13px] text-gray-800 dark:text-gray-200 whitespace-pre-wrap leading-relaxed">
-                                                    {form.channel === 'whatsapp' ? filledPreview : form.message}
-                                                </p>
-                                                <p className="text-[10px] text-gray-400 text-right mt-1">Marketing ✓</p>
-                                            </div>
-                                        </div>
-                                    </div>
-                                </div>
-                            )}
+
                         </div>
                     </ScrollArea>
 
@@ -535,7 +441,7 @@ export function CreateBroadcastSheet({ open, onOpenChange, onSuccess }: CreateBr
                         </Button>
                         <Button
                             onClick={handleSubmit}
-                            disabled={loading || !form.name || (form.channel === 'whatsapp' && !selectedTemplate)}
+                            disabled={loading || !form.name || (form.channel === 'whatsapp' && (!selectedTemplate || !connectionId))}
                             className="bg-brand-pink text-white hover:bg-brand-pink/90 px-8"
                         >
                             {loading ? (

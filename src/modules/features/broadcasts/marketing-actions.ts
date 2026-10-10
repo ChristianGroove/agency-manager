@@ -1,8 +1,9 @@
 'use server'
 
 import { createClient } from '@/modules/core/database/supabase-server'
-import { requireMarketingAccess } from './marketing-access'
-import { applyAudienceFilters, normalizeDelay, publicMarketingError } from './marketing-contracts'
+import { requireMarketingAccess, assertMarketingChannelAccess } from './marketing-access'
+import { audienceFiltersSchema, deliveryConfigSchema, normalizeDelay, publicMarketingError } from './marketing-contracts'
+import { templateSelectionSchema, validateCampaignTemplate } from './marketing-template-contract'
 import { supabaseAdmin } from '@/modules/core/database/supabase-admin'
 import { z } from 'zod'
 import { revalidatePath } from 'next/cache'
@@ -129,103 +130,32 @@ export async function createCampaign(data: { name: string, description?: string,
     } catch (error) { return { success: false as const, error: publicMarketingError(error) } }
 }
 
-export async function createQuickCampaign(data: {
-    name: string
-    message: string
-    channel: 'whatsapp' | 'sms' | 'email'
-    filters: Record<string, unknown>
-    // Template-specific fields for WhatsApp HSM
-    template_name?: string
-    template_language?: string
-    template_params?: Record<string, string>
-    ttl_seconds?: number
-    delivery_config?: DeliveryConfig
+export async function createQuickCampaign(input: {
+    name: string; channel: 'whatsapp' | 'sms' | 'email'; filters: Record<string, unknown>;
+    connection_id: string; template_id: string; template_name: string; template_language: string;
+    bindings: Record<string, string>; delivery_config?: DeliveryConfig
 }) {
     try {
         const access = await requireMarketingAccess('manage')
-
-        const supabase = await createClient()
-        const { data: { user } } = await supabase.auth.getUser()
-        if (!user) return { success: false, error: 'Unauthorized' }
-
-        const member = { organization_id: access.organizationId }
-
-        if (data.channel !== 'whatsapp') return { success: false, error: 'Las campañas masivas de este módulo se están preparando para WhatsApp.' }
-        if (!data.name.trim() || data.name.length > 160) return { success: false, error: 'Nombre de campaña inválido.' }
-
-        // 1. Create Campaign
-        const { data: campaign, error: cError } = await supabase
-            .from('marketing_campaigns')
-            .insert({
-                organization_id: member.organization_id,
-                name: data.name,
-                description: 'Quick Broadcast Campaign',
-                goal: 'broadcast',
-                status: 'draft',
-                created_by: user.id,
-                delivery_config: data.delivery_config || { mode: 'growth', humanize: true }
-            })
-            .select().eq('organization_id', access.organizationId)
-            .single()
-        if (cError) return { success: false, error: cError.message }
-
-        // 2. Create Default Sequence
-        const { data: sequence, error: sError } = await supabase
-            .from('marketing_sequences')
-            .insert({
-                organization_id: member.organization_id,
-                campaign_id: campaign.id,
-                name: 'Main Flow',
-                trigger_type: 'manual',
-                is_active: true
-            })
-            .select().eq('organization_id', access.organizationId)
-            .single()
-        if (sError) return { success: false, error: sError.message }
-
-        // 3. Create Step 1 (The Message)
-        // Include template data when channel is WhatsApp with HSM
-        const stepContent: any = { body: data.message }
-        if (data.template_name) {
-            stepContent.template_name = data.template_name
-            stepContent.template_language = data.template_language || 'en_US'
-            stepContent.template_params = data.template_params || {}
-        }
-
-        const { error: stError } = await supabase
-            .from('marketing_steps')
-            .insert({
-                organization_id: member.organization_id,
-                sequence_id: sequence.id,
-                type: data.channel,
-                name: 'Broadcast Message',
-                order_index: 0,
-                content: stepContent
-            })
-        if (stError) return { success: false, error: stError.message }
-
-        // 4. Create Broadcast Log
-        const { error: bError } = await supabase
-            .from('broadcasts')
-            .insert({
-                organization_id: member.organization_id,
-                campaign_id: campaign.id,
-                name: data.name,
-                message: data.message,
-                channel: data.channel,
-                filters: data.filters,
-                status: 'draft',
-                total_recipients: 0
-            })
-
-        if (bError) return { success: false, error: bError.message }
-
+        const data = z.object({ name: z.string().trim().min(1).max(160), channel: z.literal('whatsapp'),
+            filters: audienceFiltersSchema, connection_id: z.string().uuid(), template_id: z.string().uuid(),
+            template_name: z.string().min(1).max(512), template_language: z.string().min(1).max(32),
+            bindings: z.record(z.string(), z.string()), delivery_config: deliveryConfigSchema.optional(),
+        }).strict().parse(input)
+        assertMarketingChannelAccess(access, data.connection_id)
+        const template = await access.session.from('messaging_templates').select('id,channel_id,name,language,status,category,meta_id,components')
+            .eq('organization_id', access.organizationId).eq('channel_id', data.connection_id).eq('id', data.template_id).single()
+        if (template.error || !template.data) throw new Error('Plantilla no disponible en el número seleccionado.')
+        const content = validateCampaignTemplate(template.data, { template_id: data.template_id, template_name: data.template_name,
+            template_language: data.template_language, bindings: data.bindings }, data.connection_id)
+        const result = await access.session.rpc('create_marketing_quick_draft', { p_org: access.organizationId, p_name: data.name,
+            p_connection: data.connection_id, p_template: data.template_id, p_content: content, p_filters: data.filters,
+            p_delivery: data.delivery_config || { mode: 'growth', humanize: true, timezone: 'America/Bogota' } })
+        if (result.error || !result.data) throw new Error('No se pudo guardar el borrador completo. No se crearon registros parciales.')
         revalidatePath('/crm/marketing')
-        return { success: true, campaign }
-
+        return { success: true as const, campaign: result.data }
     } catch (error) { return { success: false as const, error: publicMarketingError(error) } }
 }
-
 
 export async function updateCampaign(id: string, data: Partial<Campaign>) {
     try {
@@ -240,11 +170,10 @@ export async function updateCampaign(id: string, data: Partial<Campaign>) {
             status: z.enum(['draft', 'paused', 'archived']).optional(),
             connection_id: z.string().uuid().nullable().optional(),
             scheduled_for: z.string().datetime({ offset: true }).nullable().optional(),
-            delivery_config: z.object({ mode: z.enum(['stealth','growth','turbo']), humanize: z.boolean(),
-                timezone: z.string().optional(), schedule_window: z.object({start:z.number().int().min(0).max(23),end:z.number().int().min(1).max(24)}).optional(),
-            }).optional(),
+            delivery_config: deliveryConfigSchema.optional(),
         }).strict().parse(data)
 
+        if (updates.connection_id) assertMarketingChannelAccess(access, updates.connection_id)
         const supabase = data.status ? supabaseAdmin : access.session
         const current = await access.session.from('marketing_campaigns').select('id,status,execution_version')
             .eq('id', id).eq('organization_id', access.organizationId).single()
@@ -309,15 +238,10 @@ export async function createAudience(data: { name: string, description?: string,
 
         const member = { organization_id: access.organizationId }
 
-        // Calculate initial count
-        // NOTE: This logic should ideally be shared with getRecipientCount
-        let count = 0
-        let query = supabase.from('leads').select('id', { count: 'exact', head: true }).eq('organization_id', access.organizationId)
-
-        query = applyAudienceFilters(query.eq('marketing_opted_out', false), data.filter_config)
-
-        const { count: c } = await query
-        count = c || 0
+        data = z.object({ name: z.string().trim().min(1).max(160), description: z.string().max(2000).optional(), filter_config: audienceFiltersSchema }).strict().parse(data)
+        const summary = await access.session.rpc('marketing_audience_summary', { p_org: access.organizationId, p_filters: data.filter_config })
+        if (summary.error || !summary.data) throw new Error('No se pudo revisar la audiencia; no se guardó una estimación vacía.')
+        const count = summary.data.eligible
 
         const freshAdmin = supabase
 
@@ -437,55 +361,20 @@ export async function enrollAudienceInCampaign(campaignId: string) {
 export async function optOutLead(leadId: string) {
     try {
         const access = await requireMarketingAccess('execute')
-
-        const adminClient = (await createClient())
-        const { error } = await adminClient
-            .from('leads')
-            .update({
-                marketing_opted_out: true,
-                opted_out_at: new Date().toISOString()
-            }).eq('organization_id', access.organizationId)
-            .eq('id', leadId).select('id').single()
-
-        if (error) return { success: false, error: error.message }
-
-        // Cancel any active enrollments for this lead
-        const cancelled = await supabaseAdmin
-            .from('marketing_enrollments')
-            .update({ status: 'cancelled' }).eq('organization_id', access.organizationId)
-            .eq('contact_id', leadId)
-            .eq('status', 'active')
-        if (cancelled.error) return { success: false, error: 'Baja registrada; no se pudieron cancelar todos los trabajos.' }
-
-        return { success: true }
-
+        const lead = await access.session.from('leads').select('phone').eq('organization_id', access.organizationId).eq('id', leadId).single()
+        if (lead.error || !lead.data) throw new Error('Contacto no encontrado.')
+        const result = await supabaseAdmin.rpc('revoke_marketing_contact', { p_org: access.organizationId, p_contact: leadId, p_actor: access.userId })
+        if (result.error) throw new Error('No se pudo guardar la baja de forma completa; reintenta.')
+        return { success: true as const }
     } catch (error) { return { success: false as const, error: publicMarketingError(error) } }
 }
 
-
-export async function previewAudienceCount(filters: any) {
+export async function previewAudienceCount(filters: unknown) {
     try {
         const access = await requireMarketingAccess('view')
-
-        const supabase = await createClient()
-        const { data: { user } } = await supabase.auth.getUser()
-        if (!user) return { success: false, error: 'Unauthorized' }
-
-        const member = { organization_id: access.organizationId }
-
-        const adminClient = (await createClient())
-        let query = adminClient
-            .from('leads')
-            .select('id', { count: 'exact', head: true }).eq('organization_id', access.organizationId)
-
-            .eq('marketing_opted_out', false) // Always exclude opted-out
-
-        query = applyAudienceFilters(query, filters)
-
-        const { count, error } = await query
-        if (error) return { success: false, error: error.message }
-        return { success: true, count: count || 0 }
-
+        const result = await access.session.rpc('marketing_audience_summary', { p_org: access.organizationId, p_filters: audienceFiltersSchema.parse(filters || {}) })
+        if (result.error || !result.data) throw new Error('No se pudo revisar la audiencia.')
+        return { success: true as const, count: result.data.eligible as number }
     } catch (error) { return { success: false as const, error: publicMarketingError(error) } }
 }
 
@@ -557,7 +446,31 @@ export async function createSequence(data: { name: string, campaign_id: string, 
     } catch (error) { return { success: false as const, error: publicMarketingError(error) } }
 }
 
+export async function setPrincipalSequence(campaignId: string, sequenceId: string) {
+    try {
+        const access = await requireMarketingAccess('manage')
+        z.string().uuid().parse(campaignId); z.string().uuid().parse(sequenceId)
+        const result = await access.session.rpc('set_marketing_principal', { p_org: access.organizationId, p_campaign: campaignId, p_sequence: sequenceId })
+        if (result.error) throw new Error('No se pudo cambiar el flujo principal. Solo se permiten cambios en borradores de esta organización.')
+        revalidatePath(`/crm/marketing/campaigns/${campaignId}`)
+        return { success: true as const }
+    } catch (error) { return { success: false as const, error: publicMarketingError(error) } }
+}
+
 // --- STEPS ---
+
+async function validateStepSelection(access: Awaited<ReturnType<typeof requireMarketingAccess>>, sequenceId: string, input: unknown) {
+    const selection = templateSelectionSchema.parse(input)
+    const sequence = await access.session.from('marketing_sequences').select('campaign_id').eq('organization_id', access.organizationId).eq('id', sequenceId).single()
+    if (sequence.error || !sequence.data) throw new Error('Secuencia no encontrada.')
+    const campaign = await access.session.from('marketing_campaigns').select('connection_id').eq('organization_id', access.organizationId).eq('id', sequence.data.campaign_id).single()
+    if (campaign.error || !campaign.data?.connection_id) throw new Error('Selecciona y guarda el número emisor de la campaña primero.')
+    assertMarketingChannelAccess(access, campaign.data.connection_id)
+    const template = await access.session.from('messaging_templates').select('id,channel_id,name,language,status,category,meta_id,components')
+        .eq('organization_id', access.organizationId).eq('channel_id', campaign.data.connection_id).eq('id', selection.template_id).single()
+    if (template.error || !template.data) throw new Error('La plantilla no está disponible en este canal.')
+    return validateCampaignTemplate(template.data, selection, campaign.data.connection_id)
+}
 
 export async function addStepToSequence(sequenceId: string, stepData: {
     type: string,
@@ -570,18 +483,13 @@ export async function addStepToSequence(sequenceId: string, stepData: {
 
         stepData = z.object({type:z.enum(['whatsapp','delay']),name:z.string().trim().min(1).max(160),content:z.record(z.string(),z.unknown()),delay_config:z.any().optional()}).strict().parse(stepData)
         if (stepData.type === 'delay') stepData.delay_config = normalizeDelay(stepData.delay_config)
+        else stepData.content = await validateStepSelection(access, sequenceId, stepData.content)
 
         const supabase = await createClient()
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) return { success: false, error: 'Unauthorized' }
 
         const member = { organization_id: access.organizationId }
-
-        // Get current steps count to set order_index
-        const { count } = await supabase
-            .from('marketing_steps')
-            .select('id', { count: 'exact', head: true }).eq('organization_id', access.organizationId)
-            .eq('sequence_id', sequenceId)
 
         const { data: step, error } = await supabase
             .from('marketing_steps')
@@ -592,7 +500,8 @@ export async function addStepToSequence(sequenceId: string, stepData: {
                 name: stepData.name,
                 content: stepData.content,
                 delay_config: stepData.delay_config,
-                order_index: count || 0
+                // The database assigns max(order_index)+1 under the campaign lock.
+                order_index: 0
             })
             .select().eq('organization_id', access.organizationId)
             .single()
@@ -649,6 +558,7 @@ export async function updateStep(stepId: string, data: any) {
             content: z.record(z.string(), z.unknown()), delay_config: z.any().optional(),
         }).strict().parse(data)
         if (updates.type === 'delay') updates.delay_config = normalizeDelay(updates.delay_config)
+        else updates.content = await validateStepSelection(access, step.sequence_id, updates.content)
         const { error } = await supabase
             .from('marketing_steps')
             .update(updates).eq('organization_id', access.organizationId)
