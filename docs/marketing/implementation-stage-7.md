@@ -63,7 +63,7 @@ Para desplegar: aplicar `20261010020000_marketing_reviewed_operations.sql` despu
 
 Pendientes:
 
-1. Revisar la pantalla alternativa de Meta Marketing que conserva elementos simulados y dirigir al flujo operativo validado.
+1. Revisar la pantalla alternativa de Meta Marketing que conserva elementos simulados y dirigir al flujo operativo validado. La identificación precisa y la propuesta de simplificación están en [la auditoría de producto y UX](product-scope-and-ux-audit.md); se trata de `MarketingTab` del panel interno, no de una pestaña de masivos llamada `MetaMarketingTab`.
 2. Validar una campaña real pequeña, programador, recibos y bajas antes de habilitar ejecución. Las pruebas locales no certifican Meta Live.
 3. Definir retención del historial cuando se borran contactos: la relación existente usa cascada, como se documentó en la etapa 6.
 4. Integrar limpieza periódica de revisiones si se exige plazo garantizado de eliminación de datos temporales.
