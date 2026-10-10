@@ -34,6 +34,7 @@ import { MarketingTemplateEditor } from './marketing-template-editor'
 import { CampaignReadiness } from './campaign-readiness'
 import { TemplateSelection } from '../marketing-template-contract'
 import { getMarketingSetup, MarketingChannel } from '../marketing-preflight-actions'
+import type { CampaignMetrics } from '../marketing-metrics'
 
 interface CampaignBuilderProps {
     campaignId: string
@@ -59,10 +60,7 @@ export function CampaignBuilder({ campaignId, campaignName }: CampaignBuilderPro
     const [executionEnabled, setExecutionEnabled] = useState(false)
 
     // Insights State
-    const [stats, setStats] = useState<{
-        stats: { total: number, active: number, completed: number, failed: number },
-        recentActivity: any[]
-    } | null>(null)
+    const [stats, setStats] = useState<CampaignMetrics | null>(null)
 
     // Safety Config State
     const [deliveryConfig, setDeliveryConfig] = useState({
@@ -135,6 +133,7 @@ export function CampaignBuilder({ campaignId, campaignName }: CampaignBuilderPro
             const date = campResult.campaign.scheduled_for ? new Date(campResult.campaign.scheduled_for) : null
             setScheduledFor(date ? new Date(date.getTime() - date.getTimezoneOffset()*60000).toISOString().slice(0,16) : '')
         }
+        if (!statsResult.success) setStats(null)
         if (statsResult.success) {
             setStats(statsResult)
         }
@@ -424,11 +423,10 @@ export function CampaignBuilder({ campaignId, campaignName }: CampaignBuilderPro
                     <TabsTrigger value="settings" className="data-[state=active]:bg-brand-pink/10 data-[state=active]:text-brand-pink">
                         <Shield className="w-4 h-4 mr-2" /> {t("marketing.campaign_builder.settings_tab")}
                     </TabsTrigger>
-                    {campaignStatus !== 'draft' && (
                         <TabsTrigger value="results" className="data-[state=active]:bg-emerald-50 data-[state=active]:text-emerald-700 dark:data-[state=active]:bg-emerald-500/20 dark:data-[state=active]:text-emerald-400">
                             <Activity className="w-4 h-4 mr-2" /> {t("marketing.campaign_builder.results_tab")}
                         </TabsTrigger>
-                    )}
+
                 </TabsList>
 
                 {/* --- DESIGN TAB --- */}
@@ -867,7 +865,7 @@ export function CampaignBuilder({ campaignId, campaignName }: CampaignBuilderPro
                                 <div className="p-3 bg-brand-pink/10 rounded-xl"><Activity className="w-8 h-8 text-brand-pink" /></div>
                                 <div>
                                     <h3 className="text-2xl font-bold">{t("marketing.campaign_builder.results_title")}</h3>
-                                    <p className="text-muted-foreground">{t("marketing.campaign_builder.results_desc")}</p>
+                                    <p className="text-muted-foreground">Resultados registrados de la campaña. Usa Actualizar para consultar los últimos cambios.</p>
                                 </div>
                             </div>
 
@@ -875,21 +873,35 @@ export function CampaignBuilder({ campaignId, campaignName }: CampaignBuilderPro
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                                 <Card className="p-5 border-t-4 border-t-blue-500 border-x-0 border-b-0 bg-white/50 dark:bg-zinc-900/50 backdrop-blur-md shadow-sm rounded-xl">
                                     <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">{t("marketing.campaign_builder.enrolled")}</p>
-                                    <p className="text-3xl font-bold text-gray-900 dark:text-white">{stats?.stats?.total || 0}</p>
+                                    <p className="text-3xl font-bold text-gray-900 dark:text-white">{stats?.stats?.total ?? '—'}</p>
                                 </Card>
                                 <Card className="p-5 border-t-4 border-t-yellow-500 border-x-0 border-b-0 bg-white/50 dark:bg-zinc-900/50 backdrop-blur-md shadow-sm rounded-xl">
                                     <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">{t("marketing.campaign_builder.in_progress")}</p>
-                                    <p className="text-3xl font-bold text-yellow-600 dark:text-yellow-400">{stats?.stats?.active || 0}</p>
+                                    <p className="text-3xl font-bold text-yellow-600 dark:text-yellow-400">{stats?.stats?.active ?? '—'}</p>
                                 </Card>
                                 <Card className="p-5 border-t-4 border-t-green-500 border-x-0 border-b-0 bg-white/50 dark:bg-zinc-900/50 backdrop-blur-md shadow-sm rounded-xl">
                                     <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">{t("marketing.campaign_builder.completed")}</p>
-                                    <p className="text-3xl font-bold text-green-600 dark:text-green-400">{stats?.stats?.completed || 0}</p>
+                                    <p className="text-3xl font-bold text-green-600 dark:text-green-400">{stats?.stats?.completed ?? '—'}</p>
                                 </Card>
                                 <Card className="p-5 border-t-4 border-t-red-500 border-x-0 border-b-0 bg-white/50 dark:bg-zinc-900/50 backdrop-blur-md shadow-sm rounded-xl">
                                     <p className="text-xs font-bold text-muted-foreground uppercase tracking-wider mb-1">{t("marketing.campaign_builder.failed")}</p>
-                                    <p className="text-3xl font-bold text-red-600 dark:text-red-400">{stats?.stats?.failed || 0}</p>
+                                    <p className="text-3xl font-bold text-red-600 dark:text-red-400">{stats?.stats?.failed ?? '—'}</p>
                                 </Card>
                             </div>
+
+                            <Card className="p-5 space-y-4">
+                                <h4 className="font-semibold">Resultados de los mensajes</h4>
+                                <p className="text-sm text-muted-foreground">Completar una secuencia significa terminar su procesamiento. La entrega y la lectura se confirman mediante eventos de WhatsApp.</p>
+                                <dl className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                                    {([
+                                        ['En cola', stats?.delivery.queued], ['Enviándose', stats?.delivery.sending],
+                                        ['Aceptados por Meta', stats?.delivery.accepted], ['Entregados', stats?.delivery.delivered],
+                                        ['Leídos', stats?.delivery.read], ['Envíos fallidos', stats?.delivery.failed],
+                                        ['Sin resultado confirmado', stats?.delivery.unknown], ['Destinatarios cancelados', stats?.stats.cancelled],
+                                    ] as const).map(([label, value]) => <div key={label}><dt className="text-xs text-muted-foreground">{label}</dt><dd className="text-2xl font-semibold">{value ?? '—'}</dd></div>)}
+                                </dl>
+                                {!!stats?.delivery.unknown && <p role="status" className="text-sm text-amber-700">Hay envíos sin resultado confirmado. Requieren revisión; no se reenvían automáticamente y la campaña permanece abierta.</p>}
+                            </Card>
 
                             {/* Recent Activity */}
                             <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -902,7 +914,7 @@ export function CampaignBuilder({ campaignId, campaignName }: CampaignBuilderPro
                                         {!stats?.recentActivity?.length ? (
                                             <div className="p-8 text-center text-muted-foreground flex flex-col items-center">
                                                 <Activity className="w-12 h-12 text-gray-200 mb-2" />
-                                                <p>{t("marketing.campaign_builder.no_activity")}</p>
+                                                <p>{stats ? t("marketing.campaign_builder.no_activity") : "Resultados no disponibles. Pulsa Actualizar para reintentar."}</p>
                                             </div>
                                         ) : (
                                             stats.recentActivity.map((log: any) => (
@@ -915,12 +927,12 @@ export function CampaignBuilder({ campaignId, campaignName }: CampaignBuilderPro
                                                     <div className="flex-1 min-w-0">
                                                         <div className="flex justify-between items-start mb-1">
                                                             <p className="text-sm font-semibold truncate">{log.lead?.phone || t("marketing.campaign_builder.unknown")} <span className="text-muted-foreground font-normal">({log.lead?.name || 'Lead'})</span></p>
-                                                            <span className="text-xs text-muted-foreground whitespace-nowrap">{new Date(log.last_updated).toLocaleTimeString()}</span>
+                                                            <span className="text-xs text-muted-foreground whitespace-nowrap">{log.last_updated ? new Date(log.last_updated).toLocaleString() : 'Sin registro de ejecución'}</span>
                                                         </div>
                                                         <p className="text-xs text-gray-600 dark:text-gray-400 line-clamp-2">
-                                                            {log.last_log?.action === 'message_sent' ? t("marketing.campaign_builder.msg_sent") :
+                                                            {log.last_error || (log.last_log?.action === 'message_sent' ? t("marketing.campaign_builder.msg_sent") :
                                                                 log.last_log?.error ? `${t("marketing.campaign_builder.error")} ${log.last_log.error}` :
-                                                                    `${t("marketing.campaign_builder.status_updated")} ${log.status}`}
+                                                                    `${t("marketing.campaign_builder.status_updated")} ${log.status}`)}
                                                         </p>
                                                     </div>
                                                 </div>
@@ -930,21 +942,25 @@ export function CampaignBuilder({ campaignId, campaignName }: CampaignBuilderPro
                                 </Card>
 
                                 <Card className="p-6 bg-blue-50/50 dark:bg-blue-900/10 border-blue-100 dark:border-blue-900/20">
-                                    <h4 className="font-bold mb-4 flex items-center gap-2"><Zap className="w-4 h-4 text-blue-500" /> {t("marketing.campaign_builder.engine_status")}</h4>
+                                    <h4 className="font-bold mb-4 flex items-center gap-2"><Zap className="w-4 h-4 text-blue-500" /> Configuración de envíos</h4>
                                     <div className="space-y-4">
                                         <div className="flex justify-between items-center text-sm">
                                             <span className="text-muted-foreground">{t("marketing.campaign_builder.speed")}</span>
                                             <Badge variant="outline" className="bg-white">{deliveryConfig.mode.toUpperCase()}</Badge>
                                         </div>
                                         <div className="flex justify-between items-center text-sm">
-                                            <span className="text-muted-foreground">{t("marketing.campaign_builder.humanization")}</span>
+                                            <span className="text-muted-foreground">Variación de espera</span>
                                             <span className={cn("text-xs font-medium", deliveryConfig.humanize ? "text-green-600" : "text-gray-500")}>
                                                 {deliveryConfig.humanize ? t("marketing.campaign_builder.activated") : t("marketing.campaign_builder.deactivated")}
                                             </span>
                                         </div>
                                         <div className="pt-4 border-t border-blue-200/50">
                                             <p className="text-xs text-blue-700 dark:text-blue-300 leading-relaxed">
-                                                {t("marketing.campaign_builder.engine_desc")}
+                                                {!executionEnabled ? 'El envío de campañas está deshabilitado en este entorno.'
+                                                    : campaignStatus === 'active' ? 'Campaña activa. La actividad registrada permite comprobar su avance; esta vista no confirma la disponibilidad del programador de envíos.'
+                                                    : campaignStatus === 'paused' ? 'La campaña está en pausa.'
+                                                    : campaignStatus === 'draft' ? 'El borrador todavía no tiene envíos programados.'
+                                                    : 'La campaña ya no está ejecutándose.'}
                                             </p>
                                         </div>
                                     </div>

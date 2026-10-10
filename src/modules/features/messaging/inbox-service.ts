@@ -6,6 +6,7 @@ import { normalizePhone } from "@/modules/infrastructure/utils/normalize-phone"
 import { ChannelResolver, ConnectionMatch } from "@/modules/features/messaging/channel-resolver"
 import { BusinessHoursEngine } from "@/modules/features/messaging/business-hours"
 import { MessagingPersistence } from "./services/persistence"
+import { processIncomingMarketingOptOut } from "../broadcasts/marketing-opt-out"
 import { LeadLifecycleManager } from "@/modules/features/crm/services/logic/lead-lifecycle-manager"
 
 function isDeployedRuntime() {
@@ -122,6 +123,7 @@ export class InboxService {
                 const leadId = (existingMsg.conversations as any)?.lead_id;
 
                 if (convId && leadId) {
+                    await processIncomingMarketingOptOut(msg, existingMsg.id, supabase)
                     // Duplicate detected: Do NOT trigger automation again.
                     // It's already running or completed for this message ID.
                     return { success: true, conversationId: convId }
@@ -177,6 +179,8 @@ export class InboxService {
             return null
         }
 
+
+        await processIncomingMarketingOptOut(msg, insertedMsg?.id, supabase)
 
         // 4. Trigger Automations (Welcome, Pipeline, AI)
         // Background triggers to avoid webhook timeouts

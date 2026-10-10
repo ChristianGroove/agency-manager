@@ -27,12 +27,16 @@ export async function POST(request: Request) {
             }
         }
 
+        // Privacy requests are processed even while marketing execution is disabled.
+        const optOuts = await supabaseAdmin.rpc('process_marketing_opt_out_requests', { p_limit: 5 })
+        const failedMarketingOptOuts = optOuts.error ? 1 : (optOuts.data?.failed || 0)
+        const processedMarketingOptOuts = optOuts.data?.processed || 0
         const outbound = await recoverMetaOutbound()
         const expiry = await supabaseAdmin.rpc('expire_meta_coexistence_onboarding')
         if (expiry.error) throw new Error('Could not expire overdue coexistence onboarding')
 
-        const failed = failedWebhooks + outbound.failed
-        return NextResponse.json({ processedWebhooks, failedWebhooks,
+        const failed = failedWebhooks + outbound.failed + failedMarketingOptOuts
+        return NextResponse.json({ processedWebhooks, failedWebhooks, processedMarketingOptOuts, failedMarketingOptOuts,
             examinedQueued: outbound.examinedQueued, examinedStale: outbound.examinedStale,
             failedOutbound: outbound.failed, expiredOnboarding: expiry.data || 0,
         }, { status: failed ? 500 : 200 })

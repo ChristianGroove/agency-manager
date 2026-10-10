@@ -179,4 +179,75 @@ INSERT INTO public.leads(id,organization_id,name,phone) VALUES('06000000-0000-40
 SELECT public.revoke_marketing_contact('01000000-0000-4000-8000-000000000001','06000000-0000-4000-8000-000000000002',current_setting('marketing.test_user')::uuid);
 SELECT pg_temp.assert_true((SELECT marketing_opted_out FROM public.leads WHERE id='06000000-0000-4000-8000-000000000002'),'malformed phone does not prevent opt-out');
 SELECT pg_temp.assert_true(EXISTS(SELECT 1 FROM public.marketing_consent_events WHERE contact_id='06000000-0000-4000-8000-000000000002' AND event='revoked'),'malformed-phone opt-out retains evidence');
+-- Stage 4: durable opt-out requests block marketing immediately, independently of Inbox processing.
+SELECT pg_temp.assert_true(public.marketing_opt_out_rule(NULL,'  ¡No quiero recibir más promociones!  ')='explicit_text','clear Spanish opt-out');
+SELECT pg_temp.assert_true(public.marketing_opt_out_rule('BAJA_PROMOCIONES','Otro texto')='button','dedicated button payload');
+SELECT pg_temp.assert_true(public.marketing_opt_out_rule(NULL,'no') IS NULL AND public.marketing_opt_out_rule(NULL,'cancelar pedido') IS NULL,'ordinary replies are not opt-outs');
+INSERT INTO public.leads(id,organization_id,name,phone,marketing_opted_out) VALUES
+ ('06000000-0000-4000-8000-000000000003','01000000-0000-4000-8000-000000000001','Incoming opt-out fixture','573006705958',false),
+ ('06000000-0000-4000-8000-000000000004','01000000-0000-4000-8000-000000000002','Foreign opt-out fixture','573006705958',false);
+SELECT set_config('marketing.test_optout_conversation',public.marketing_get_conversation('01000000-0000-4000-8000-000000000001','06000000-0000-4000-8000-000000000003','03000000-0000-4000-8000-000000000001','573006705958')::text,true);
+INSERT INTO public.messages(organization_id,conversation_id,channel,direction,status,content,external_id,metadata) VALUES
+ ('01000000-0000-4000-8000-000000000001',current_setting('marketing.test_optout_conversation')::uuid,'whatsapp','inbound','received','{"type":"text","text":"no"}','wamid.stage4.normal','{"from":"573006705958"}'),
+ ('01000000-0000-4000-8000-000000000001',current_setting('marketing.test_optout_conversation')::uuid,'whatsapp','inbound','received','{"type":"text","text":"STOP"}','wamid.stage4.history','{"from":"573006705958","metadata":{"historical":true}}'),
+ ('01000000-0000-4000-8000-000000000001',current_setting('marketing.test_optout_conversation')::uuid,'whatsapp','outbound','sent','{"type":"text","text":"STOP"}','wamid.stage4.echo','{"from":"573006705958","origin":"outbound","is_echo":true}');
+SELECT pg_temp.assert_true(NOT EXISTS(SELECT 1 FROM public.marketing_opt_out_receipts WHERE organization_id='01000000-0000-4000-8000-000000000001'),'normal, historical and echo messages do not revoke');
+SELECT public.record_marketing_consent('01000000-0000-4000-8000-000000000001','573006705958','granted','fixture','Explicit fixture consent',now(),NULL);
+SELECT pg_temp.assert_true(public.marketing_recipient_allowed('01000000-0000-4000-8000-000000000001','573006705958'),'recipient is allowed before requesting a withdrawal');
+CREATE FUNCTION pg_temp.reject_optout_event() RETURNS trigger LANGUAGE plpgsql AS $q$
+BEGIN IF NEW.source='whatsapp_inbound' THEN RAISE EXCEPTION 'Synthetic opt-out failure'; END IF; RETURN NEW; END $q$;
+CREATE TRIGGER marketing_optout_failure_test BEFORE INSERT ON public.marketing_consent_events FOR EACH ROW EXECUTE FUNCTION pg_temp.reject_optout_event();
+INSERT INTO public.messages(organization_id,conversation_id,channel,direction,status,content,external_id,metadata) VALUES('01000000-0000-4000-8000-000000000001',current_setting('marketing.test_optout_conversation')::uuid,'whatsapp','inbound','received','{"type":"text","text":"STOP"}','wamid.stage4.retry','{"from":"573006705958"}');
+SELECT pg_temp.assert_true(NOT public.marketing_recipient_allowed('01000000-0000-4000-8000-000000000001','573006705958'),'pending opt-out blocks marketing immediately');
+SELECT pg_temp.assert_true((public.process_marketing_opt_out_requests(5)->>'failed')::int=1,'failed preference update is reported for retry');
+SELECT pg_temp.assert_true(EXISTS(SELECT 1 FROM public.messages WHERE external_id='wamid.stage4.retry' AND status='received'),'preference failure preserves Inbox reception');
+SELECT pg_temp.assert_true(EXISTS(SELECT 1 FROM public.marketing_opt_out_receipts WHERE recipient='573006705958' AND processed_at IS NULL AND attempts=1 AND retry_at>clock_timestamp()),'failed request remains durable with a delayed retry');
+SELECT pg_temp.assert_true((SELECT NOT marketing_opted_out FROM public.leads WHERE id='06000000-0000-4000-8000-000000000003'),'failed update does not leave a partial revocation');
+SELECT pg_temp.assert_true(NOT public.marketing_recipient_allowed('01000000-0000-4000-8000-000000000001','573006705958'),'failed processing still blocks future marketing');
+DELETE FROM public.messages WHERE external_id='wamid.stage4.retry';
+SELECT pg_temp.assert_true(EXISTS(SELECT 1 FROM public.marketing_opt_out_receipts WHERE recipient='573006705958' AND processed_at IS NULL),'deleting Inbox history preserves the pending withdrawal');
+SELECT pg_temp.assert_true(NOT public.marketing_recipient_allowed('01000000-0000-4000-8000-000000000001','573006705958'),'history deletion cannot restore consent');
+DROP TRIGGER marketing_optout_failure_test ON public.marketing_consent_events;
+SELECT set_config('request.jwt.claims',json_build_object('role','authenticated','sub',current_setting('marketing.test_user'))::text,true);
+INSERT INTO public.messages(organization_id,conversation_id,channel,direction,status,content,external_id,metadata) VALUES('01000000-0000-4000-8000-000000000001',current_setting('marketing.test_optout_conversation')::uuid,'whatsapp','inbound','received','{"type":"text","text":"STOP"}','wamid.stage4.untrusted','{"from":"573006705958"}');
+SELECT pg_temp.assert_true((SELECT NOT marketing_opted_out FROM public.leads WHERE id='06000000-0000-4000-8000-000000000003'),'client-crafted incoming records cannot forge a marketing revocation');
+SET LOCAL request.jwt.claims='{"role":"service_role"}';
+INSERT INTO public.messages(organization_id,conversation_id,channel,direction,status,content,external_id,metadata) VALUES('01000000-0000-4000-8000-000000000001',current_setting('marketing.test_optout_conversation')::uuid,'whatsapp','inbound','received','{"type":"text","text":"Dejar de recibir"}','wamid.stage4.live','{"from":"573006705958","buttonId":"BAJA_PROMOCIONES"}');
+SELECT pg_temp.assert_true((public.process_marketing_opt_out_requests(1,(SELECT id FROM public.messages WHERE external_id='wamid.stage4.live'))->>'processed')::int=1,'post-persist processing handles the dedicated button');
+UPDATE public.marketing_opt_out_receipts SET retry_at=clock_timestamp() WHERE recipient='573006705958' AND processed_at IS NULL;
+SELECT pg_temp.assert_true((public.process_marketing_opt_out_requests(5)->>'processed')::int=1,'maintenance processes the previous failed request');
+SELECT pg_temp.assert_true((public.process_marketing_opt_out_requests(5)->>'processed')::int=0,'processed requests are idempotent');
+SELECT pg_temp.assert_true((SELECT marketing_opted_out FROM public.leads WHERE id='06000000-0000-4000-8000-000000000003'),'live button revokes the sender');
+SELECT pg_temp.assert_true((SELECT NOT marketing_opted_out FROM public.leads WHERE id='06000000-0000-4000-8000-000000000004'),'same phone in another tenant is unchanged');
+SELECT pg_temp.assert_true((SELECT count(*)=2 FROM public.marketing_opt_out_receipts WHERE recipient='573006705958'),'one audit receipt per distinct live request');
+SELECT pg_temp.assert_true(EXISTS(SELECT 1 FROM public.messages WHERE external_id='wamid.stage4.live' AND status='received'),'incoming opt-out remains an ordinary received Inbox message');
+SELECT pg_temp.expect_error($q$INSERT INTO public.messages(organization_id,conversation_id,channel,direction,status,content,external_id,metadata) VALUES('01000000-0000-4000-8000-000000000001',current_setting('marketing.test_optout_conversation')::uuid,'whatsapp','inbound','received','{"type":"text","text":"STOP"}','wamid.stage4.live','{"from":"573006705958"}')$q$,'duplicate key');
+SELECT pg_temp.assert_true((SELECT count(*)=2 FROM public.marketing_opt_out_receipts WHERE recipient='573006705958'),'duplicate webhook cannot duplicate consent evidence');
+
+-- Campaign completion is processing completion; unsettled outcomes remain open.
+SELECT pg_temp.assert_true(public.finalize_marketing_campaigns(25)=0,'sending operations prevent campaign closure');
+UPDATE public.meta_outbound_outbox SET status='unknown' WHERE id=current_setting('marketing.test_outbox')::uuid;
+SELECT pg_temp.assert_true(public.finalize_marketing_campaigns(25)=0,'unknown results prevent false completion');
+SELECT pg_temp.assert_true((public.read_marketing_campaign_metrics('01000000-0000-4000-8000-000000000001','02000000-0000-4000-8000-000000000003')->'delivery'->>'unknown')::int=1,'unknown outcome visible in campaign metrics');
+INSERT INTO public.messages(id,organization_id,conversation_id,channel,direction,status,content,external_id) VALUES('0a000000-0000-4000-8000-000000000001','01000000-0000-4000-8000-000000000001',current_setting('marketing.test_conversation')::uuid,'whatsapp','outbound','delivered','{"type":"text","text":"Synthetic receipt"}','wamid.stage4.receipt');
+UPDATE public.meta_outbound_outbox SET status='accepted',external_id='wamid.stage4.receipt',message_id='0a000000-0000-4000-8000-000000000001' WHERE id=current_setting('marketing.test_outbox')::uuid;
+SELECT pg_temp.assert_true((public.read_marketing_campaign_metrics('01000000-0000-4000-8000-000000000001','02000000-0000-4000-8000-000000000003')->'delivery'->>'accepted')::int=1,'acceptance is counted per campaign');
+SELECT pg_temp.assert_true((public.read_marketing_campaign_metrics('01000000-0000-4000-8000-000000000001','02000000-0000-4000-8000-000000000003')->'delivery'->>'delivered')::int=1,'delivered receipt is counted');
+UPDATE public.messages SET status='read' WHERE id='0a000000-0000-4000-8000-000000000001';
+SELECT pg_temp.assert_true((public.read_marketing_campaign_metrics('01000000-0000-4000-8000-000000000001','02000000-0000-4000-8000-000000000003')->'delivery'->>'read')::int=1,'read receipt is separate');
+UPDATE public.messages SET status='failed' WHERE id='0a000000-0000-4000-8000-000000000001';
+SELECT pg_temp.assert_true((public.read_marketing_campaign_metrics('01000000-0000-4000-8000-000000000001','02000000-0000-4000-8000-000000000003')->'delivery'->>'failed')::int=1,'provider failure after acceptance remains visible');
+SELECT pg_temp.assert_true(public.finalize_marketing_campaigns(25)=1,'resolved terminal campaign closes');
+SELECT pg_temp.assert_true((SELECT status='completed' FROM public.marketing_campaigns WHERE id='02000000-0000-4000-8000-000000000003'),'processing terminal state saved');
+SELECT pg_temp.assert_true((SELECT status='paused' FROM public.marketing_campaigns WHERE id='02000000-0000-4000-8000-000000000001'),'sweep preserves a user pause');
+SELECT pg_temp.assert_true(public.finalize_marketing_campaigns(25)=0,'repeated finalization is idempotent');
+SELECT pg_temp.expect_error($q$SELECT public.read_marketing_campaign_metrics('01000000-0000-4000-8000-000000000002','02000000-0000-4000-8000-000000000003')$q$,'Campaign not found');
+SELECT set_config('request.jwt.claims',json_build_object('role','authenticated','sub',current_setting('marketing.test_user'))::text,true);
+SET LOCAL ROLE authenticated;
+SELECT pg_temp.assert_true((public.read_marketing_campaign_metrics('01000000-0000-4000-8000-000000000001','02000000-0000-4000-8000-000000000003')->'stats'->>'total')::int=1,'member can read campaign metrics in their tenant');
+SELECT pg_temp.expect_error($q$SELECT public.read_marketing_campaign_metrics('01000000-0000-4000-8000-000000000002','02000000-0000-4000-8000-000000000002')$q$,'Marketing access denied');
+SELECT pg_temp.expect_error($q$SELECT public.process_marketing_opt_out_requests(5)$q$,'permission denied');
+SELECT pg_temp.expect_error($q$SELECT public.finalize_marketing_campaigns(25)$q$,'permission denied');
+SELECT pg_temp.assert_true((SELECT count(*)=2 FROM public.marketing_opt_out_receipts),'RLS exposes only this tenant withdrawal receipts');
+RESET ROLE;
 ROLLBACK;

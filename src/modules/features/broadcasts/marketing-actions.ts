@@ -1,5 +1,6 @@
 'use server'
 
+import type { CampaignMetrics } from './marketing-metrics'
 import { campaignDesignIssues } from './marketing-preflight'
 
 import { createClient } from '@/modules/core/database/supabase-server'
@@ -621,49 +622,12 @@ export async function getCampaignStats(campaignId: string) {
     try {
         const access = await requireMarketingAccess('view')
 
-        const supabase = await createClient()
-
-        // 1. Get Status Counts
-        // We can't use .count() with group by easily in Supabase JS without writing raw SQL or multiple queries.
-        // For now, simpler: multiple count queries or one fetch of 'status' column if not huge.
-        // Given potentially thousands, multiple count queries is safer.
-
-        const { count: total } = await supabase.from('marketing_enrollments').select('id', { count: 'exact', head: true }).eq('organization_id', access.organizationId).eq('campaign_id', campaignId)
-        const { count: active } = await supabase.from('marketing_enrollments').select('id', { count: 'exact', head: true }).eq('organization_id', access.organizationId).eq('campaign_id', campaignId).eq('status', 'active')
-        const { count: completed } = await supabase.from('marketing_enrollments').select('id', { count: 'exact', head: true }).eq('organization_id', access.organizationId).eq('campaign_id', campaignId).eq('status', 'completed')
-        const { count: failed } = await supabase.from('marketing_enrollments').select('id', { count: 'exact', head: true }).eq('organization_id', access.organizationId).eq('campaign_id', campaignId).eq('status', 'failed')
-
-        // 2. Get Recent Logs (from recent enrollments)
-        // Detailed global log table doesn't exist, logs are inside Enrollments.
-        // Fetch last 10 updated enrollments to show recent activity.
-        const { data: recent } = await supabase
-            .from('marketing_enrollments')
-            .select('id, status, last_run_at, execution_logs, lead:leads(phone, name)').eq('organization_id', access.organizationId)
-            .eq('campaign_id', campaignId)
-            .order('last_run_at', { ascending: false })
-            .limit(10)
-
-        // Unwind logs? Or just return recent enrollments as "Recent Activity"
-        const recentActivity = recent?.map(r => ({
-            id: r.id,
-            lead: r.lead,
-            status: r.status,
-            last_updated: r.last_run_at,
-            last_log: r.execution_logs && Array.isArray(r.execution_logs) && r.execution_logs.length > 0
-                ? r.execution_logs[r.execution_logs.length - 1]
-                : null
-        })) || []
-
-        return {
-            success: true,
-            stats: {
-                total: total || 0,
-                active: active || 0,
-                completed: completed || 0,
-                failed: failed || 0
-            },
-            recentActivity
-        }
+        z.string().uuid().parse(campaignId)
+        const result = await access.session.rpc('read_marketing_campaign_metrics', {
+            p_org: access.organizationId, p_campaign: campaignId,
+        })
+        if (result.error || !result.data) throw new Error('No se pudieron consultar los resultados de la campa\u00f1a.')
+        return { success: true as const, ...result.data as CampaignMetrics }
 
     } catch (error) { return { success: false as const, error: publicMarketingError(error) } }
 }

@@ -30,7 +30,9 @@ export async function runMarketingCycle() {
             failed++
         }
     }
-    return { success: true, processed, failed, deferred, logs: [] as string[] }
+    const finalized = await db.rpc('finalize_marketing_campaigns', { p_limit: 25 })
+    if (finalized.error) throw new Error('No se pudo verificar el cierre de campañas.')
+    return { success: true, processed, failed, deferred, finalized: finalized.data, logs: [] as string[] }
 }
 
 async function checkpoint(db: any, claim: any, data: Record<string, unknown>) {

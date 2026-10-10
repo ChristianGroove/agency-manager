@@ -3,6 +3,11 @@ import type { IncomingMessage } from './providers/types'
 
 const mocks = vi.hoisted(() => ({
     resolveConnection: vi.fn(),
+    incomingActivity: vi.fn(async () => undefined),
+}))
+
+vi.mock('@/modules/features/crm/services/logic/lead-lifecycle-manager', () => ({
+    LeadLifecycleManager: class { handleLeadIncomingActivity = mocks.incomingActivity },
 }))
 
 vi.mock('@/modules/features/messaging/channel-resolver', () => ({
@@ -68,6 +73,35 @@ afterEach(() => {
 })
 
 describe('InboxService', () => {
+    it('preserves reception and existing automations when post-persist opt-out processing fails', async () => {
+        vi.spyOn(console, 'warn').mockImplementation(() => undefined)
+        vi.spyOn(console, 'log').mockImplementation(() => undefined)
+        mocks.resolveConnection.mockResolvedValue({ connectionId: 'connection', organizationId: 'org', connection: {} })
+        const inserted = vi.fn()
+        const query: any = {
+            select: () => query, eq: () => query,
+            maybeSingle: async () => ({ data: null, error: null }),
+            insert: (row: any) => { inserted(row); return query },
+            single: async () => ({ data: { id: 'persisted-message' }, error: null }),
+        }
+        const rpc = vi.fn().mockRejectedValue(new Error('temporary preference failure'))
+        const { InboxService } = await import('./inbox-service')
+        const service = new InboxService()
+        vi.spyOn(service as any, 'resolveMetadataContext').mockResolvedValue({
+            conversation: { id: 'conversation' }, lead: { id: 'lead' }, isNewLead: false,
+        })
+        const connectionAutomation = vi.spyOn(service as any, 'handleConnectionAutomation').mockResolvedValue(undefined)
+        const workflowAutomation = vi.spyOn(service as any, 'triggerAutomation').mockResolvedValue(undefined)
+        const result = await service.handleIncomingMessage(incomingMessage({ content: { type: 'text', text: 'STOP' }, externalId: 'wamid.fixture' }),
+            { from: () => query, rpc } as any)
+        expect(result).toEqual({ success: true, conversationId: 'conversation' })
+        expect(inserted).toHaveBeenCalledWith(expect.objectContaining({ direction: 'inbound', status: 'received', content: { type: 'text', text: 'STOP' } }))
+        expect(rpc).toHaveBeenCalledWith('process_marketing_opt_out_requests', { p_limit: 1, p_message: 'persisted-message' })
+        expect(connectionAutomation).toHaveBeenCalledOnce()
+        expect(workflowAutomation).toHaveBeenCalledOnce()
+        expect(mocks.incomingActivity).toHaveBeenCalledWith('lead', 'org')
+    })
+
     it.each(['WhatsApp User', '573001234567', '', null])('enriches placeholder name %s within its tenant without changing lead status', async name => {
         const updates: any[] = []
         const filters: any[] = []

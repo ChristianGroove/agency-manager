@@ -47,4 +47,22 @@ describe('Meta maintenance cron', () => {
         expect(await response.json()).toMatchObject({ failedWebhooks: 1, examinedQueued: 1 })
         expect(mocks.recover).toHaveBeenCalledOnce()
     })
+
+    it('processes bounded opt-outs while marketing execution is disabled', async () => {
+        vi.stubEnv('MARKETING_EXECUTION_ENABLED', '')
+        mocks.rpc.mockImplementation(async name => ({ data: name === 'process_marketing_opt_out_requests'
+            ? { processed: 2, failed: 0 } : 0, error: null }))
+        const response = await POST(request())
+        expect(response.status).toBe(200)
+        expect(await response.json()).toMatchObject({ processedMarketingOptOuts: 2, failedMarketingOptOuts: 0 })
+        expect(mocks.rpc).toHaveBeenCalledWith('process_marketing_opt_out_requests', { p_limit: 5 })
+    })
+
+    it('reports an opt-out failure without skipping existing Meta maintenance', async () => {
+        mocks.rpc.mockImplementation(async name => ({ data: 0, error: name === 'process_marketing_opt_out_requests' ? { message: 'unavailable' } : null }))
+        const response = await POST(request())
+        expect(response.status).toBe(500)
+        expect(await response.json()).toMatchObject({ failedMarketingOptOuts: 1, examinedQueued: 1 })
+        expect(mocks.rpc).toHaveBeenCalledWith('expire_meta_coexistence_onboarding')
+    })
 })

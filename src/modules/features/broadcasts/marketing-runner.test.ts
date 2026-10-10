@@ -15,9 +15,14 @@ const enrollment={...claim,status:'active',recipient:'573006705958',
     step:{id:'step-a',sequence_id:'sequence-a',organization_id:'tenant-a',type:'whatsapp',order_index:0,content:{template_name:'welcome'}},
     lead:{id:'lead-a',organization_id:'tenant-a',phone:'573006705958',marketing_opted_out:false},
 }
-beforeEach(()=>{vi.resetAllMocks();vi.stubEnv('MARKETING_EXECUTION_ENABLED', 'true');mocks.rpc.mockResolvedValue({data:[claim],error:null})})
+beforeEach(()=>{vi.resetAllMocks();vi.stubEnv('MARKETING_EXECUTION_ENABLED', 'true');mocks.rpc.mockImplementation(async name => ({data:name==='claim_marketing_enrollments'?[claim]:0,error:null}))})
 afterEach(() => vi.unstubAllEnvs())
 describe('Marketing worker safety',()=>{
+    it('does not hide a failure of the bounded campaign finalization sweep', async () => {
+        mocks.rpc.mockResolvedValueOnce({ data: [], error: null }).mockResolvedValueOnce({ data: null, error: { message: 'unavailable' } })
+        await expect(runMarketingCycle()).rejects.toThrow('cierre')
+        expect(mocks.rpc).toHaveBeenLastCalledWith('finalize_marketing_campaigns', { p_limit: 25 })
+    })
     it('does not claim work when execution has not been enabled', async () => {
         vi.stubEnv('MARKETING_EXECUTION_ENABLED', '')
         expect(await runMarketingCycle()).toMatchObject({ disabled: true, processed: 0 })

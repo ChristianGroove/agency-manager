@@ -2,6 +2,8 @@
 
 Esta etapa está implementada en `codex/marketing-campaign-hardening`, después de las etapas 1 y 2. No activa campañas existentes ni habilita emisiones en producción.
 
+La [etapa 4](implementation-stage-4.md) completa posteriormente las bajas entrantes, las métricas agregadas y el cierre básico descritos aquí como pendientes. Los demás pendientes conservan su vigencia.
+
 ## Activación y reanudación
 
 La acción exige permisos de ejecución y acceso al número emisor. Consulta el diseño guardado con una lectura consistente, aplica las mismas validaciones de plantillas, variables, audiencia y horarios que la revisión, y entrega a la transacción la huella calculada por la base de datos. El navegador no puede aportar su propia aprobación de diseño ni suplantar al actor.
