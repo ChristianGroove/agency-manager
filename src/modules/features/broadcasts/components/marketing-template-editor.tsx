@@ -35,7 +35,7 @@ export function MarketingTemplateEditor({ connectionId, onConnectionChange, valu
         {onConnectionChange && <div className="space-y-2">
             <Label>Número emisor de WhatsApp</Label>
             <Select value={connectionId} disabled={disabled || loading} onValueChange={id => { onChange(null); onConnectionChange(id) }}>
-                <SelectTrigger aria-label="Número emisor de WhatsApp"><SelectValue placeholder="Selecciona el canal conectado" /></SelectTrigger>
+                <SelectTrigger className="h-10 rounded-xl bg-background" aria-label="Número emisor de WhatsApp"><SelectValue placeholder="Selecciona el canal conectado" /></SelectTrigger>
                 <SelectContent>{channels.map(channel => <SelectItem key={channel.id} value={channel.id}>{channel.name}</SelectItem>)}</SelectContent>
             </Select>
             {!loading && !error && !channels.length && <p className="text-sm text-muted-foreground">No hay números WhatsApp activos a los que tengas acceso.</p>}
@@ -48,7 +48,7 @@ export function MarketingTemplateEditor({ connectionId, onConnectionChange, valu
                 const selected = templates.find(item => item.id === id)
                 if (selected) onChange({ template_id: id, template_name: selected.name, template_language: selected.language, bindings: {} })
             }}>
-                <SelectTrigger aria-label="Plantilla de marketing"><SelectValue placeholder="Selecciona una plantilla aprobada de este número" /></SelectTrigger>
+                <SelectTrigger className="h-10 rounded-xl bg-background" aria-label="Plantilla de marketing"><SelectValue placeholder="Selecciona una plantilla aprobada de este número" /></SelectTrigger>
                 <SelectContent>{templates.map(item => <SelectItem key={item.id} value={item.id}>{item.name} · {item.language}</SelectItem>)}</SelectContent>
             </Select>
             {connectionId && !loading && !error && !templates.length && <p className="text-sm text-muted-foreground">No hay plantillas MARKETING aprobadas y sincronizadas para este número. Revísalas en Configuración → Plantillas.</p>}
@@ -58,13 +58,13 @@ export function MarketingTemplateEditor({ connectionId, onConnectionChange, valu
         {!!description?.fields.length && <p className="text-xs text-muted-foreground">Completa todas las variables. Puedes usar {'{{nombre}}'}, {'{{empresa}}'} y {'{{telefono}}'} para personalizar; la revisión señalará datos faltantes.</p>}
         {description?.fields.map(field => <div className="space-y-1" key={field.key}>
             <Label htmlFor={`binding-${field.key}`}>{field.label.replace('BODY', 'Mensaje').replace('HEADER', 'Encabezado')}</Label>
-            <Input disabled={disabled} id={`binding-${field.key}`} value={value?.bindings[field.key] || ''} placeholder={field.kind === 'media' ? 'https://…' : field.kind === 'payload' ? 'Ejemplo: BAJA_PROMOCIONES' : 'Valor o variable de contacto'}
+            <Input className="h-10 rounded-xl bg-background" disabled={disabled} id={`binding-${field.key}`} value={value?.bindings[field.key] || ''} placeholder={field.kind === 'media' ? 'https://…' : field.kind === 'payload' ? 'Ejemplo: BAJA_PROMOCIONES' : 'Valor o variable de contacto'}
                 onChange={event => { if (value) onChange({ ...value, bindings: { ...value.bindings, [field.key]: event.target.value } }) }} />
         </div>)}
-        {template && <div className="rounded-lg bg-green-50 dark:bg-green-950/30 p-3 text-sm whitespace-pre-wrap">
+        {template && <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4 text-sm leading-relaxed whitespace-pre-wrap">
             <p className="text-xs text-muted-foreground mb-2">Vista previa con contacto ficticio · no es un envío</p>
             {previewMarketingTemplate(template, value).map((part, index) => <div key={index} className="mb-2"><p className="text-xs text-muted-foreground">{part.label}</p><p>{part.text}</p></div>)}
-            {template.components.filter(component => component.type === 'BUTTONS').flatMap(component => component.buttons || []).map((button, index) => <p className="border rounded p-2 mt-1 text-center text-xs" key={index}>{button.text || 'Botón'}</p>)}
+            {template.components.filter(component => component.type === 'BUTTONS').flatMap(component => component.buttons || []).map((button, index) => <p className="border border-emerald-500/20 bg-background/70 rounded-lg p-2 mt-2 text-center text-xs" key={index}>{button.text || 'Botón'}</p>)}
         </div>}
     </div>
 }

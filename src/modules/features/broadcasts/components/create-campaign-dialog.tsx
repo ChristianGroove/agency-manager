@@ -14,7 +14,7 @@ export function CreateCampaignDialog({ onClose, onCreated }: { onClose: () => vo
         catch { setError('No se confirmó la creación. Actualiza la lista antes de volver a crearla.') }
         finally { saving.current = false; setBusy(false) }
     }
-    return <Dialog open onOpenChange={open => { if (!open && !busy) onClose() }}><DialogContent><DialogHeader><DialogTitle>Nueva campaña WhatsApp</DialogTitle><DialogDescription>Empezarás por los destinatarios. Crear este borrador no inscribe contactos ni envía mensajes.</DialogDescription></DialogHeader>
+    return <Dialog open onOpenChange={open => { if (!open && !busy) onClose() }}><DialogContent className="rounded-2xl border-border bg-card"><DialogHeader><DialogTitle>Nueva campaña masiva</DialogTitle><DialogDescription>Elige un nombre para empezar. WhatsApp está disponible; correo y SMS están pendientes de integración. Crear este borrador no inscribe contactos ni envía mensajes.</DialogDescription></DialogHeader>
         <form onSubmit={save} className="space-y-4"><Label htmlFor="new-campaign-name">Nombre</Label><Input id="new-campaign-name" autoFocus maxLength={160} value={name} disabled={busy} onChange={e => setName(e.target.value)} placeholder="Ej. Promoción de octubre" />{error && <p role="alert" className="text-sm text-red-600">{error}</p>}<div className="flex justify-end gap-2"><Button type="button" variant="outline" disabled={busy} onClick={onClose}>Cancelar</Button><Button disabled={busy || !name.trim()}>{busy ? 'Creando…' : 'Crear borrador'}</Button></div></form>
     </DialogContent></Dialog>
 }

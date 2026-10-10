@@ -1,6 +1,8 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type ReactNode } from 'react'
+import { CalendarClock, MessageSquare, Users, Megaphone, ShieldCheck, X, RefreshCw, Save, Send, ArrowUp, ArrowDown, Timer, Plus, Pencil, Trash2 } from 'lucide-react'
+import { CampaignPacing } from './campaign-pacing'
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
@@ -31,15 +33,28 @@ const defaultDelivery: DeliveryConfig = { mode: 'growth', humanize: true, timezo
 const localInput = (iso: string | null) => iso ? new Date(Date.parse(iso) - new Date(iso).getTimezoneOffset() * 60000).toISOString().slice(0, 16) : ''
 const emptyStep = { id: null as string | null, type: 'whatsapp', name: '', delay: '1', unit: 'days' }
 type CampaignStatus = 'draft' | 'active' | 'paused' | 'completed' | 'archived'
-type Stage = 'recipients' | 'message' | 'schedule' | 'review' | 'results'
+type Stage = 'configuration' | 'results'
+type EditorProps = {
+    campaignId: string; campaignName: string; onClose?: () => void;
+    onDirtyChange?: (dirty: boolean) => void; onBusyChange?: (busy: boolean) => void;
+}
+function CampaignSection({ title, icon, children, action }: { title: string; icon: ReactNode; children: ReactNode; action?: ReactNode }) {
+    return <section className="overflow-hidden rounded-xl border border-border/60 bg-background shadow-xs">
+        <div className="flex items-center justify-between gap-2 border-b border-border/50 bg-muted/20 px-4 py-3">
+            <h3 className="flex items-center gap-2 text-sm font-semibold">{icon}{title}</h3>{action}
+        </div>
+        <div className="space-y-3 p-4">{children}</div>
+    </section>
+}
 
-export function CampaignBuilder(props: { campaignId: string; campaignName: string }) {
+export function CampaignBuilder(props: EditorProps) {
     // A route change gets its own form and ignores outstanding requests from the previous campaign.
     return <CampaignEditor key={props.campaignId} {...props} />
 }
 
-function CampaignEditor({ campaignId, campaignName }: { campaignId: string; campaignName: string }) {
-    const [tab, setTab] = useState<Stage>('recipients')
+function CampaignEditor({ campaignId, campaignName, onClose, onDirtyChange, onBusyChange }: EditorProps) {
+    const [title, setTitle] = useState(campaignName)
+    const [tab, setTab] = useState<Stage>('configuration')
     const [loading, setLoading] = useState(true), [error, setError] = useState(''), [busy, setBusy] = useState(false)
     const [status, setStatus] = useState<CampaignStatus>('draft'), [executionEnabled, setExecutionEnabled] = useState(false)
     const [canManage, setCanManage] = useState(false), [canExecute, setCanExecute] = useState(false), [canImport, setCanImport] = useState(false)
@@ -61,6 +76,17 @@ function CampaignEditor({ campaignId, campaignName }: { campaignId: string; camp
     const configDirty = config !== savedConfig
     const editable = status === 'draft' && canManage && !loading && !busy && !error
 
+    const unsaved = !loading && status === 'draft' && !!savedConfig &&
+        (configDirty || JSON.stringify(filters) !== savedFilters)
+    useEffect(() => { onDirtyChange?.(unsaved) }, [unsaved, onDirtyChange])
+    useEffect(() => { onBusyChange?.(busy) }, [busy, onBusyChange])
+    useEffect(() => {
+        if (!unsaved) return
+        const warn = (event: BeforeUnloadEvent) => { event.preventDefault(); event.returnValue = '' }
+        window.addEventListener('beforeunload', warn)
+        return () => window.removeEventListener('beforeunload', warn)
+    }, [unsaved])
+
     useEffect(() => { mounted.current = true; void load(); return () => { mounted.current = false; request.current++ } }, [])
     async function load() {
         const epoch = ++request.current
@@ -75,6 +101,7 @@ function CampaignEditor({ campaignId, campaignName }: { campaignId: string; camp
                 throw new Error('No se pudo cargar toda la campaña. Reintenta antes de editar.')
             }
             const stored = campaign.campaign
+            if (stored.name) setTitle(stored.name)
             setStatus(stored.status); setExecutionEnabled(campaign.executionEnabled === true)
             if (stored.status !== 'draft') setTab('results')
             setCanManage(setup.canManage); setCanExecute(setup.canExecute); setCanImport(setup.canImport); setChannels(setup.channels)
@@ -126,22 +153,22 @@ function CampaignEditor({ campaignId, campaignName }: { campaignId: string; camp
         if (!mounted.current) return
         await refreshSteps(); toast.success('Orden guardado. Revisa la secuencia antes de activar.')
     }
-    async function saveEmitter() {
+    async function saveEmitter(notify = true) {
         if (!connectionId) throw new Error('Elige un número emisor.')
         const result = await updateCampaign(campaignId, { connection_id: connectionId })
         if (!result.success) throw new Error(result.error)
         if (!mounted.current) return
         setSavedConnection(connectionId)
         setSavedConfig(previous => JSON.stringify({ ...JSON.parse(previous), connectionId }))
-        setRevision(value => value + 1); toast.success('Emisor guardado. Revisa las plantillas si cambiaste de número.')
+        setRevision(value => value + 1); if (notify) toast.success('Emisor guardado. Revisa las plantillas si cambiaste de número.')
     }
-    async function saveRecipients() {
+    async function saveRecipients(notify = true) {
         const cleaned = { ...filters, tags: filters.tags?.map(value => value.trim()).filter(Boolean) }
         const result = await saveCampaignAudience(campaignId, cleaned)
         if (!result.success) throw new Error(result.error)
         if (!mounted.current) return
         setFilters(cleaned); setSavedFilters(JSON.stringify(cleaned)); setHasAudience(true); setRevision(value => value + 1)
-        toast.success('Destinatarios guardados. No se inscribió ni envió ningún mensaje.')
+        if (notify) toast.success('Destinatarios guardados. No se inscribió ni envió ningún mensaje.')
     }
     function openStep(type: string, existing?: MarketingStep) {
         if (!editable) return
@@ -166,7 +193,7 @@ function CampaignEditor({ campaignId, campaignName }: { campaignId: string; camp
         if (!mounted.current) return
         setStepOpen(false); await refreshSteps(); toast.success('Contenido guardado.')
     }
-    async function saveSchedule() {
+    async function saveSchedule(notify = true) {
         const iso = scheduledFor === savedSchedule.current.input ? savedSchedule.current.iso : scheduledFor ? new Date(scheduledFor).toISOString() : null
         if (scheduledFor !== savedSchedule.current.input && iso && Date.parse(iso) <= Date.now()) throw new Error('Elige una fecha futura o empieza al confirmar.')
         const result = await updateCampaign(campaignId, { delivery_config: delivery, scheduled_for: iso })
@@ -174,65 +201,150 @@ function CampaignEditor({ campaignId, campaignName }: { campaignId: string; camp
         if (!mounted.current) return
         savedSchedule.current = { input: scheduledFor, iso }
         setSavedConfig(previous => JSON.stringify({ ...JSON.parse(previous), scheduledFor, delivery }))
-        setRevision(value => value + 1); toast.success('Programación guardada.')
+        setRevision(value => value + 1); if (notify) toast.success('Programación guardada.')
+    }
+    async function saveConfiguration() {
+        // Scoped writes keep existing authorization and draft guards. A failed write
+        // remains dirty; partial saves cannot bypass the final activation review.
+        if (connectionId !== savedConnection) await saveEmitter(false)
+        if (audienceDirty) await saveRecipients(false)
+        const previous = JSON.parse(savedConfig)
+        if (scheduledFor !== previous.scheduledFor || JSON.stringify(delivery) !== JSON.stringify(previous.delivery)) await saveSchedule(false)
+        if (mounted.current) toast.success('Configuración guardada. Aún no se envían mensajes.')
     }
     const closeStep = () => { if (!busy) setStepOpen(false) }
-    return <div className="mx-auto max-w-5xl space-y-5 pb-12">
-        <div className="flex flex-wrap justify-between items-start gap-3"><div><Link href="/crm/marketing" className="text-xs text-muted-foreground hover:underline">← Campañas WhatsApp</Link><h2 className="text-xl font-semibold mt-1">{campaignName}</h2><Badge variant={status === 'active' ? 'default' : 'secondary'}>{campaignStateLabels[status]}</Badge></div>
-            <div className="flex gap-2">{canExecute && (status === 'active' || status === 'paused') && <Button disabled={busy || loading || !!error} variant="outline" onClick={() => status === 'paused' ? setActivationOpen(true) : void edit(async () => { const result = await updateCampaign(campaignId, { status: 'paused' }); if (!result.success) throw new Error(result.error); await refreshResults() })}>{status === 'active' ? 'Pausar campaña' : 'Revisar reanudación'}</Button>}
-                <Button variant="outline" disabled={busy || loading} onClick={() => { if (status !== 'draft' || !(audienceDirty || configDirty) || window.confirm('Hay cambios sin guardar. ¿Descartarlos y cargar el diseño guardado?')) void load() }}>Recargar diseño</Button></div>
-        </div>
-        {loading && <p role="status">Cargando campaña…</p>}{error && <p role="alert" className="text-sm text-red-600">{error} <button className="underline" onClick={() => void load()}>Reintentar</button></p>}
-        {!loading && status === 'draft' && <p className="text-sm text-muted-foreground">Un mensaje por defecto; puedes añadir seguimiento. Guardar no envía mensajes.{!executionEnabled && ' Los envíos masivos están deshabilitados en este entorno.'}</p>}
-        <Tabs value={tab} onValueChange={value => setTab(value as Stage)}>
-            <TabsList className="h-auto flex flex-wrap justify-start gap-1 bg-muted/50"><TabsTrigger value="recipients">1. Destinatarios</TabsTrigger><TabsTrigger value="message">2. Mensaje</TabsTrigger><TabsTrigger value="schedule">3. Programación</TabsTrigger><TabsTrigger value="review">4. Revisión</TabsTrigger><TabsTrigger value="results">Resultados</TabsTrigger></TabsList>
-            <TabsContent value="recipients" className="space-y-5 mt-5">
-                <section className="rounded-xl border bg-white dark:bg-zinc-900 p-5 space-y-3"><Label>Número emisor de WhatsApp</Label><Select value={connectionId} disabled={!editable} onValueChange={setConnectionId}><SelectTrigger aria-label="Número emisor de campaña"><SelectValue placeholder="Selecciona un canal conectado" /></SelectTrigger><SelectContent>{channels.map(channel => <SelectItem key={channel.id} value={channel.id}>{channel.name}</SelectItem>)}</SelectContent></Select>
-                    {!channels.length && !loading && <p className="text-sm text-muted-foreground">No hay números activos disponibles. Revisa <Link href="/crm/settings/channels" className="underline">Canales</Link>.</p>}
-                    {savedConnection && !channels.some(channel => channel.id === savedConnection) && <p role="alert" className="text-sm text-amber-700">El emisor guardado ya no está disponible. El diseño se conserva; revisa la conexión.</p>}
-                    <Button disabled={!editable || !connectionId || connectionId === savedConnection} variant="outline" onClick={() => void edit(saveEmitter)}>Guardar emisor</Button>
-                </section>
-                <section className="rounded-xl border bg-white dark:bg-zinc-900 p-5 space-y-4"><div className="flex flex-wrap justify-between items-center gap-2"><h3 className="font-semibold">Destinatarios del CRM</h3><Button variant="outline" disabled={!canImport || loading || busy || !!error} onClick={() => setImportOpen(true)}>Importar contactos con autorización</Button></div>
-                    <CampaignRecipientFilters value={filters} onChange={setFilters} disabled={!editable} refresh={revision} />
-                    <details className="rounded-lg border p-3" open={segmentsOpen} onToggle={event => setSegmentsOpen(event.currentTarget.open)}><summary className="cursor-pointer text-sm">Segmentos reutilizables · opcional</summary>{segmentsOpen && <CampaignSavedSegments disabled={!editable} filters={filters} onApply={setFilters} />}</details>
-                    <p className="text-xs text-muted-foreground">Los filtros adicionales de campañas existentes se conservan. Importar contactos no los inscribe ni cambia estos filtros.</p>
-                    <div className="flex justify-between gap-2"><Button disabled={!editable || !audienceDirty} onClick={() => void edit(saveRecipients)}>Guardar destinatarios</Button><Button variant="outline" onClick={() => setTab('message')}>Continuar a mensaje →</Button></div>
-                </section>
-            </TabsContent>
-            <TabsContent value="message" className="space-y-4 mt-5">
-                {sequences.length > 1 && <details className="rounded-lg border p-4"><summary className="cursor-pointer text-sm">Secuencias existentes · avanzado</summary><div className="space-y-3 pt-3"><p className="text-xs text-muted-foreground">Solo se ejecuta la secuencia principal. Las otras se conservan.</p><Select value={sequenceId} onValueChange={setSequenceId}><SelectTrigger aria-label="Secuencia existente"><SelectValue /></SelectTrigger><SelectContent>{sequences.map(item => <SelectItem key={item.id} value={item.id}>{item.name}{item.is_active ? ' · principal' : ''}</SelectItem>)}</SelectContent></Select>{sequence && !sequence.is_active && <Button disabled={!editable} variant="outline" onClick={() => void edit(async () => { const r = await setPrincipalSequence(campaignId, sequenceId); if (!r.success) throw new Error(r.error); await refreshSteps() })}>Usar como principal</Button>}</div></details>}
-                {sequence && !sequence.is_active && <p role="alert" className="text-sm text-amber-700">Estás viendo una secuencia que no se ejecutará. La revisión final usa la principal.</p>}
-                {!savedConnection || savedConnection !== connectionId ? <p role="alert" className="rounded-lg border p-4 text-sm">Selecciona y guarda el emisor en Destinatarios antes de configurar plantillas.</p> : <>
-                    {!steps.length && <div className="rounded-xl border p-8 text-center space-y-3"><h3 className="font-semibold">¿Qué mensaje recibirán?</h3><p className="text-sm text-muted-foreground">Selecciona una plantilla aprobada y completa sus variables.</p><Button disabled={!editable} onClick={() => openStep('whatsapp')}>Configurar mensaje</Button></div>}
-                    <ol className="space-y-3">{steps.map((item, index) => <li key={item.id} className="rounded-xl border bg-white dark:bg-zinc-900 p-4"><div className="flex flex-wrap justify-between gap-3"><div><h4 className="font-medium">{index + 1}. {item.type === 'delay' ? 'Esperar' : item.name}</h4><p className="text-sm text-muted-foreground mt-1">{item.type === 'delay' ? `${item.delay_config?.value ?? item.delay_config?.duration} ${({ minutes: 'minutos', hours: 'horas', days: 'días' } as Record<string, string>)[item.delay_config?.unit] || item.delay_config?.unit}` : item.content?.template_name || 'Plantilla pendiente de configurar'}</p></div><div className="flex flex-wrap gap-2">
-                        <Button disabled={!editable || index === 0} aria-label={`Subir paso ${index + 1}`} variant="ghost" size="sm" onClick={() => void edit(() => moveStep(index, -1))}>Subir</Button>
-                        <Button disabled={!editable || index === steps.length - 1} aria-label={`Bajar paso ${index + 1}`} variant="ghost" size="sm" onClick={() => void edit(() => moveStep(index, 1))}>Bajar</Button>
-                        <Button disabled={!editable} variant="outline" size="sm" onClick={() => openStep(item.type, item)}>Editar</Button><Button disabled={!editable} variant="ghost" size="sm" onClick={() => { if (window.confirm('¿Eliminar este paso del borrador?')) void edit(async () => { const r = await deleteStep(item.id); if (!r.success) throw new Error(r.error); await refreshSteps() }) }}>Eliminar</Button></div></div></li>)}</ol>
-                    {!!steps.length && <details open={followup || steps.length > 1} onToggle={event => setFollowup(event.currentTarget.open)} className="rounded-lg border p-4"><summary className="cursor-pointer font-medium">Añadir seguimiento opcional</summary><p className="text-xs text-muted-foreground mt-2">La secuencia es lineal. Añade una espera antes de un mensaje posterior si quieres separarlos en el tiempo.</p><div className="flex gap-2 mt-3"><Button disabled={!editable} variant="outline" onClick={() => openStep('delay')}>Añadir espera</Button><Button disabled={!editable} variant="outline" onClick={() => openStep('whatsapp')}>Añadir mensaje</Button></div></details>}
-                </>}
-                <div className="flex justify-between"><Button variant="outline" onClick={() => setTab('recipients')}>← Destinatarios</Button><Button variant="outline" onClick={() => setTab('schedule')}>Continuar a programación →</Button></div>
-            </TabsContent>
-            <TabsContent value="schedule" className="space-y-4 mt-5">
-                <section className="rounded-xl border bg-white dark:bg-zinc-900 p-5 space-y-4"><h3 className="font-semibold">Cuándo enviar</h3><p className="text-sm text-muted-foreground">Sin fecha, comienza después de la confirmación, dentro de la ventana permitida.</p>
-                    <Label htmlFor="campaign-date">Fecha de inicio · hora local del navegador</Label><Input id="campaign-date" type="datetime-local" disabled={!editable} value={scheduledFor} onChange={event => setScheduledFor(event.target.value)} />
-                    <Button disabled={!editable || !scheduledFor} variant="ghost" size="sm" onClick={() => setScheduledFor('')}>Empezar al confirmar</Button>
-                    <Label htmlFor="campaign-timezone">Zona horaria de la ventana</Label><Input id="campaign-timezone" disabled={!editable} value={delivery.timezone || 'America/Bogota'} onChange={event => setDelivery({ ...delivery, timezone: event.target.value })} />
-                    <label className="flex gap-2 text-sm"><input type="checkbox" disabled={!editable} checked={!!delivery.schedule_window} onChange={event => setDelivery({ ...delivery, schedule_window: event.target.checked ? { start: 9, end: 18 } : undefined })} />Limitar a una ventana diaria</label>
-                    {delivery.schedule_window && <div className="flex gap-3"><div><Label htmlFor="campaign-window-start">Desde · hora 0–23</Label><Input id="campaign-window-start" type="number" min={0} max={23} disabled={!editable} value={delivery.schedule_window.start} onChange={event => setDelivery({ ...delivery, schedule_window: { ...delivery.schedule_window!, start: Number(event.target.value) } })} /></div><div><Label htmlFor="campaign-window-end">Hasta · hora 1–24</Label><Input id="campaign-window-end" type="number" min={1} max={24} disabled={!editable} value={delivery.schedule_window.end} onChange={event => setDelivery({ ...delivery, schedule_window: { ...delivery.schedule_window!, end: Number(event.target.value) } })} /></div></div>}
-                    <details className="rounded-lg border p-3"><summary className="cursor-pointer text-sm">Ritmo de envío · avanzado</summary><div className="space-y-3 pt-3"><Label>Intervalo mínimo del mismo número</Label><Select value={delivery.mode} disabled={!editable} onValueChange={mode => setDelivery({ ...delivery, mode: mode as DeliveryConfig['mode'] })}><SelectTrigger aria-label="Intervalo de envío"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="stealth">180 segundos</SelectItem><SelectItem value="growth">30 segundos</SelectItem><SelectItem value="turbo">5 segundos · requiere capacidad validada</SelectItem></SelectContent></Select><label className="flex gap-2 text-sm"><input type="checkbox" disabled={!editable} checked={delivery.humanize} onChange={event => setDelivery({ ...delivery, humanize: event.target.checked })} />Añadir variación al intervalo</label><p className="text-xs text-muted-foreground">El ritmo se comparte entre campañas del número. No garantiza entrega ni evita restricciones de Meta. La salud y los permisos se validan antes de enviar.</p></div></details>
-                    <div className="flex justify-between"><Button disabled={!editable || !configDirty} onClick={() => void edit(saveSchedule)}>Guardar programación</Button><Button variant="outline" onClick={() => setTab('review')}>Continuar a revisión →</Button></div>
-                </section>
-            </TabsContent>
-            <TabsContent value="review" className="space-y-4 mt-5">
-                {(audienceDirty || configDirty) && status === 'draft' && <p role="alert" className="rounded-lg bg-amber-50 p-3 text-sm text-amber-900">Hay cambios sin guardar. Guarda destinatarios, emisor y programación antes de la revisión final.</p>}
-                <CampaignReadiness campaignId={campaignId} revision={revision} canExecute={canExecute} />
-                <Button disabled={!canExecute || busy || loading || !!error || !['draft', 'paused'].includes(status) || (status === 'draft' && (audienceDirty || configDirty))} onClick={() => setActivationOpen(true)}>{status === 'paused' ? 'Abrir revisión de reanudación' : 'Abrir revisión final'}</Button>
-            </TabsContent>
-            <TabsContent value="results" className="mt-5"><CampaignResults key={`${campaignId}:${metrics?.channelHealth?.holdAt || ''}`} campaignId={campaignId} connectionId={savedConnection} metrics={metrics} canExecute={canExecute} onRefresh={refreshResults} /></TabsContent>
+    return <div className="flex min-h-0 flex-1 flex-col">
+        <header className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-b border-border/60 bg-muted/20 px-5 py-4">
+            <div className="flex min-w-0 items-center gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 text-primary"><Megaphone className="h-5 w-5" /></div>
+                <div className="min-w-0">
+                    <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Campañas masivas · WhatsApp</p>
+                    <div className="mt-1 flex flex-wrap items-center gap-2">
+                        <h2 className="max-w-[450px] truncate text-base font-semibold tracking-tight">{title}</h2>
+                        <Badge variant="outline" className={status === 'active' ? 'border-emerald-500/25 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300' : 'bg-background text-xs'}>{campaignStateLabels[status]}</Badge>
+                    </div>
+                </div>
+            </div>
+            <div className="flex items-center gap-1.5">
+                {canExecute && (status === 'active' || status === 'paused') && <Button size="sm" disabled={busy || loading || !!error} variant="outline" onClick={() => status === 'paused' ? setActivationOpen(true) : void edit(async () => { const result = await updateCampaign(campaignId, { status: 'paused' }); if (!result.success) throw new Error(result.error); await refreshResults() })}>{status === 'active' ? 'Pausar campaña' : 'Revisar reanudación'}</Button>}
+                <Button size="icon" className="h-8 w-8 rounded-lg" aria-label="Recargar diseño" title="Recargar diseño" variant="ghost" disabled={busy || loading} onClick={() => { if (!unsaved || window.confirm('Hay cambios sin guardar. ¿Descartarlos y cargar el diseño guardado?')) void load() }}><RefreshCw className="h-4 w-4" /></Button>
+                {onClose ? <Button size="icon" className="h-8 w-8 rounded-lg" aria-label="Cerrar campaña" variant="ghost" disabled={busy} onClick={onClose}><X className="h-4 w-4" /></Button> : <Button size="sm" variant="outline" asChild><Link href="/crm/marketing">Campañas masivas</Link></Button>}
+            </div>
+        </header>
+        <Tabs value={tab} onValueChange={value => setTab(value as Stage)} className="flex min-h-0 flex-1 flex-col">
+            <div className="flex shrink-0 items-center justify-between border-b border-border/50 px-5 py-2">
+                <TabsList className="h-9 gap-1 rounded-xl bg-muted/50 p-1">
+                    <TabsTrigger value="configuration" className="gap-2 rounded-lg px-4 text-xs"><Pencil className="h-3.5 w-3.5" />Preparación</TabsTrigger>
+                    <TabsTrigger value="results" className="gap-2 rounded-lg px-4 text-xs"><MessageSquare className="h-3.5 w-3.5" />Actividad</TabsTrigger>
+                </TabsList>
+                <span className="text-[11px] text-muted-foreground">{loading ? 'Cargando datos…' : busy ? 'Guardando…' : unsaved ? 'Cambios sin guardar' : 'Diseño guardado'}</span>
+            </div>
+            <div className="min-h-0 flex-1 overflow-y-auto overscroll-contain bg-muted/10 p-4 sm:p-5">
+                {loading && <p role="status">Cargando campaña…</p>}
+                {error && <p role="alert" className="mb-4 rounded-xl border border-destructive/20 bg-destructive/5 p-3 text-sm text-destructive">{error} <button className="underline" onClick={() => void load()}>Reintentar</button></p>}
+                <TabsContent value="configuration" className="mt-0 space-y-4">
+                    {!loading && status === 'draft' && !executionEnabled && <p className="rounded-xl border border-amber-500/20 bg-amber-500/5 px-3 py-2 text-xs text-amber-800 dark:text-amber-200">Los envíos masivos están deshabilitados en este entorno. Puedes preparar y guardar el borrador.</p>}
+                    <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_320px]">
+                        <div className="min-w-0 space-y-4">
+                            <CampaignSection title="Canal y destinatarios" icon={<Users className="h-4 w-4 text-primary" />}
+                                action={<Button className="h-7 text-[11px]" size="sm" variant="ghost" disabled={!canImport || loading || busy || !!error} onClick={() => setImportOpen(true)}>Importar contactos</Button>}>
+                                <div className="space-y-2">
+                                    <Label>Número emisor de WhatsApp</Label>
+                                    <div className="flex items-center gap-2">
+                                        <Select value={connectionId} disabled={!editable} onValueChange={setConnectionId}>
+                                            <SelectTrigger aria-label="Número emisor de campaña" className="h-9 rounded-xl bg-background text-xs"><SelectValue placeholder="Selecciona un canal conectado" /></SelectTrigger>
+                                            <SelectContent>{channels.map(channel => <SelectItem key={channel.id} value={channel.id}>{channel.name}</SelectItem>)}</SelectContent>
+                                        </Select>
+                                        {connectionId !== savedConnection && <Button size="sm" disabled={!editable || !connectionId} variant="outline" onClick={() => void edit(() => saveEmitter())}>Guardar emisor</Button>}
+                                    </div>
+                                    {!channels.length && !loading && <p className="text-xs text-muted-foreground">No hay números activos disponibles. Revisa <Link href="/crm/settings/channels" className="underline">Canales</Link>.</p>}
+                                    {savedConnection && !channels.some(channel => channel.id === savedConnection) && <p role="alert" className="text-xs text-amber-700">El emisor guardado ya no está disponible. Revisa su conexión.</p>}
+                                </div>
+                                <CampaignRecipientFilters value={filters} onChange={setFilters} disabled={!editable} refresh={revision} />
+                                <details className="rounded-xl border border-border/60 bg-muted/20 p-3" open={segmentsOpen} onToggle={event => setSegmentsOpen(event.currentTarget.open)}>
+                                    <summary className="cursor-pointer text-xs font-medium">Usar o guardar un segmento · opcional</summary>
+                                    {segmentsOpen && <CampaignSavedSegments disabled={!editable} filters={filters} onApply={setFilters} />}
+                                </details>
+                            </CampaignSection>
+                            <CampaignSection title="Mensaje de la campaña" icon={<MessageSquare className="h-4 w-4 text-primary" />}>
+                                {sequences.length > 1 && <details className="rounded-xl border border-border/60 p-3">
+                                    <summary className="cursor-pointer text-xs">Secuencias existentes · avanzado</summary>
+                                    <div className="space-y-3 pt-3">
+                                        <p className="text-xs text-muted-foreground">Solo se ejecuta la secuencia principal. Las otras se conservan.</p>
+                                        <Select value={sequenceId} onValueChange={setSequenceId}><SelectTrigger aria-label="Secuencia existente"><SelectValue /></SelectTrigger><SelectContent>{sequences.map(item => <SelectItem key={item.id} value={item.id}>{item.name}{item.is_active ? ' · principal' : ''}</SelectItem>)}</SelectContent></Select>
+                                        {sequence && !sequence.is_active && <Button disabled={!editable} variant="outline" onClick={() => void edit(async () => { const r = await setPrincipalSequence(campaignId, sequenceId); if (!r.success) throw new Error(r.error); await refreshSteps() })}>Usar como principal</Button>}
+                                    </div>
+                                </details>}
+                                {sequence && !sequence.is_active && <p role="alert" className="text-xs text-amber-700">Esta secuencia no es la principal. La revisión final usa la principal.</p>}
+                                {!savedConnection || savedConnection !== connectionId ? <p role="alert" className="rounded-xl bg-muted/40 p-3 text-xs">Guarda el emisor para consultar sus plantillas aprobadas.</p> : <>
+                                    {!steps.length && <div className="flex flex-col items-center rounded-xl border border-dashed border-primary/25 bg-primary/[0.03] px-4 py-6 text-center">
+                                        <MessageSquare className="mb-3 h-7 w-7 text-primary/60" />
+                                        <h4 className="text-sm font-semibold">Tu mensaje empieza aquí</h4>
+                                        <p className="mb-4 mt-1 text-xs text-muted-foreground">Elige una plantilla aprobada y personaliza sus variables.</p>
+                                        <Button size="sm" disabled={!editable} onClick={() => openStep('whatsapp')}><Plus className="mr-2 h-3.5 w-3.5" />Configurar mensaje</Button>
+                                    </div>}
+                                    <ol className="space-y-2">{steps.map((item, index) => <li key={item.id} className="flex flex-wrap items-center gap-3 rounded-xl border border-border/60 bg-muted/20 p-3">
+                                        <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-background text-primary shadow-xs">{item.type === 'delay' ? <Timer className="h-4 w-4" /> : <MessageSquare className="h-4 w-4" />}</span>
+                                        <div className="min-w-0 flex-1">
+                                            <h4 className="text-xs font-semibold">{index + 1}. {item.type === 'delay' ? 'Esperar' : item.name}</h4>
+                                            <p className="mt-0.5 text-[11px] text-muted-foreground">{item.type === 'delay' ? `${item.delay_config?.value ?? item.delay_config?.duration} ${({ minutes: 'minutos', hours: 'horas', days: 'días' } as Record<string, string>)[item.delay_config?.unit] || item.delay_config?.unit}` : item.content?.template_name || 'Plantilla pendiente de configurar'}</p>
+                                        </div>
+                                        <div className="flex items-center gap-0.5">
+                                            <Button disabled={!editable || index === 0} aria-label={`Subir paso ${index + 1}`} title="Subir" variant="ghost" size="icon" className="h-7 w-7" onClick={() => void edit(() => moveStep(index, -1))}><ArrowUp className="h-3.5 w-3.5" /></Button>
+                                            <Button disabled={!editable || index === steps.length - 1} aria-label={`Bajar paso ${index + 1}`} title="Bajar" variant="ghost" size="icon" className="h-7 w-7" onClick={() => void edit(() => moveStep(index, 1))}><ArrowDown className="h-3.5 w-3.5" /></Button>
+                                            <Button disabled={!editable} aria-label="Editar" title="Editar" variant="ghost" size="icon" className="h-7 w-7" onClick={() => openStep(item.type, item)}><Pencil className="h-3.5 w-3.5" /></Button>
+                                            <Button disabled={!editable} aria-label="Eliminar paso" title="Eliminar paso" variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive" onClick={() => { if (window.confirm('¿Eliminar este paso del borrador?')) void edit(async () => { const r = await deleteStep(item.id); if (!r.success) throw new Error(r.error); await refreshSteps() }) }}><Trash2 className="h-3.5 w-3.5" /></Button>
+                                        </div>
+                                    </li>)}</ol>
+                                    {!!steps.length && <details open={followup} onToggle={event => setFollowup(event.currentTarget.open)} className="pt-1">
+                                        <summary className="cursor-pointer text-xs text-muted-foreground">Añadir seguimiento · opcional</summary>
+                                        <p className="mt-2 text-[11px] text-muted-foreground">Añade una espera antes del siguiente mensaje para separarlos en el tiempo.</p>
+                                        <div className="mt-2 flex gap-2"><Button size="sm" disabled={!editable} variant="outline" onClick={() => openStep('delay')}>Añadir espera</Button><Button size="sm" disabled={!editable} variant="outline" onClick={() => openStep('whatsapp')}>Añadir mensaje</Button></div>
+                                    </details>}
+                                </>}
+                            </CampaignSection>
+                        </div>
+                        <aside className="space-y-4">
+                            <CampaignSection title="Inicio y horario" icon={<CalendarClock className="h-4 w-4 text-primary" />}>
+                                <div className="space-y-2">
+                                    <Label htmlFor="campaign-date">Fecha de inicio · hora local del navegador</Label>
+                                    <Input id="campaign-date" className="h-9 rounded-xl text-xs" type="datetime-local" disabled={!editable} value={scheduledFor} onChange={event => setScheduledFor(event.target.value)} />
+                                    {scheduledFor ? <Button disabled={!editable} variant="ghost" size="sm" className="h-6 px-0 text-[11px]" onClick={() => setScheduledFor('')}>Empezar al confirmar</Button> : <p className="text-[11px] text-muted-foreground">Al confirmar, dentro del horario permitido.</p>}
+                                </div>
+                                <label className="flex gap-2 text-xs"><input type="checkbox" disabled={!editable} checked={!!delivery.schedule_window} onChange={event => setDelivery({ ...delivery, schedule_window: event.target.checked ? { start: 9, end: 18 } : undefined })} />Limitar a una ventana diaria</label>
+                                {delivery.schedule_window && <div className="grid grid-cols-2 gap-2">
+                                    <div className="space-y-1"><Label htmlFor="campaign-window-start">Desde · hora 0–23</Label><Input className="h-9 rounded-xl" id="campaign-window-start" type="number" min={0} max={23} disabled={!editable} value={delivery.schedule_window.start} onChange={event => setDelivery({ ...delivery, schedule_window: { ...delivery.schedule_window!, start: Number(event.target.value) } })} /></div>
+                                    <div className="space-y-1"><Label htmlFor="campaign-window-end">Hasta · hora 1–24</Label><Input className="h-9 rounded-xl" id="campaign-window-end" type="number" min={1} max={24} disabled={!editable} value={delivery.schedule_window.end} onChange={event => setDelivery({ ...delivery, schedule_window: { ...delivery.schedule_window!, end: Number(event.target.value) } })} /></div>
+                                </div>}
+                                <div className="space-y-1"><Label htmlFor="campaign-timezone">Zona horaria de la ventana</Label><Input className="h-9 rounded-xl text-xs" id="campaign-timezone" disabled={!editable} value={delivery.timezone || 'America/Bogota'} onChange={event => setDelivery({ ...delivery, timezone: event.target.value })} /></div>
+                            </CampaignSection>
+                            <CampaignSection title="Ritmo de envío" icon={<Send className="h-4 w-4 text-primary" />}>
+                                <CampaignPacing value={delivery} disabled={!editable} onChange={setDelivery} />
+                            </CampaignSection>
+                            <div className="flex gap-2 rounded-xl border border-primary/15 bg-primary/5 p-3 text-xs leading-relaxed text-muted-foreground">
+                                <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
+                                <p>Guardar no envía. Antes de activar se revisan autorización, bajas, plantilla y disponibilidad del canal.</p>
+                            </div>
+                        </aside>
+                    </div>
+                    <details className="rounded-xl border border-border/60 bg-background">
+                        <summary className="cursor-pointer px-4 py-3 text-xs font-medium">Autorizaciones y revisión previa · herramientas</summary>
+                        <div className="border-t border-border/50 p-3"><CampaignReadiness campaignId={campaignId} revision={revision} canExecute={canExecute} /></div>
+                    </details>
+                </TabsContent>
+                <TabsContent value="results" className="mt-0"><CampaignResults key={`${campaignId}:${metrics?.channelHealth?.holdAt || ''}`} campaignId={campaignId} connectionId={savedConnection} metrics={metrics} canExecute={canExecute} onRefresh={refreshResults} /></TabsContent>
+            </div>
         </Tabs>
+        <footer className="flex shrink-0 flex-wrap items-center justify-between gap-3 border-t border-border/60 bg-card px-5 py-3">
+            <p className="text-[11px] text-muted-foreground">{status === 'draft' ? 'El contenido se guarda al editarlo. La configuración se guarda aquí.' : 'El diseño está protegido durante y después de la ejecución.'}</p>
+            <div className="flex items-center gap-2">
+                {status === 'draft' && <Button size="sm" className="rounded-lg" variant="outline" disabled={!editable || !(audienceDirty || configDirty)} onClick={() => void edit(saveConfiguration)}><Save className="mr-2 h-3.5 w-3.5" />Guardar configuración</Button>}
+                {['draft', 'paused'].includes(status) && <Button size="sm" className="rounded-lg" disabled={!canExecute || busy || loading || !!error || (status === 'draft' && (audienceDirty || configDirty))} onClick={() => setActivationOpen(true)}><ShieldCheck className="mr-2 h-3.5 w-3.5" />{status === 'paused' ? 'Abrir revisión de reanudación' : 'Abrir revisión final'}</Button>}
+            </div>
+        </footer>
         {importOpen && <CampaignImport onClose={() => { setImportOpen(false); setRevision(value => value + 1) }} />}
         {activationOpen && <CampaignActivationReview key={`${campaignId}:${revision}`} campaignId={campaignId} onClose={() => setActivationOpen(false)} onActivated={() => { setActivationOpen(false); setTab('results'); void refreshResults() }} />}
-        <Dialog open={stepOpen} onOpenChange={open => { if (!open) closeStep() }}><DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto"><DialogHeader><DialogTitle>{step.type === 'delay' ? 'Espera entre mensajes' : 'Configurar mensaje'}</DialogTitle><DialogDescription>Se guarda en el borrador. La revisión final valida nuevamente su disponibilidad y las variables.</DialogDescription></DialogHeader>
+        <Dialog open={stepOpen} onOpenChange={open => { if (!open) closeStep() }}><DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl border-border bg-card"><DialogHeader><DialogTitle>{step.type === 'delay' ? 'Espera entre mensajes' : 'Configurar mensaje'}</DialogTitle><DialogDescription>Se guarda en el borrador. La revisión final valida nuevamente su disponibilidad y las variables.</DialogDescription></DialogHeader>
             <fieldset disabled={busy} className="space-y-4">{step.type === 'delay' ? <><Label htmlFor="step-delay">Tiempo de espera</Label><Input id="step-delay" type="number" min={1} max={365} value={step.delay} onChange={event => setStep({ ...step, delay: event.target.value })} /><Select disabled={busy} value={step.unit} onValueChange={unit => setStep({ ...step, unit })}><SelectTrigger aria-label="Unidad de espera"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="minutes">Minutos</SelectItem><SelectItem value="hours">Horas</SelectItem><SelectItem value="days">Días</SelectItem></SelectContent></Select></> : <MarketingTemplateEditor disabled={busy} connectionId={savedConnection} value={template} onChange={setTemplate} />}
                 <details><summary className="cursor-pointer text-sm">Nombre interno · opcional</summary><Label htmlFor="step-name">Nombre</Label><Input id="step-name" maxLength={160} value={step.name} onChange={event => setStep({ ...step, name: event.target.value })} /></details>
             </fieldset><div className="flex justify-end gap-2"><Button variant="outline" disabled={busy} onClick={closeStep}>Cancelar</Button><Button disabled={!editable || (step.type === 'whatsapp' && !template)} onClick={() => void edit(saveStep)}>{busy ? 'Guardando…' : 'Guardar contenido'}</Button></div>

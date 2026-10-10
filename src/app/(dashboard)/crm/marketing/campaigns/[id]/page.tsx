@@ -1,4 +1,4 @@
-import { CampaignBuilder } from "@/modules/features/broadcasts/components/campaign-builder"
+import { MarketingDashboard } from "@/modules/features/broadcasts/components/marketing-dashboard"
 import { getCampaign } from "@/modules/features/broadcasts/marketing-actions"
 import { notFound } from "next/navigation"
 
@@ -12,6 +12,6 @@ export default async function CampaignBuilderPage({ params }: { params: Promise<
     }
 
     return (
-        <CampaignBuilder campaignId={id} campaignName={campaign.name} />
+        <MarketingDashboard initialCampaign={{ id, name: campaign.name }} />
     )
 }
