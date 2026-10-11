@@ -9,6 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Checkbox } from "@/components/ui/checkbox"
 import { Loader2, Shield, CreditCard, Variable } from "lucide-react"
 import { toast } from "sonner"
+import { resendOrganizationActivation } from '../actions/activation'
 import { getTenantConfig, updateOrganizationConfig } from "@/modules/core/organizations/admin-actions"
 
 interface TenantConfigurationSheetProps {
@@ -30,6 +31,7 @@ const KNOWN_CAPABILITIES = [
 export function TenantConfigurationSheet({ open, onOpenChange, organizationId, organizationName }: TenantConfigurationSheetProps) {
     const [loading, setLoading] = useState(false)
     const [saving, setSaving] = useState(false)
+    const [sendingActivation, setSendingActivation] = useState(false)
 
     // State
     const [allowDirectBilling, setAllowDirectBilling] = useState(false)
@@ -63,6 +65,17 @@ export function TenantConfigurationSheet({ open, onOpenChange, organizationId, o
         }))
     }
 
+    const handleResendActivation = async () => {
+        setSendingActivation(true)
+        try {
+            const result = await resendOrganizationActivation(organizationId)
+            if (result.success) toast.success('Enlace de activación enviado al propietario')
+            else toast.error(result.error || 'No se pudo reenviar la activación')
+        } catch {
+            toast.error('No se pudo conectar para reenviar la activación. Intenta de nuevo.')
+        } finally { setSendingActivation(false) }
+    }
+
     const handleSave = async () => {
         setSaving(true)
         try {
@@ -93,6 +106,9 @@ export function TenantConfigurationSheet({ open, onOpenChange, organizationId, o
                         Ajustes avanzados para {organizationName}
                     </SheetDescription>
                 </SheetHeader>
+                <Button variant="outline" onClick={handleResendActivation} disabled={sendingActivation} className="mt-4">
+                    {sendingActivation ? 'Enviando...' : 'Reenviar activación al propietario'}
+                </Button>
 
                 {loading ? (
                     <div className="flex justify-center p-12">

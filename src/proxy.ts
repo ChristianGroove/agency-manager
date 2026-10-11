@@ -1,6 +1,5 @@
-import { createServerClient, type CookieOptions } from '@supabase/ssr'
+import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
-import { createClient } from '@supabase/supabase-js'
 
 import { checkRateLimit, checkPortalRateLimit } from '@/modules/core/security/rate-limit'
 import { applySecurityHeaders } from '@/modules/core/security/headers'
@@ -80,50 +79,28 @@ export async function proxy(request: NextRequest) {
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
         {
             cookies: {
-                get(name: string) {
-                    return request.cookies.get(name)?.value
+                getAll() {
+                    return request.cookies.getAll()
                 },
-                set(name: string, value: string, options: CookieOptions) {
-                    const secure = process.env.NEXT_PUBLIC_SUPABASE_URL?.includes('localhost') ? false : options.secure;
-                    // Request cookies only need name/value
-                    request.cookies.set(name, value)
-
-                    response = NextResponse.next({
-                        request: {
-                            headers: request.headers,
-                        },
-                    })
+                setAll(cookiesToSet) {
+                    cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value))
+                    response = NextResponse.next({ request: { headers: requestHeaders } })
                     applySecurityHeaders(response.headers)
-
-                    // Response cookies need full options
-                    response.cookies.set({
-                        name,
-                        value,
-                        ...options,
-                        secure
-                    })
-                },
-                remove(name: string, options: CookieOptions) {
-                    request.cookies.set({
-                        name,
-                        value: '',
-                        ...options,
-                    })
-                    response = NextResponse.next({
-                        request: {
-                            headers: request.headers,
-                        },
-                    })
-                    applySecurityHeaders(response.headers) // Re-apply on refresh
-                    response.cookies.set({
-                        name,
-                        value: '',
-                        ...options,
-                    })
+                    cookiesToSet.forEach(({ name, value, options }) => response.cookies.set({
+                        name, value, ...options,
+                        secure: process.env.NEXT_PUBLIC_SUPABASE_URL?.includes('localhost') ? false : options.secure
+                    }))
                 },
             },
         }
     )
+
+    const redirectWithSession = (url: URL) => {
+        const redirect = NextResponse.redirect(url)
+        response.cookies.getAll().forEach(cookie => redirect.cookies.set(cookie))
+        applySecurityHeaders(redirect.headers)
+        return redirect
+    }
 
     const { data: { user } } = await supabase.auth.getUser()
 
@@ -136,18 +113,23 @@ export async function proxy(request: NextRequest) {
         const isExemptFromOnboarding =
             request.nextUrl.pathname.startsWith('/onboarding') ||
             request.nextUrl.pathname.startsWith('/auth') ||
+            request.nextUrl.pathname === '/update-password' ||
+            request.nextUrl.pathname === '/forgot-password' ||
+            request.nextUrl.pathname === '/login' ||
             request.nextUrl.pathname.startsWith('/api') ||
             request.nextUrl.pathname.startsWith('/_next');
 
-        if (user.user_metadata?.onboarding_completed === false && !isExemptFromOnboarding) {
+        if ((user.user_metadata?.onboarding_completed === false || user.app_metadata?.password_setup_required === true) && !isExemptFromOnboarding) {
             const url = request.nextUrl.clone()
             url.pathname = '/onboarding'
-            return NextResponse.redirect(url)
+            return redirectWithSession(url)
         }
 
         // Exclude specific paths from further checks
         if (!request.nextUrl.pathname.startsWith('/suspended') &&
             !request.nextUrl.pathname.startsWith('/auth') &&
+            request.nextUrl.pathname !== '/update-password' &&
+            request.nextUrl.pathname !== '/forgot-password' &&
             !request.nextUrl.pathname.startsWith('/api') &&
             !request.nextUrl.pathname.startsWith('/onboarding') // Don't block onboarding with Org checks
         ) {
@@ -176,7 +158,7 @@ export async function proxy(request: NextRequest) {
                     if (!hasActiveOrg) {
                         const url = request.nextUrl.clone()
                         url.pathname = '/suspended'
-                        return NextResponse.redirect(url)
+                        return redirectWithSession(url)
                     }
                 }
 
@@ -188,7 +170,7 @@ export async function proxy(request: NextRequest) {
                         console.warn(`[MIDDLEWARE] ⛔ Unauthorized cross-tenant access attempt: User ${user.id} to tenant ${currentHost}`);
                         // Redirect to the main application
                         const url = new URL('/', `https://${process.env.NEXT_PUBLIC_ROOT_DOMAIN || 'pixy.com.co'}`)
-                        return NextResponse.redirect(url)
+                        return redirectWithSession(url)
                     }
                 }
             }

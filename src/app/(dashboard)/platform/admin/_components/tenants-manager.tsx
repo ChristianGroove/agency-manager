@@ -23,6 +23,7 @@ import { EditLimitsModal } from "@/modules/core/organizations/components/edit-li
 import { OrgDetailsSheet } from "@/modules/core/admin/components/org-details-sheet"
 import { EditOrganizationDialog } from "@/modules/core/admin/components/edit-organization-dialog"
 import { updateOrganizationStatus, deleteOrganization, type AdminOrganization } from '@/modules/core/admin/actions'
+import { resendOrganizationActivation } from '@/modules/core/organizations/actions/activation'
 import { toast } from 'sonner'
 import { ManualBillingModal } from "./manual-billing-modal"
 import { CourtesyAccessModal } from "./courtesy-access-modal"
@@ -96,6 +97,7 @@ function renderConnectedChannels(channels: string[] = []) {
 }
 
 export function TenantsManager({ organizations, allModules }: TenantsManagerProps) {
+    const [sendingActivation, setSendingActivation] = useState<string | null>(null)
     const [searchTerm, setSearchTerm] = useState("")
     const [filter, setFilter] = useState<'all' | 'active' | 'suspended'>('all')
     const [creationOpen, setCreationOpen] = useState(false)
@@ -356,6 +358,21 @@ export function TenantsManager({ organizations, allModules }: TenantsManagerProp
                                         {/* 7. Actions */}
                                         <TableCell className="text-right pr-6 py-3">
                                             <div className="flex justify-end gap-1.5">
+                                                <Button size="icon" variant="ghost" title="Reenviar activación al propietario"
+                                                    aria-label={`Reenviar activación de ${org.name}`}
+                                                    disabled={sendingActivation !== null}
+                                                    onClick={async () => {
+                                                        setSendingActivation(org.id)
+                                                        try {
+                                                            const result = await resendOrganizationActivation(org.id)
+                                                            if (result.success) toast.success('Enlace de activación enviado al propietario')
+                                                            else toast.error(result.error || 'No se pudo reenviar')
+                                                        } catch {
+                                                            toast.error('No se pudo conectar para reenviar la activación')
+                                                        } finally { setSendingActivation(null) }
+                                                    }}>
+                                                    <Mail className="h-4 w-4" />
+                                                </Button>
                                                 {/* 1. Settings Action - Opens Sheet */}
                                                 <Button
                                                     size="icon"

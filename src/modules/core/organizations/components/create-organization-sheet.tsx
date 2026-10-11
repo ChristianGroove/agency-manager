@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { Sheet, SheetContent, SheetHeader, SheetTitle, SheetDescription } from "@/components/ui/sheet"
 import { Button } from "@/components/ui/button"
@@ -11,7 +11,7 @@ import { Loader2, Rocket, Building2, Package, Check, User, Zap, Link2, Copy, Sha
 import { toast } from "sonner"
 import { getSaaSProducts } from "@/modules/core/saas/saas-actions"
 import { SaasApp } from "@/types/saas"
-import { createOrganization, getCurrentOrgDetails } from "@/modules/core/organizations/organization-actions"
+import { createOrganization, getCurrentOrgDetails, resendOrganizationActivation } from "@/modules/core/organizations/organization-actions"
 import { createInviteLink } from "@/modules/core/iam/actions/invitation-actions"
 
 interface CreateOrganizationSheetProps {
@@ -30,6 +30,9 @@ export function CreateOrganizationSheet({ open, onOpenChange, onSuccess, initial
     const [isLoading, setIsLoading] = useState(false)
     const [products, setProducts] = useState<SaasApp[]>([])
     const [loadingProducts, setLoadingProducts] = useState(true)
+
+    const submitting = useRef(false)
+    const [activationRetryOrg, setActivationRetryOrg] = useState<string | null>(null)
 
     // Direct Creation Form State
     const [name, setName] = useState("")
@@ -54,6 +57,7 @@ export function CreateOrganizationSheet({ open, onOpenChange, onSuccess, initial
         if (open) {
             fetchInitialData()
             setGeneratedInviteUrl(null)
+            setActivationRetryOrg(null)
             if (initialData) {
                 if (initialData.name) {
                     setName(initialData.name)
@@ -96,10 +100,11 @@ export function CreateOrganizationSheet({ open, onOpenChange, onSuccess, initial
     const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const val = e.target.value
         setName(val)
-        setSlug(val.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, ''))
+        setSlug(val.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, ''))
     }
 
     const handleCreateDirect = async () => {
+        if (submitting.current || activationRetryOrg) return
         if (!name || !slug) {
             toast.error("El nombre y slug son requeridos")
             return
@@ -109,6 +114,7 @@ export function CreateOrganizationSheet({ open, onOpenChange, onSuccess, initial
             return
         }
 
+        submitting.current = true
         setIsLoading(true)
         try {
             let parentId = null
@@ -131,7 +137,7 @@ export function CreateOrganizationSheet({ open, onOpenChange, onSuccess, initial
 
             if (result.success) {
                 if (result.data?.invitation_sent) {
-                    toast.success(`Organización creada exitosamente. Invitación enviada a ${adminEmail}`)
+                    toast.success(`Organización creada exitosamente. Enlace de activación enviado a ${adminEmail}`)
                 } else if (result.data?.invitation_error) {
                     toast.success('Organización creada exitosamente')
                     toast.warning(`No se pudo enviar la invitación: ${result.data.invitation_error}`)
@@ -140,7 +146,11 @@ export function CreateOrganizationSheet({ open, onOpenChange, onSuccess, initial
                 }
 
                 onSuccess?.()
-                onOpenChange(false)
+                if (result.data?.invitation_error && result.data.id) {
+                    setActivationRetryOrg(result.data.id)
+                } else {
+                    onOpenChange(false)
+                }
                 router.refresh()
             } else {
                 toast.error(result.error || "Error al crear la organización")
@@ -149,6 +159,26 @@ export function CreateOrganizationSheet({ open, onOpenChange, onSuccess, initial
         } catch (error) {
             console.error(error)
             toast.error("Error inesperado")
+        } finally {
+            submitting.current = false
+            setIsLoading(false)
+        }
+    }
+
+    const handleResendActivation = async () => {
+        if (!activationRetryOrg || submitting.current) return
+        submitting.current = true
+        setIsLoading(true)
+        try {
+            const result = await resendOrganizationActivation(activationRetryOrg)
+            if (result.success) {
+                toast.success('Enlace de activación enviado al propietario')
+                onOpenChange(false)
+            } else toast.error(result.error || 'No se pudo reenviar la activación')
+        } catch {
+            toast.error('No se pudo conectar para reenviar la activación. Intenta de nuevo.')
+        } finally {
+            submitting.current = false
             setIsLoading(false)
         }
     }
@@ -240,6 +270,7 @@ export function CreateOrganizationSheet({ open, onOpenChange, onSuccess, initial
                             </button>
                             <button
                                 type="button"
+                                disabled={!!activationRetryOrg || isLoading}
                                 onClick={() => setActiveTab('invite')}
                                 className={`flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold transition-all cursor-pointer ${
                                     activeTab === 'invite'
@@ -255,7 +286,7 @@ export function CreateOrganizationSheet({ open, onOpenChange, onSuccess, initial
 
                     {/* Main Split View */}
                     <div className="flex-1 overflow-hidden">
-                        <div className="h-full grid grid-cols-1 lg:grid-cols-2 divide-x divide-slate-200/80 dark:divide-white/5">
+                        <div inert={!!activationRetryOrg || isLoading} className="h-full grid grid-cols-1 lg:grid-cols-2 divide-x divide-slate-200/80 dark:divide-white/5">
 
                             {/* LEFT SIDE: TAB CONTENT */}
                             <div className="overflow-y-auto p-8 h-full relative scrollbar-thin scrollbar-thumb-slate-200 dark:scrollbar-thumb-zinc-800 bg-white/50 dark:bg-transparent">
@@ -274,11 +305,11 @@ export function CreateOrganizationSheet({ open, onOpenChange, onSuccess, initial
                                             </div>
 
                                             <div className="space-y-3">
-                                                <Label className="font-bold text-slate-900 dark:text-zinc-100 text-xs">URL del Espacio (Slug)</Label>
+                                                <Label className="font-bold text-slate-900 dark:text-zinc-100 text-xs">Identificador del Espacio (Slug)</Label>
                                                 <div className="flex items-center h-11 px-3.5 rounded-xl bg-slate-100 dark:bg-zinc-900 border border-slate-300 dark:border-zinc-700 text-slate-500 dark:text-zinc-400 text-xs font-mono">
-                                                    app.pixy.com/
                                                     <span className="text-slate-900 dark:text-white font-bold ml-0.5">{slug}</span>
                                                 </div>
+                                                <p className="text-[11px] text-slate-500">Identifica la organización y se usa en su subdominio.</p>
                                             </div>
 
                                             <div className="space-y-3 pt-2">
@@ -288,12 +319,13 @@ export function CreateOrganizationSheet({ open, onOpenChange, onSuccess, initial
                                                 </Label>
                                                 <Input
                                                     className="h-11 bg-slate-50 dark:bg-zinc-900 border border-slate-300 dark:border-zinc-700 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-zinc-500 focus:bg-white dark:focus:bg-zinc-950 focus:border-indigo-500 font-medium text-xs rounded-xl shadow-xs"
+                                                    type="email"
                                                     placeholder="admin@cliente.com (Opcional)"
                                                     value={adminEmail}
                                                     onChange={(e) => setAdminEmail(e.target.value)}
                                                 />
                                                 <p className="text-[11px] text-slate-500 dark:text-zinc-400">
-                                                    Si ingresas un correo, le enviaremos una invitación mágica para acceder instantáneamente a esta organización.
+                                                    Le enviaremos un enlace para activar su acceso y crear su contraseña. La organización y el espacio ya quedarán configurados.
                                                 </p>
                                             </div>
 
@@ -570,6 +602,12 @@ export function CreateOrganizationSheet({ open, onOpenChange, onSuccess, initial
                         </div>
                     </div>
 
+                    {activationRetryOrg && (
+                        <p role="status" className="px-8 py-3 text-sm text-amber-700">
+                            La organización ya está creada. El correo no se pudo enviar; puedes reintentar el envío en un minuto o hacerlo después desde la administración del tenant.
+                        </p>
+                    )}
+
                     {/* Footer */}
                     <div className="sticky bottom-0 px-8 py-4 bg-white/80 dark:bg-[#0a0a0a]/80 backdrop-blur-md border-t border-gray-100 dark:border-white/5 flex items-center justify-between z-20">
                         <Button variant="ghost" onClick={() => onOpenChange(false)} className="text-gray-500 hover:text-red-600 dark:text-gray-400 dark:hover:text-red-400 rounded-xl h-10 px-4 text-xs font-semibold">
@@ -578,7 +616,7 @@ export function CreateOrganizationSheet({ open, onOpenChange, onSuccess, initial
 
                         {activeTab === 'direct' && (
                             <Button
-                                onClick={handleCreateDirect}
+                                onClick={activationRetryOrg ? handleResendActivation : handleCreateDirect}
                                 disabled={isLoading}
                                 className="bg-brand-pink text-white hover:bg-brand-pink/90 shadow-xl shadow-brand-pink/20 px-8 rounded-xl h-11 cursor-pointer font-bold transition-all"
                             >
@@ -590,7 +628,7 @@ export function CreateOrganizationSheet({ open, onOpenChange, onSuccess, initial
                                 ) : (
                                     <>
                                         <Rocket className="mr-2 h-4 w-4" />
-                                        Crear Organización
+                                        {activationRetryOrg ? "Reenviar activación" : "Crear Organización"}
                                     </>
                                 )}
                             </Button>

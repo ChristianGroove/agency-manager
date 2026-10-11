@@ -3,6 +3,8 @@
 Fecha: 11 de octubre de 2026. Rama: `codex/marketing-campaign-hardening`.
 La referencia anterior `8f82db13` corresponde a las etapas 1–13. La [etapa 14](implementation-stage-14.md) integra campañas de email con SMTP del tenant.
 
+La rama incorpora también `master` en `fadd9ed7` (alta y activación de tenants). El [informe de sincronización](master-sync-2026-10-11.md) documenta el merge, su validación y la migración adicional requerida antes del despliegue.
+
 ## Estado de entrega
 
 La implementación actual está terminada y guardada localmente. Se ha comprobado con pruebas automatizadas y build, pero **no está habilitada para envíos masivos en producción**. Las migraciones de Marketing se aplicaron únicamente en Supabase Docker local. La revisión visual autenticada y una campaña real pequeña siguen pendientes.
