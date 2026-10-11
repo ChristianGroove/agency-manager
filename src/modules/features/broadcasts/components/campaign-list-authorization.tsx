@@ -7,7 +7,9 @@ import { Label } from '@/components/ui/label'
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { prepareMarketingListAuthorization, confirmMarketingListAuthorization, type ListAuthorizationReview } from '../marketing-review-actions'
 
-export function CampaignListAuthorization({ listId, onClose, onSaved }: { listId: string; onClose: () => void; onSaved: (count: number) => void }) {
+import { prepareEmailListAuthorization, confirmEmailListAuthorization } from '../marketing-email-actions'
+
+export function CampaignListAuthorization({ listId, onClose, onSaved, channel = 'whatsapp' }: { channel?: 'whatsapp' | 'email'; listId: string; onClose: () => void; onSaved: (count: number) => void }) {
     const [review, setReview] = useState<ListAuthorizationReview | null>(null), [error, setError] = useState('')
     const [loading, setLoading] = useState(true), [saving, setSaving] = useState(false)
     const [confirmed, setConfirmed] = useState(false), [reference, setReference] = useState(''), [revision, setRevision] = useState(0)
@@ -19,17 +21,17 @@ export function CampaignListAuthorization({ listId, onClose, onSaved }: { listId
     useEffect(() => {
         let active = true
         setLoading(true); setError(''); setReview(null); setConfirmed(false)
-        void prepareMarketingListAuthorization(listId).then(result => {
+        void (channel === 'email' ? prepareEmailListAuthorization : prepareMarketingListAuthorization)(listId).then(result => {
             if (!active) return
             if (result.success) setReview(result.review); else setError(result.error)
         }).catch(() => { if (active) setError('No se pudo revisar la lista.') }).finally(() => { if (active) setLoading(false) })
         return () => { active = false }
-    }, [listId, revision])
+    }, [listId, revision, channel])
     async function save() {
         if (!review || !confirmed || !review.toAuthorize || mutation.current) return
         mutation.current = true; setSaving(true); setError('')
         try {
-            const response = await confirmMarketingListAuthorization({ token: review.token, confirmed: true, reference })
+            const response = await (channel === 'email' ? confirmEmailListAuthorization : confirmMarketingListAuthorization)({ token: review.token, confirmed: true, reference })
             if (!current.current) return
             if (!response.success) { setError(response.error); setConfirmed(false); return }
             onSaved(response.result.authorized)

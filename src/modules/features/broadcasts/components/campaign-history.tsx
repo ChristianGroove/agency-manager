@@ -12,7 +12,7 @@ import { deliveryLabels, executionLabels, type HistoryFilters, type HistoryPage,
 const defaults: HistoryFilters = { status: 'all', delivery: 'all', search: '' }
 const formatDate = (date: string | null) => date ? new Date(date).toLocaleString() : '—'
 
-export function CampaignHistory({ campaignId }: { campaignId: string }) {
+export function CampaignHistory({ campaignId, email = false }: { campaignId: string; email?: boolean }) {
     const [draft, setDraft] = useState(defaults), [filters, setFilters] = useState(defaults)
     const [cursor, setCursor] = useState<string | null>(null), [previous, setPrevious] = useState<Array<string | null>>([])
     const [page, setPage] = useState<HistoryPage<HistoryRecipient, string> | null>(null)
@@ -62,12 +62,12 @@ export function CampaignHistory({ campaignId }: { campaignId: string }) {
             <label className="space-y-1 text-sm">Procesamiento
                 <select className="block h-10 rounded-md border bg-background px-3" value={draft.status}
                     onChange={event => setDraft(value => ({ ...value, status: event.target.value as HistoryFilters['status'] }))}>
-                    <option value="all">Todos</option>{Object.entries(executionLabels).map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                    <option value="all">Todos</option>{Object.entries(executionLabels).map(([value, label]) => <option key={value} value={value}>{email && value === 'accepted' ? 'Aceptado por SMTP' : label}</option>)}
                 </select></label>
             <label className="space-y-1 text-sm">Con mensajes en estado
                 <select className="block h-10 rounded-md border bg-background px-3" value={draft.delivery}
                     onChange={event => setDraft(value => ({ ...value, delivery: event.target.value as HistoryFilters['delivery'] }))}>
-                    <option value="all">Todos</option>{Object.entries(deliveryLabels).filter(([value]) => value !== 'not_started').map(([value, label]) => <option key={value} value={value}>{label}</option>)}
+                    <option value="all">Todos</option>{Object.entries(deliveryLabels).filter(([value]) => value !== 'not_started' && (!email || !['queued', 'delivered', 'read'].includes(value))).map(([value, label]) => <option key={value} value={value}>{email && value === 'accepted' ? 'Aceptado por SMTP' : label}</option>)}
                 </select></label>
             <Button type="submit" disabled={loading}>Aplicar filtros</Button>
         </form>
@@ -85,10 +85,10 @@ export function CampaignHistory({ campaignId }: { campaignId: string }) {
                             <caption className="sr-only">Destinatarios inscritos y sus resultados registrados</caption>
                             <thead><tr className="border-b text-left"><th className="p-2">Destinatario</th><th className="p-2">Procesamiento</th><th className="p-2">Mensajes registrados</th><th className="p-2">Último avance</th><th className="p-2">Detalle</th></tr></thead>
                             <tbody>{page.items.map(row => <tr key={row.id} className="border-b align-top">
-                                <td className="p-2"><p className="font-medium break-words">{row.name}</p><p className="text-muted-foreground">{row.phone || 'Sin teléfono registrado'}</p></td>
+                                <td className="p-2"><p className="font-medium break-words">{row.name}</p><p className="text-muted-foreground">{row.phone || 'Sin destinatario registrado'}</p></td>
                                 <td className="p-2">{executionLabels[row.status] || row.status}{row.issue && <p className="text-xs text-muted-foreground max-w-52">{row.issue}</p>}
                                     {row.next_run_at && row.status === 'active' && <p className="text-xs text-muted-foreground">Próximo paso: {formatDate(row.next_run_at)}</p>}</td>
-                                <td className="p-2"><p>{row.counts.total} operaciones</p><p className="text-xs text-muted-foreground">{row.counts.delivered + row.counts.read} entregados · {row.counts.read} leídos · {row.counts.failed} fallidos</p>
+                                <td className="p-2"><p>{row.counts.total} operaciones</p><p className="text-xs text-muted-foreground">{email ? `${row.counts.accepted} aceptados por SMTP` : `${row.counts.delivered + row.counts.read} entregados · ${row.counts.read} leídos`} · {row.counts.failed} fallidos</p>
                                     {!!row.counts.unknown && <p className="text-xs text-amber-700">{row.counts.unknown} sin resultado confirmado</p>}</td>
                                 <td className="p-2">{formatDate(row.last_run_at)}</td>
                                 <td className="p-2"><Button variant="outline" size="sm" onClick={() => setSelected(row)} aria-label={`Ver pasos de ${row.name}`}>Ver pasos</Button></td>
@@ -101,13 +101,13 @@ export function CampaignHistory({ campaignId }: { campaignId: string }) {
                 </>}
         </div>
         <Dialog open={!!selected} onOpenChange={open => { if (!open) setSelected(null) }}><DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
-            <DialogHeader><DialogTitle>Pasos de {selected?.name}</DialogTitle><DialogDescription>Los recibos confirman entrega y lectura. El avance de la secuencia solo describe procesamiento.</DialogDescription></DialogHeader>
-            {selected && <RecipientSteps key={selected.id} campaignId={campaignId} enrollmentId={selected.id} />}
+            <DialogHeader><DialogTitle>Pasos de {selected?.name}</DialogTitle><DialogDescription>{email ? 'SMTP confirma aceptación del servidor, sin recibos de entrega ni lectura.' : 'Los recibos confirman entrega y lectura. El avance de la secuencia solo describe procesamiento.'}</DialogDescription></DialogHeader>
+            {selected && <RecipientSteps email={email} key={selected.id} campaignId={campaignId} enrollmentId={selected.id} />}
         </DialogContent></Dialog>
     </Card>
 }
 
-function RecipientSteps({ campaignId, enrollmentId }: { campaignId: string; enrollmentId: string }) {
+function RecipientSteps({ campaignId, enrollmentId, email = false }: { campaignId: string; enrollmentId: string; email?: boolean }) {
     const [cursor, setCursor] = useState<StepCursor | null>(null), [previous, setPrevious] = useState<Array<StepCursor | null>>([])
     const [page, setPage] = useState<HistoryPage<HistoryStep, StepCursor> | null>(null), [error, setError] = useState('')
     const [loading, setLoading] = useState(true), [revision, setRevision] = useState(0)
@@ -128,9 +128,9 @@ function RecipientSteps({ campaignId, enrollmentId }: { campaignId: string; enro
                 {!page.items.length && <p>No hay pasos registrados para esta inscripción.</p>}
                 {page.items.map(row => <div key={row.step_id} className="rounded-md border p-3 space-y-1">
                     <p className="font-medium">{row.order_index + 1}. {row.step_name}</p>
-                    <p className="text-sm text-muted-foreground">{row.type === 'delay' ? 'Pausa de secuencia' : `Plantilla: ${row.template_name || 'Sin nombre registrado'}`}
+                    <p className="text-sm text-muted-foreground">{row.type === 'delay' ? 'Pausa de secuencia' : `${email ? 'Asunto' : 'Plantilla'}: ${row.template_name || 'Sin nombre registrado'}`}
                         {' · '}{row.progress === 'advanced' ? 'Avance registrado' : row.progress === 'current' ? 'Paso actual' : 'No iniciado'}</p>
-                    {row.type !== 'delay' && <p className="text-sm">Mensaje: {deliveryLabels[row.delivery] || row.delivery}</p>}
+                    {row.type !== 'delay' && <p className="text-sm">Mensaje: {email && row.delivery === 'accepted' ? 'Aceptado por SMTP' : deliveryLabels[row.delivery] || row.delivery}</p>}
                     {!!row.error_code && <p className="text-sm text-amber-700">Código Meta: {row.error_code}. Requiere revisar la causa antes de otro envío.</p>}
                     {row.delivery === 'unknown' && <p className="text-sm text-amber-700">Puede haberse enviado. No se reenvía automáticamente.</p>}
                     {row.queued_at && <p className="text-xs text-muted-foreground">En cola: {formatDate(row.queued_at)} · Actualización: {formatDate(row.updated_at)}</p>}

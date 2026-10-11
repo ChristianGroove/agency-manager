@@ -1,4 +1,5 @@
 'use server'
+import { emailEnvironmentIssues } from './marketing-email-environment'
 
 import type { CampaignMetrics } from './marketing-metrics'
 import { campaignDesignIssues } from './marketing-preflight'
@@ -9,6 +10,7 @@ import { audienceFiltersSchema, deliveryConfigSchema, normalizeDelay, publicMark
 import { templateSelectionSchema, validateCampaignTemplate } from './marketing-template-contract'
 import { supabaseAdmin } from '@/modules/core/database/supabase-admin'
 import { z } from 'zod'
+import { emailContentSchema } from './marketing-email-contracts'
 import { revalidatePath } from 'next/cache'
 
 export interface Campaign {
@@ -20,6 +22,8 @@ export interface Campaign {
     tags?: string[]
     delivery_config?: DeliveryConfig
     connection_id?: string | null
+    channel?: 'whatsapp' | 'email'
+    smtp_config_id?: string | null
     scheduled_for?: string | null
     execution_version?: number | null
     paused_reason?: string | null
@@ -173,6 +177,8 @@ export async function updateCampaign(id: string, data: Partial<Campaign>) {
             goal: z.string().max(100).optional(), tags: z.array(z.string().max(100)).max(50).optional(),
             status: z.enum(['draft', 'paused', 'archived']).optional(),
             connection_id: z.string().uuid().nullable().optional(),
+            channel: z.enum(['whatsapp', 'email']).optional(),
+            smtp_config_id: z.string().uuid().nullable().optional(),
             scheduled_for: z.string().datetime({ offset: true }).nullable().optional(),
             delivery_config: deliveryConfigSchema.optional(),
         }).strict().parse(data)
@@ -361,8 +367,18 @@ export async function enrollAudienceInCampaign(campaignId: string, confirmation?
         }
         const confirmed = z.object({ token: z.string().uuid(), confirmed: z.literal(true) }).strict().parse(confirmation)
         z.string().uuid().parse(campaignId)
-        const visible = await access.session.from('marketing_campaigns').select('connection_id')
+        const visible = await access.session.from('marketing_campaigns').select('connection_id,channel')
             .eq('organization_id', access.organizationId).eq('id', campaignId).single()
+        if (visible.data?.channel === 'email') {
+            const prepared = await supabaseAdmin.rpc('read_marketing_email_preflight', { p_org: access.organizationId, p_campaign: campaignId })
+            if (prepared.error || !prepared.data) throw new Error('No se pudo revisar el diseño de email.')
+            const issues = [...campaignDesignIssues(prepared.data, prepared.data.campaign.execution_version === 3), ...emailEnvironmentIssues()]
+            if (issues.length) return { success: false, enrolled: 0, error: issues.join(' ') }
+            const result = await supabaseAdmin.rpc('confirm_marketing_email_activation', { p_org: access.organizationId, p_actor: access.userId, p_campaign: campaignId, p_ticket: confirmed.token })
+            if (result.error || !result.data) throw new Error('Cambió el diseño, el emisor, la audiencia o tus permisos. Revisa de nuevo.')
+            revalidatePath('/crm/marketing')
+            return { success: true, enrolled: result.data.enrolled, resumed: prepared.data.campaign.execution_version === 3 }
+        }
         if (visible.error || !visible.data?.connection_id) throw new Error('Campaña o número emisor no disponible.')
         assertMarketingChannelAccess(access, visible.data.connection_id)
         const prepared = await supabaseAdmin.rpc('read_marketing_activation', { p_org: access.organizationId, p_campaign: campaignId })
@@ -496,6 +512,14 @@ async function validateStepSelection(access: Awaited<ReturnType<typeof requireMa
     return validateCampaignTemplate(template.data, selection, campaign.data.connection_id)
 }
 
+async function validateEmailStep(access: Awaited<ReturnType<typeof requireMarketingAccess>>, sequenceId: string, input: unknown) {
+    const seq = await access.session.from('marketing_sequences').select('campaign_id').eq('organization_id', access.organizationId).eq('id', sequenceId).single()
+    if (seq.error || !seq.data) throw new Error('Secuencia no disponible.')
+    const campaign = await access.session.from('marketing_campaigns').select('channel,smtp_config_id').eq('organization_id', access.organizationId).eq('id', seq.data.campaign_id).single()
+    if (campaign.error || campaign.data?.channel !== 'email' || !campaign.data.smtp_config_id) throw new Error('Selecciona y guarda el emisor de email primero.')
+    return emailContentSchema.parse(input)
+}
+
 export async function addStepToSequence(sequenceId: string, stepData: {
     type: string,
     name: string,
@@ -505,8 +529,9 @@ export async function addStepToSequence(sequenceId: string, stepData: {
     try {
         const access = await requireMarketingAccess('manage')
 
-        stepData = z.object({type:z.enum(['whatsapp','delay']),name:z.string().trim().min(1).max(160),content:z.record(z.string(),z.unknown()),delay_config:z.any().optional()}).strict().parse(stepData)
+        stepData = z.object({type:z.enum(['whatsapp','email','delay']),name:z.string().trim().min(1).max(160),content:z.record(z.string(),z.unknown()),delay_config:z.any().optional()}).strict().parse(stepData)
         if (stepData.type === 'delay') stepData.delay_config = normalizeDelay(stepData.delay_config)
+        else if (stepData.type === 'email') stepData.content = await validateEmailStep(access, sequenceId, stepData.content)
         else stepData.content = await validateStepSelection(access, sequenceId, stepData.content)
 
         const supabase = await createClient()
@@ -578,10 +603,11 @@ export async function updateStep(stepId: string, data: any) {
         if (!step) return { success: false, error: 'Step not found' }
 
         const updates = z.object({
-            type: z.enum(['whatsapp','delay']), name: z.string().trim().min(1).max(160),
+            type: z.enum(['whatsapp','email','delay']), name: z.string().trim().min(1).max(160),
             content: z.record(z.string(), z.unknown()), delay_config: z.any().optional(),
         }).strict().parse(data)
         if (updates.type === 'delay') updates.delay_config = normalizeDelay(updates.delay_config)
+        else if (updates.type === 'email') updates.content = await validateEmailStep(access, step.sequence_id, updates.content)
         else updates.content = await validateStepSelection(access, step.sequence_id, updates.content)
         const { error } = await supabase
             .from('marketing_steps')
@@ -641,17 +667,18 @@ export async function getMarketingStats() {
         const access = await requireMarketingAccess('view')
 
         const supabase = await createClient()
-        const [campaignsParams, accepted, delivered] = await Promise.all([
+        const [campaignsParams, accepted, delivered, emails] = await Promise.all([
             supabase.from('marketing_campaigns').select('id', { count: 'exact', head: true }).eq('organization_id', access.organizationId),
             supabaseAdmin.from('meta_outbound_outbox').select('id', {count:'exact',head:true})
                 .eq('organization_id',access.organizationId).like('operation_key','campaign:%').eq('status','accepted'),
             supabaseAdmin.from('meta_outbound_outbox').select('id,message:messages!inner(status)', {count:'exact',head:true})
                 .eq('organization_id',access.organizationId).like('operation_key','campaign:%').in('message.status',['delivered','read']),
+            supabaseAdmin.from('marketing_email_outbox').select('id', { count: 'exact', head: true }).eq('organization_id', access.organizationId).eq('status', 'accepted'),
         ])
-        if (campaignsParams.error || accepted.error || delivered.error) throw new Error('No se pudieron consultar los resultados de campañas.')
+        if (campaignsParams.error || accepted.error || delivered.error || emails.error) throw new Error('No se pudieron consultar los resultados de campañas.')
 
         const totalCampaigns = campaignsParams.count || 0
-        const totalMessages = accepted.count || 0
+        const totalMessages = (accepted.count || 0) + (emails.count || 0)
         const totalDelivered = delivered.count || 0
 
         return {

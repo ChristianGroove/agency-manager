@@ -1,12 +1,12 @@
 # Arquitectura de Campañas masivas
 
-Actualizada el 10 de octubre de 2026 para `codex/marketing-campaign-hardening`, implementación `8f82db13`.
+Actualizada el 11 de octubre de 2026 para `codex/marketing-campaign-hardening`, implementación `8f82db13`.
 
 El [cierre de implementación](../../marketing/README.md) es la referencia de alcance, validación, migraciones y operación. Los reportes por etapa conservan el historial de decisiones.
 
 ## Producto y canales
 
-El módulo `broadcasts` administra campañas y seguimientos. Esta versión ejecuta **plantillas WhatsApp y esperas** sobre conexiones activas `whatsapp_cloud` y `meta_whatsapp` del tenant. Correo y SMS son integraciones futuras; sus tipos históricos o servicios presentes en otros módulos no acreditan campañas operativas en este motor. Meta Ads pertenece a su módulo independiente.
+El módulo `broadcasts` administra campañas y seguimientos. Esta versión ejecuta **plantillas WhatsApp y esperas** sobre conexiones activas `whatsapp_cloud` y `meta_whatsapp` del tenant. También ejecuta email mediante el SMTP verificado del tenant, con asunto, texto y bajas propias. SMS sigue siendo una integración futura. Meta Ads pertenece a su módulo independiente.
 
 La interfaz usa listado paginado y un espacio flotante con Preparación y Actividad. El recorrido principal es canal → mensaje → destinatarios → revisión y envío. Segmentos, filtros adicionales y programación permanecen opcionales.
 
@@ -20,6 +20,10 @@ La interfaz usa listado paginado y un espacio flotante con Preparación y Activi
 - Reservas de frecuencia: ritmo compartido por número físico y espera opcional por tenant/destinatario entre campañas.
 
 RLS, permisos de aplicación y funciones privadas verifican el alcance de organización. Activación e importación usan confirmaciones transaccionales/idempotentes; no se confía en un identificador de organización enviado por el navegador para otorgar acceso.
+
+## Email mediante SMTP
+
+La [etapa 14](../../marketing/implementation-stage-14.md) describe el canal email, sus cuatro migraciones y sus requisitos operativos. Usa `execution_version=3`, un outbox privado por inscripción/paso y permisos independientes de WhatsApp. El worker comparte claims entre canales, pero el despacho SMTP permanece separado de Meta y del correo transaccional. Aceptación del servidor no equivale a entrega ni lectura; respuestas de email no ingresan a Inbox.
 
 ## Ejecución
 

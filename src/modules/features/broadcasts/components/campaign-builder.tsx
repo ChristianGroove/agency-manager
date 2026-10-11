@@ -2,6 +2,9 @@
 
 import { useEffect, useRef, useState, type ReactNode } from 'react'
 import { CalendarClock, MessageSquare, Users, Megaphone, ShieldCheck, X, RefreshCw, Save, Send, ArrowUp, ArrowDown, Timer, Plus, Pencil, Trash2 } from 'lucide-react'
+import { MarketingEmailEditor } from './marketing-email-editor'
+import { getMarketingEmailSenders, saveCampaignSender } from '../marketing-email-actions'
+import { emailContentSchema } from '../marketing-email-contracts'
 import { CampaignPacing } from './campaign-pacing'
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
@@ -68,6 +71,9 @@ function CampaignEditor({ campaignId, campaignName, onClose, onDirtyChange, onBu
     const [step, setStep] = useState(emptyStep), [stepOpen, setStepOpen] = useState(false), [template, setTemplate] = useState<TemplateSelection | null>(null)
     const [followup, setFollowup] = useState(false), [importOpen, setImportOpen] = useState(false), [activationOpen, setActivationOpen] = useState(false)
     const [metrics, setMetrics] = useState<CampaignMetrics | null>(null), [revision, setRevision] = useState(0)
+    const [emailContent, setEmailContent] = useState({ subject: '', body: '' })
+    const email = connectionId.startsWith('smtp:')
+    const baseFilters = email ? { has_email: true } : { has_phone: true }
     const [segmentsOpen, setSegmentsOpen] = useState(false)
     const request = useRef(0), resultsRequest = useRef(0), mounted = useRef(true), mutation = useRef(false)
     const sequence = sequences.find(item => item.id === sequenceId)
@@ -94,8 +100,8 @@ function CampaignEditor({ campaignId, campaignName, onClose, onDirtyChange, onBu
         resultsRequest.current++
         setLoading(true); setError('')
         try {
-            const [campaign, flows, audience, results, setup] = await Promise.all([
-                getCampaign(campaignId), getSequences(campaignId), getCampaignAudience(campaignId), getCampaignStats(campaignId), getMarketingSetup(),
+            const [campaign, flows, audience, results, setup, emailSetup] = await Promise.all([
+                getCampaign(campaignId), getSequences(campaignId), getCampaignAudience(campaignId), getCampaignStats(campaignId), getMarketingSetup(), getMarketingEmailSenders(),
             ])
             if (!mounted.current || epoch !== request.current) return
             if (!campaign.success || !campaign.campaign || !flows.success || !audience.success || !setup.success) {
@@ -105,14 +111,15 @@ function CampaignEditor({ campaignId, campaignName, onClose, onDirtyChange, onBu
             if (stored.name) setTitle(stored.name)
             setStatus(stored.status); setExecutionEnabled(campaign.executionEnabled === true)
             if (stored.status !== 'draft') setTab('results')
-            setCanManage(setup.canManage); setCanExecute(setup.canExecute); setCanImport(setup.canImport); setChannels(setup.channels)
-            const emitter = stored.connection_id || '', date = localInput(stored.scheduled_for || null)
+            setCanManage(setup.canManage); setCanExecute(setup.canExecute); setCanImport(setup.canImport); setChannels([...setup.channels, ...(emailSetup.success ? emailSetup.channels : [])])
+            if (!emailSetup.success) toast.error(emailSetup.error)
+            const emitter = stored.channel === 'email' && stored.smtp_config_id ? `smtp:${stored.smtp_config_id}` : stored.connection_id || '', date = localInput(stored.scheduled_for || null)
             const storedDelivery = stored.delivery_config
             const config: DeliveryConfig = storedDelivery ? { mode: storedDelivery.mode || defaultDelivery.mode, humanize: storedDelivery.humanize ?? defaultDelivery.humanize, timezone: storedDelivery.timezone || 'America/Bogota', recipient_cooldown_hours: storedDelivery.recipient_cooldown_hours, schedule_window: storedDelivery.schedule_window } : defaultDelivery
             setConnectionId(emitter); setSavedConnection(emitter); setDelivery(config); setScheduledFor(date)
             savedSchedule.current = { input: date, iso: stored.scheduled_for || null }
             setSavedConfig(JSON.stringify({ connectionId: emitter, scheduledFor: date, delivery: config }))
-            const recipientFilters = audience.audience?.filters || { has_phone: true }
+            const recipientFilters = audience.audience?.filters || (stored.channel === 'email' ? { has_email: true } : { has_phone: true })
             setFilters(recipientFilters); setSavedFilters(JSON.stringify(recipientFilters)); setHasAudience(!!audience.audience)
             setSequences(flows.sequences || []); setSequenceId(flows.sequences?.find(item => item.is_active)?.id || flows.sequences?.[0]?.id || '')
             setMetrics(results.success ? results : null); setRevision(value => value + 1)
@@ -161,7 +168,7 @@ function CampaignEditor({ campaignId, campaignName, onClose, onDirtyChange, onBu
         if (!mounted.current) return
         setSavedConnection(connectionId)
         setSavedConfig(previous => JSON.stringify({ ...JSON.parse(previous), connectionId }))
-        setRevision(value => value + 1); if (notify) toast.success('Emisor guardado. Revisa las plantillas si cambiaste de número.')
+        setRevision(value => value + 1); if (notify) toast.success('Emisor guardado. Revisa el mensaje antes de activar.')
     }
     async function saveRecipients(notify = true) {
         const cleaned = { ...filters, tags: filters.tags?.map(value => value.trim()).filter(Boolean) }
@@ -174,10 +181,11 @@ function CampaignEditor({ campaignId, campaignName, onClose, onDirtyChange, onBu
     function openStep(type: string, existing?: MarketingStep) {
         if (!editable) return
         setStep(existing ? { id: existing.id, type: existing.type, name: existing.name, delay: String(existing.delay_config?.value ?? existing.delay_config?.duration ?? 1), unit: existing.delay_config?.unit || 'days' } : { ...emptyStep, type })
-        setTemplate(existing?.content?.template_id ? existing.content : null); setStepOpen(true)
+        setTemplate(existing?.content?.template_id ? existing.content : null); setEmailContent(existing?.type === 'email' ? { subject: existing.content.subject || '', body: existing.content.body || '' } : { subject: '', body: '' }); setStepOpen(true)
     }
     async function saveStep() {
         if (step.type === 'whatsapp' && (!template || !savedConnection || connectionId !== savedConnection)) throw new Error('Selecciona y guarda el emisor antes de configurar el mensaje.')
+        if (step.type === 'email') { if (!email || connectionId !== savedConnection) throw new Error('Guarda el emisor de email antes de configurar el mensaje.'); emailContentSchema.parse(emailContent) }
         let target = sequenceId
         if (!target) {
             const created = await createSequence({ name: 'Mensajes de campaña', campaign_id: campaignId, trigger_type: 'manual' })
@@ -186,8 +194,8 @@ function CampaignEditor({ campaignId, campaignName, onClose, onDirtyChange, onBu
             if (mounted.current) { setSequenceId(target); setSequences([created.sequence]) }
         }
         const data = {
-            type: step.type, name: step.name.trim() || (step.type === 'delay' ? 'Esperar' : `Mensaje ${steps.filter(item => item.type === 'whatsapp').length + 1}`),
-            content: step.type === 'delay' ? {} : template!, delay_config: step.type === 'delay' ? { value: Number(step.delay), unit: step.unit } : undefined
+            type: step.type, name: step.name.trim() || (step.type === 'delay' ? 'Esperar' : `Mensaje ${steps.filter(item => item.type !== 'delay').length + 1}`),
+            content: step.type === 'delay' ? {} : step.type === 'email' ? emailContent : template!, delay_config: step.type === 'delay' ? { value: Number(step.delay), unit: step.unit } : undefined
         }
         const result = step.id ? await updateStep(step.id, data) : await addStepToSequence(target, data)
         if (!result.success) throw new Error(result.error)
@@ -219,7 +227,7 @@ function CampaignEditor({ campaignId, campaignName, onClose, onDirtyChange, onBu
             <div className="flex min-w-0 items-center gap-3">
                 <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-primary/20 bg-primary/10 text-primary"><Megaphone className="h-5 w-5" /></div>
                 <div className="min-w-0">
-                    <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Campañas masivas · WhatsApp</p>
+                    <p className="text-[10px] font-semibold uppercase tracking-widest text-muted-foreground">Campañas masivas · {email ? 'Email' : 'WhatsApp'}</p>
                     <div className="mt-1 flex flex-wrap items-center gap-2">
                         <h2 className="max-w-[450px] truncate text-base font-semibold tracking-tight">{title}</h2>
                         <Badge variant="outline" className={status === 'active' ? 'border-emerald-500/25 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300' : 'bg-background text-xs'}>{campaignStateLabels[status]}</Badge>
@@ -251,13 +259,14 @@ function CampaignEditor({ campaignId, campaignName, onClose, onDirtyChange, onBu
                                 <div className="space-y-2">
                                     <Label>Número emisor de WhatsApp</Label>
                                     <div className="flex items-center gap-2">
-                                        <Select value={connectionId} disabled={!editable} onValueChange={setConnectionId}>
+                                        <Select value={connectionId} disabled={!editable} onValueChange={id => { setConnectionId(id); if (id.startsWith('smtp:') !== email) setFilters({ ...(id.startsWith('smtp:') ? { has_email: true } : { has_phone: true }), ...(filters.list_id ? { list_id: filters.list_id } : {}) }) }}>
                                             <SelectTrigger aria-label="Número emisor de campaña" className="h-9 rounded-xl bg-background text-xs"><SelectValue placeholder="Selecciona un canal conectado" /></SelectTrigger>
-                                            <SelectContent>{channels.map(channel => <SelectItem key={channel.id} value={channel.id}>{channel.name}</SelectItem>)}</SelectContent>
+                                            <SelectContent>{channels.map(channel => <SelectItem key={channel.id} value={channel.id}>{channel.id.startsWith('smtp:') ? 'Email · ' : 'WhatsApp · '}{channel.name}</SelectItem>)}</SelectContent>
                                         </Select>
                                         {connectionId !== savedConnection && <Button size="sm" disabled={!editable || !connectionId} variant="outline" onClick={() => void edit(() => saveEmitter())}>Guardar emisor</Button>}
                                     </div>
                                     {!channels.length && !loading && <p className="text-xs text-muted-foreground">No hay números activos disponibles. Revisa <Link href="/crm/settings/channels" className="underline">Canales</Link>.</p>}
+                                    <p className="text-xs text-muted-foreground">Para correo, configura y verifica el SMTP de tu empresa en <Link href="/tools/email-engine" className="underline">Motor de correos</Link>.</p>
                                     {savedConnection && !channels.some(channel => channel.id === savedConnection) && <p role="alert" className="text-xs text-amber-700">El emisor guardado ya no está disponible. Revisa su conexión.</p>}
                                 </div>
                             </CampaignSection>
@@ -271,18 +280,18 @@ function CampaignEditor({ campaignId, campaignName, onClose, onDirtyChange, onBu
                                     </div>
                                 </details>}
                                 {sequence && !sequence.is_active && <p role="alert" className="text-xs text-amber-700">Esta secuencia no es la principal. La revisión final usa la principal.</p>}
-                                {!savedConnection || savedConnection !== connectionId ? <p role="alert" className="rounded-xl bg-muted/40 p-3 text-xs">Guarda el emisor para consultar sus plantillas aprobadas.</p> : <>
+                                {!savedConnection || savedConnection !== connectionId ? <p role="alert" className="rounded-xl bg-muted/40 p-3 text-xs">Guarda el emisor para configurar el mensaje.</p> : <>
                                     {!steps.length && <div className="flex flex-col items-center rounded-xl border border-dashed border-primary/25 bg-primary/[0.03] px-4 py-6 text-center">
                                         <MessageSquare className="mb-3 h-7 w-7 text-primary/60" />
                                         <h4 className="text-sm font-semibold">Tu mensaje empieza aquí</h4>
-                                        <p className="mb-4 mt-1 text-xs text-muted-foreground">Elige una plantilla aprobada y personaliza sus variables.</p>
-                                        <Button size="sm" disabled={!editable} onClick={() => openStep('whatsapp')}><Plus className="mr-2 h-3.5 w-3.5" />Configurar mensaje</Button>
+                                        <p className="mb-4 mt-1 text-xs text-muted-foreground">{email ? 'Escribe el asunto y el mensaje. Pixy incluirá el enlace de baja.' : 'Elige una plantilla aprobada y personaliza sus variables.'}</p>
+                                        <Button size="sm" disabled={!editable} onClick={() => openStep(email ? 'email' : 'whatsapp')}><Plus className="mr-2 h-3.5 w-3.5" />Configurar mensaje</Button>
                                     </div>}
                                     <ol className="space-y-2">{steps.map((item, index) => <li key={item.id} className="flex flex-wrap items-center gap-3 rounded-xl border border-border/60 bg-muted/20 p-3">
                                         <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-background text-primary shadow-xs">{item.type === 'delay' ? <Timer className="h-4 w-4" /> : <MessageSquare className="h-4 w-4" />}</span>
                                         <div className="min-w-0 flex-1">
                                             <h4 className="text-xs font-semibold">{index + 1}. {item.type === 'delay' ? 'Esperar' : item.name}</h4>
-                                            <p className="mt-0.5 text-[11px] text-muted-foreground">{item.type === 'delay' ? `${item.delay_config?.value ?? item.delay_config?.duration} ${({ minutes: 'minutos', hours: 'horas', days: 'días' } as Record<string, string>)[item.delay_config?.unit] || item.delay_config?.unit}` : item.content?.template_name || 'Plantilla pendiente de configurar'}</p>
+                                            <p className="mt-0.5 text-[11px] text-muted-foreground">{item.type === 'delay' ? `${item.delay_config?.value ?? item.delay_config?.duration} ${({ minutes: 'minutos', hours: 'horas', days: 'días' } as Record<string, string>)[item.delay_config?.unit] || item.delay_config?.unit}` : item.type === 'email' ? item.content?.subject || 'Asunto pendiente' : item.content?.template_name || 'Plantilla pendiente de configurar'}</p>
                                         </div>
                                         <div className="flex items-center gap-0.5">
                                             <Button disabled={!editable || index === 0} aria-label={`Subir paso ${index + 1}`} title="Subir" variant="ghost" size="icon" className="h-7 w-7" onClick={() => void edit(() => moveStep(index, -1))}><ArrowUp className="h-3.5 w-3.5" /></Button>
@@ -294,19 +303,19 @@ function CampaignEditor({ campaignId, campaignName, onClose, onDirtyChange, onBu
                                     {!!steps.length && <details open={followup} onToggle={event => setFollowup(event.currentTarget.open)} className="pt-1">
                                         <summary className="cursor-pointer text-xs text-muted-foreground">Añadir seguimiento · opcional</summary>
                                         <p className="mt-2 text-[11px] text-muted-foreground">Añade una espera antes del siguiente mensaje para separarlos en el tiempo.</p>
-                                        <div className="mt-2 flex gap-2"><Button size="sm" disabled={!editable} variant="outline" onClick={() => openStep('delay')}>Añadir espera</Button><Button size="sm" disabled={!editable} variant="outline" onClick={() => openStep('whatsapp')}>Añadir mensaje</Button></div>
+                                        <div className="mt-2 flex gap-2"><Button size="sm" disabled={!editable} variant="outline" onClick={() => openStep('delay')}>Añadir espera</Button><Button size="sm" disabled={!editable} variant="outline" onClick={() => openStep(email ? 'email' : 'whatsapp')}>Añadir mensaje</Button></div>
                                     </details>}
                                 </>}
                             </CampaignSection>
                             <CampaignSection title="3. Destinatarios" icon={<Users className="h-4 w-4 text-primary" />}
                                 action={<Button className="h-7 text-[11px]" size="sm" variant="ghost" disabled={!editable || !canImport} onClick={() => setImportOpen(true)}>Importar lista</Button>}>
-                                <CampaignContactLists value={filters.list_id} disabled={!editable} refresh={revision} canAuthorize={canExecute} onAuthorized={count => { setRevision(value => value + 1); toast.success(`Declaración registrada para ${count} contactos. Aún no se envían mensajes.`) }} onSelect={id => setFilters(id ? { has_phone: true, list_id: id } : { has_phone: true })} />
-                                <CampaignRecipientFilters value={filters} onChange={setFilters} disabled={!editable} refresh={revision} />
+                                <CampaignContactLists channel={email ? 'email' : 'whatsapp'} value={filters.list_id} disabled={!editable} refresh={revision} canAuthorize={canExecute} onAuthorized={count => { setRevision(value => value + 1); toast.success(`Declaración registrada para ${count} contactos. Aún no se envían mensajes.`) }} onSelect={id => setFilters(id ? { ...baseFilters, list_id: id } : baseFilters)} />
+                                <CampaignRecipientFilters channel={email ? 'email' : 'whatsapp'} value={filters} onChange={setFilters} disabled={!editable} refresh={revision} />
                                 <details className="rounded-xl border border-border/60 bg-muted/20 p-3" open={segmentsOpen} onToggle={event => setSegmentsOpen(event.currentTarget.open)}>
                                     <summary className="cursor-pointer text-xs font-medium">Selecciones guardadas · opcional</summary>
                                     {segmentsOpen && <CampaignSavedSegments disabled={!editable} filters={filters} onApply={setFilters} />}
                                 </details>
-                                <p className="text-[11px] text-muted-foreground">Enviar, entregar o leer no convierte un contacto en oportunidad. Desde Inbox puedes elegir una etapa comercial cuando corresponda.</p>
+                                <p className="text-[11px] text-muted-foreground">Los contactos no se convierten en oportunidades automáticamente. Puedes elegir su etapa comercial en el CRM cuando corresponda.</p>
                             </CampaignSection>
                         </div>
                         <aside className="space-y-4">
@@ -323,7 +332,7 @@ function CampaignEditor({ campaignId, campaignName, onClose, onDirtyChange, onBu
                                     {scheduledFor ? <Button disabled={!editable} variant="ghost" size="sm" className="h-6 px-0 text-[11px]" onClick={() => setScheduledFor('')}>Empezar al confirmar</Button> : <p className="text-[11px] text-muted-foreground">Al confirmar, dentro del horario permitido.</p>}
                                 </div>
                                 <label className="flex gap-2 text-xs"><input type="checkbox" disabled={!editable} checked={!!delivery.schedule_window} onChange={event => setDelivery({ ...delivery, schedule_window: event.target.checked ? { start: 9, end: 18 } : undefined })} />Limitar a una ventana diaria</label>
-                                <div className="space-y-2"><Label htmlFor="campaign-recipient-frequency">Espera entre campañas para un mismo contacto · horas</Label><Input id="campaign-recipient-frequency" type="number" min={0} max={720} step={1} disabled={!editable} value={delivery.recipient_cooldown_hours ?? 0} onChange={event => setDelivery({ ...delivery, recipient_cooldown_hours: Number(event.target.value) })} /><p className="text-[11px] text-muted-foreground">Compartida entre números de tu organización. Se respeta la mayor espera de ambas campañas. 0 desactiva la espera de esta campaña. Si el contacto responde, se detienen sus seguimientos pendientes.</p></div>
+                                <div className="space-y-2"><Label htmlFor="campaign-recipient-frequency">Espera entre campañas para un mismo contacto · horas</Label><Input id="campaign-recipient-frequency" type="number" min={0} max={720} step={1} disabled={!editable} value={delivery.recipient_cooldown_hours ?? 0} onChange={event => setDelivery({ ...delivery, recipient_cooldown_hours: Number(event.target.value) })} /><p className="text-[11px] text-muted-foreground">Compartida entre emisores del mismo canal en tu organización. Se respeta la mayor espera de ambas campañas. 0 desactiva la espera de esta campaña. {email ? 'Las bajas detienen sus siguientes envíos. Las respuestas llegan al buzón del emisor.' : 'Si el contacto responde, se detienen sus seguimientos pendientes.'}</p></div>
                                 {delivery.schedule_window && <div className="grid grid-cols-2 gap-2">
                                     <div className="space-y-1"><Label htmlFor="campaign-window-start">Desde · hora 0–23</Label><Input className="h-9 rounded-xl" id="campaign-window-start" type="number" min={0} max={23} disabled={!editable} value={delivery.schedule_window.start} onChange={event => setDelivery({ ...delivery, schedule_window: { ...delivery.schedule_window!, start: Number(event.target.value) } })} /></div>
                                     <div className="space-y-1"><Label htmlFor="campaign-window-end">Hasta · hora 1–24</Label><Input className="h-9 rounded-xl" id="campaign-window-end" type="number" min={1} max={24} disabled={!editable} value={delivery.schedule_window.end} onChange={event => setDelivery({ ...delivery, schedule_window: { ...delivery.schedule_window!, end: Number(event.target.value) } })} /></div>
@@ -332,17 +341,17 @@ function CampaignEditor({ campaignId, campaignName, onClose, onDirtyChange, onBu
                             </CampaignSection>
                             </details>
                             <CampaignSection title="Ritmo de envío" icon={<Send className="h-4 w-4 text-primary" />}>
-                                <CampaignPacing value={delivery} disabled={!editable} onChange={setDelivery} />
+                                <CampaignPacing channel={email ? 'email' : 'whatsapp'} value={delivery} disabled={!editable} onChange={setDelivery} />
                             </CampaignSection>
                             <div className="flex gap-2 rounded-xl border border-primary/15 bg-primary/5 p-3 text-xs leading-relaxed text-muted-foreground">
                                 <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-primary" />
-                                <p>Guardar no envía. Antes de activar se revisan autorización, bajas, plantilla y disponibilidad del canal.</p>
+                                <p>Guardar no envía. Antes de activar se revisan destinatarios, bajas, mensaje y disponibilidad del canal.</p>
                             </div>
                         </aside>
                     </div>
                     <details className="rounded-xl border border-border/60 bg-background">
                         <summary className="cursor-pointer px-4 py-3 text-xs font-medium">Gestionar autorizaciones · opcional</summary>
-                        <div className="border-t border-border/50 p-3"><CampaignReadiness permissionsOnly campaignId={campaignId} revision={revision} canExecute={canExecute} onChanged={() => setRevision(value => value + 1)} /></div>
+                        <div className="border-t border-border/50 p-3"><CampaignReadiness channel={email ? 'email' : 'whatsapp'} permissionsOnly campaignId={campaignId} revision={revision} canExecute={canExecute} onChanged={() => setRevision(value => value + 1)} /></div>
                     </details>
                 </TabsContent>
                 <TabsContent value="results" className="mt-0"><CampaignResults key={`${campaignId}:${metrics?.channelHealth?.holdAt || ''}`} campaignId={campaignId} connectionId={savedConnection} metrics={metrics} canExecute={canExecute} onRefresh={refreshResults} /></TabsContent>
@@ -355,12 +364,12 @@ function CampaignEditor({ campaignId, campaignName, onClose, onDirtyChange, onBu
                 {['draft', 'paused'].includes(status) && <Button size="sm" className="rounded-lg" disabled={!canExecute || busy || loading || !!error || (status === 'draft' && (audienceDirty || configDirty))} onClick={() => setActivationOpen(true)}><ShieldCheck className="mr-2 h-3.5 w-3.5" />{status === 'paused' ? 'Abrir revisión de reanudación' : 'Revisar y enviar'}</Button>}
             </div>
         </footer>
-        {importOpen && <CampaignImport onImported={list => { setFilters({ has_phone: true, list_id: list.id }); toast.success(`Lista seleccionada: ${list.name}. Guarda los destinatarios antes de revisar.`) }} onClose={() => { setImportOpen(false); setRevision(value => value + 1) }} />}
+        {importOpen && <CampaignImport channel={email ? 'email' : 'whatsapp'} onImported={list => { setFilters({ ...baseFilters, list_id: list.id }); toast.success(`Lista seleccionada: ${list.name}. Guarda los destinatarios antes de revisar.`) }} onClose={() => { setImportOpen(false); setRevision(value => value + 1) }} />}
         {activationOpen && <CampaignActivationReview key={`${campaignId}:${revision}`} campaignId={campaignId} onClose={() => setActivationOpen(false)} onActivated={() => { setActivationOpen(false); setTab('results'); void refreshResults() }} />}
         <Dialog open={stepOpen} onOpenChange={open => { if (!open) closeStep() }}><DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto rounded-2xl border-border bg-card"><DialogHeader><DialogTitle>{step.type === 'delay' ? 'Espera entre mensajes' : 'Configurar mensaje'}</DialogTitle><DialogDescription>Se guarda en el borrador. La revisión final valida nuevamente su disponibilidad y las variables.</DialogDescription></DialogHeader>
-            <fieldset disabled={busy} className="space-y-4">{step.type === 'delay' ? <><Label htmlFor="step-delay">Tiempo de espera</Label><Input id="step-delay" type="number" min={1} max={365} value={step.delay} onChange={event => setStep({ ...step, delay: event.target.value })} /><Select disabled={busy} value={step.unit} onValueChange={unit => setStep({ ...step, unit })}><SelectTrigger aria-label="Unidad de espera"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="minutes">Minutos</SelectItem><SelectItem value="hours">Horas</SelectItem><SelectItem value="days">Días</SelectItem></SelectContent></Select></> : <MarketingTemplateEditor disabled={busy} connectionId={savedConnection} value={template} onChange={setTemplate} />}
+            <fieldset disabled={busy} className="space-y-4">{step.type === 'delay' ? <><Label htmlFor="step-delay">Tiempo de espera</Label><Input id="step-delay" type="number" min={1} max={365} value={step.delay} onChange={event => setStep({ ...step, delay: event.target.value })} /><Select disabled={busy} value={step.unit} onValueChange={unit => setStep({ ...step, unit })}><SelectTrigger aria-label="Unidad de espera"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="minutes">Minutos</SelectItem><SelectItem value="hours">Horas</SelectItem><SelectItem value="days">Días</SelectItem></SelectContent></Select></> : step.type === 'email' ? <MarketingEmailEditor disabled={busy} value={emailContent} onChange={setEmailContent} /> : <MarketingTemplateEditor disabled={busy} connectionId={savedConnection} value={template} onChange={setTemplate} />}
                 <details><summary className="cursor-pointer text-sm">Nombre interno · opcional</summary><Label htmlFor="step-name">Nombre</Label><Input id="step-name" maxLength={160} value={step.name} onChange={event => setStep({ ...step, name: event.target.value })} /></details>
-            </fieldset><div className="flex justify-end gap-2"><Button variant="outline" disabled={busy} onClick={closeStep}>Cancelar</Button><Button disabled={!editable || (step.type === 'whatsapp' && !template)} onClick={() => void edit(saveStep)}>{busy ? 'Guardando…' : 'Guardar contenido'}</Button></div>
+            </fieldset><div className="flex justify-end gap-2"><Button variant="outline" disabled={busy} onClick={closeStep}>Cancelar</Button><Button disabled={!editable || (step.type === 'whatsapp' && !template) || (step.type === 'email' && !emailContentSchema.safeParse(emailContent).success)} onClick={() => void edit(saveStep)}>{busy ? 'Guardando…' : 'Guardar contenido'}</Button></div>
         </DialogContent></Dialog>
     </div>
 }

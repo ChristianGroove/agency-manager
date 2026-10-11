@@ -12,7 +12,7 @@ export const campaignPageSchema = z.object({
 export type CampaignPageInput = z.input<typeof campaignPageSchema>
 export interface CampaignRow {
     id: string; name: string; status: string; createdAt: string; scheduledFor: string | null;
-    channel: string | null; channelName: string | null;
+    channel: string | null; channelName: string | null; channelType?: 'whatsapp' | 'email';
     recipients: number; completed: number; failed: number; cancelled: number;
     accepted: number; delivered: number; read: number; deliveryFailed: number; unknown: number;
 }

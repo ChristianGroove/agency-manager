@@ -4,6 +4,7 @@ import { outboundService } from '@/modules/features/messaging/outbound-service'
 import { normalizeDelay, normalizeMarketingPhone } from './marketing-contracts'
 import { enforceScheduleWindow } from './marketing-utils'
 import { buildCampaignTemplateMessage } from './marketing-template-contract'
+import { processEmailClaim } from './marketing-email-worker'
 
 /** Internal cron worker. Session cookies are never used as worker credentials. */
 export async function runMarketingCycle() {
@@ -38,7 +39,9 @@ export async function runMarketingCycle() {
     }
     const finalized = await db.rpc('finalize_marketing_campaigns', { p_limit: 25 })
     if (finalized.error) throw new Error('No se pudo verificar el cierre de campañas.')
-    return { success: true, processed, failed, deferred, finalized: finalized.data, logs: [] as string[] }
+    const emailFinalized = await db.rpc('finalize_marketing_email_campaigns', { p_limit: 25 })
+    if (emailFinalized.error) throw new Error('No se pudo verificar el cierre de campañas de email.')
+    return { success: true, processed, failed, deferred, finalized: (finalized.data || 0) + (emailFinalized.data || 0), logs: [] as string[] }
 }
 
 async function checkpoint(db: any, claim: any, data: Record<string, unknown>) {
@@ -59,8 +62,8 @@ async function processClaim(db: any, claim: any): Promise<'processed' | 'deferre
     const result = await db.from('marketing_enrollments').select(`*,
         step:marketing_steps!current_step_id(*),
         sequence:marketing_sequences!sequence_id(id,campaign_id,organization_id,is_active),
-        campaign:marketing_campaigns!campaign_id(id,organization_id,status,connection_id,execution_version,delivery_config,scheduled_for),
-        lead:leads!contact_id(id,organization_id,phone,name,company:company_name,marketing_opted_out)`)
+        campaign:marketing_campaigns!campaign_id(id,organization_id,status,connection_id,execution_version,delivery_config,scheduled_for,channel,smtp_config_id),
+        lead:leads!contact_id(id,organization_id,phone,email,name,company:company_name,marketing_opted_out)`)
         .eq('id', claim.id).eq('organization_id', claim.organization_id).eq('claim_token', claim.claim_token).single()
     if (result.error || !result.data) throw new Error('Trabajo no disponible.')
     const row = result.data, { campaign, sequence, step, lead } = row
@@ -69,6 +72,7 @@ async function processClaim(db: any, claim: any): Promise<'processed' | 'deferre
         lead.organization_id !== row.organization_id || sequence.campaign_id !== campaign.id || step.sequence_id !== sequence.id) {
         throw new Error('Relaciones de campaña inválidas.')
     }
+    if (campaign.channel === 'email') return processEmailClaim(db, claim, row)
     if (row.status !== 'active' || campaign.status !== 'active' || campaign.execution_version !== 2 || !sequence.is_active ||
         !campaign.connection_id || (campaign.scheduled_for && Date.parse(campaign.scheduled_for) > Date.now())) {
         await checkpoint(db, claim, { next_run_at: new Date(Date.now() + 300_000).toISOString() })

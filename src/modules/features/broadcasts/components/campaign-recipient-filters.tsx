@@ -18,28 +18,28 @@ const dateFilters = [
 ] as const
 
 export type RecipientFilters = z.infer<typeof audienceFiltersSchema>
-export function CampaignRecipientFilters({ value, onChange, disabled, refresh = 0 }: {
+export function CampaignRecipientFilters({ value, onChange, disabled, refresh = 0, channel = 'whatsapp' }: { channel?: 'whatsapp' | 'email';
     value: RecipientFilters; onChange: (filters: RecipientFilters) => void; disabled: boolean; refresh?: number;
 }) {
     const [readiness, setReadiness] = useState<AudienceReadiness | null>(null), [error, setError] = useState(''), [loading, setLoading] = useState(true)
     const [revision, setRevision] = useState(0)
     const [advanced, setAdvanced] = useState(false)
     const [custom, setCustom] = useState(false)
-    const hasCustom = Object.entries(value).some(([key, field]) => !['has_phone', 'list_id'].includes(key) && (Array.isArray(field) ? field.length > 0 : field !== undefined && field !== '' && field !== false))
+    const hasCustom = Object.entries(value).some(([key, field]) => !['has_phone', 'has_email', 'list_id'].includes(key) && (Array.isArray(field) ? field.length > 0 : field !== undefined && field !== '' && field !== false))
     useEffect(() => {
         let current = true
         setLoading(true); setError(''); setReadiness(null)
         const rangeIssues = audienceRangeIssues(value)
         if (rangeIssues.length) { setLoading(false); setError(rangeIssues.join(' ')); return }
         const timer = setTimeout(() => {
-            void getAudienceReadiness({ ...value, tags: value.tags?.filter(tag => tag.trim()) }).then(result => {
+            void getAudienceReadiness({ ...value, tags: value.tags?.filter(tag => tag.trim()) }, channel).then(result => {
                 if (!current) return
                 if (result.success) setReadiness(result.audience); else setError(result.error)
                 setLoading(false)
             }).catch(() => { if (current) { setError('No se pudo revisar la audiencia.'); setLoading(false) } })
         }, 300)
         return () => { current = false; clearTimeout(timer) }
-    }, [value, revision, refresh])
+    }, [value, revision, refresh, channel])
     return <div className="space-y-4">
         <details open={custom} onToggle={event => setCustom(event.currentTarget.open)} className="rounded-xl border border-border/60 bg-muted/20 p-3">
         <summary className="cursor-pointer text-xs font-medium">Personalizar destinatarios · opcional{hasCustom ? ' · selección personalizada' : ''}</summary>

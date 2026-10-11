@@ -7,7 +7,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { parseMarketingListFile, CONTACT_LIST_BYTE_LIMIT, ImportReview, ImportReviewRow, importReason } from '../marketing-import'
 import { prepareMarketingImport, prepareMarketingContactImport, confirmMarketingImport } from '../marketing-review-actions'
 
-export function CampaignImport({ onClose, onImported }: { onClose: () => void; onImported?: (list: { id: string; name: string }) => void }) {
+import { parseEmailListImport } from '../marketing-email-contracts'
+import { prepareEmailContactImport, confirmEmailContactImport } from '../marketing-email-actions'
+
+export function CampaignImport({ onClose, onImported, channel = 'whatsapp' }: { channel?: 'whatsapp' | 'email'; onClose: () => void; onImported?: (list: { id: string; name: string }) => void }) {
     const [listName, setListName] = useState('')
     const [mode, setMode] = useState<'contacts' | 'consent'>('contacts')
     const [page, setPage] = useState(0)
@@ -29,12 +32,12 @@ export function CampaignImport({ onClose, onImported }: { onClose: () => void; o
         setBusy(true); setError(''); setResult(''); setReview(null); setInvalid([]); setSelected([]); setConfirmed(false); setPage(0)
         try {
             if (file.size > CONTACT_LIST_BYTE_LIMIT) throw new Error('El CSV supera 5 MB.')
-            const parsed = parseMarketingListFile(await file.text())
+            const parsed = channel === 'email' ? { ...parseEmailListImport(await file.text()), mode: 'contacts' as const } : parseMarketingListFile(await file.text())
             if (request !== epoch.current) return
             setMode(parsed.mode)
             setInvalid(parsed.invalid)
             if (!parsed.valid.length) { setError('Ninguna fila tiene datos válidos.'); return }
-            const response = parsed.mode === 'contacts' ? await prepareMarketingContactImport(parsed.valid) : await prepareMarketingImport(parsed.valid)
+            const response = channel === 'email' ? await prepareEmailContactImport(parsed.valid) : parsed.mode === 'contacts' ? await prepareMarketingContactImport(parsed.valid) : await prepareMarketingImport(parsed.valid)
             if (request !== epoch.current) return
             if (!response.success) setError(response.error)
             else { setReview(response.review); if (parsed.mode === 'contacts') setSelected(response.review.rows.filter(row => row.eligible).map(row => row.row)) }
@@ -47,7 +50,7 @@ export function CampaignImport({ onClose, onImported }: { onClose: () => void; o
         setBusy(true); setError('')
         try {
             const request = epoch.current
-            const response = await confirmMarketingImport({ token: review.token, rows: selected, confirmed, listName: listName.trim(), ...(mode === 'contacts' ? { mode } : {}) })
+            const response = await (channel === 'email' ? confirmEmailContactImport : confirmMarketingImport)({ token: review.token, rows: selected, confirmed, listName: listName.trim(), ...(channel === 'whatsapp' && mode === 'contacts' ? { mode } : {}) })
             if (request !== epoch.current) return
             if (!response.success) { setError(response.error); return }
             if (response.result.listId && response.result.listName) setImportedList({ id: response.result.listId, name: response.result.listName })
@@ -64,9 +67,9 @@ export function CampaignImport({ onClose, onImported }: { onClose: () => void; o
         <div className="space-y-3 text-sm">
             <label htmlFor="marketing-list-name">Nombre de la lista</label><Input id="marketing-list-name" value={listName} maxLength={160} disabled={busy || !!result} onChange={event => { setListName(event.target.value); setConfirmed(false) }} placeholder="Ej. Clientes interesados · octubre" />
             <p className="text-muted-foreground">Los contactos nuevos quedan fuera del pipeline comercial. Los contactos existentes conservan su tipo y etapa.</p>
-            <p>Solo telefono es obligatorio. nombre y email son opcionales:</p>
-            <code className="block text-xs break-all">telefono,nombre,email</code>
-            <p className="text-muted-foreground">Usa teléfonos con código de país. Después puedes registrar una autorización externa para toda la lista en un solo paso.</p>
+            <p>{channel === 'email' ? 'Solo email es obligatorio. nombre es opcional:' : 'Solo telefono es obligatorio. nombre y email son opcionales:'}</p>
+            <code className="block text-xs break-all">{channel === 'email' ? 'email,nombre' : 'telefono,nombre,email'}</code>
+            <p className="text-muted-foreground">{channel === 'email' ? 'Usa direcciones de correo válidas.' : 'Usa teléfonos con código de país.'} Después puedes registrar una autorización externa para toda la lista en un solo paso.</p>
             <label htmlFor="marketing-csv">Archivo CSV</label><Input id="marketing-csv" type="file" accept=".csv,text/csv" disabled={busy || !!result} onChange={event => { const file = event.target.files?.[0]; event.target.value = ''; void load(file) }} />
             {busy && <p role="status">Procesando…</p>}
             {error && <p role="alert" className="text-red-600">{error}</p>}

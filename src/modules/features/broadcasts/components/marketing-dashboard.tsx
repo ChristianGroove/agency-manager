@@ -8,6 +8,7 @@ import { SectionHeader } from '@/components/layout/section-header'
 import { Button } from '@/components/ui/button'
 import { CampaignsList } from './campaigns-list'
 import { getMarketingStats } from '../marketing-actions'
+import { getMarketingEmailSenders } from '../marketing-email-actions'
 import { getMarketingSetup, MarketingChannel } from '../marketing-preflight-actions'
 
 const CreateCampaignDialog = dynamic(() => import('./create-campaign-dialog').then(module => module.CreateCampaignDialog))
@@ -24,11 +25,11 @@ export function MarketingDashboard({ initialCampaign }: { initialCampaign?: Sele
     useEffect(() => { setSelected(initialCampaign || null) }, [initialCampaign?.id])
     useEffect(() => {
         let current = true
-        void Promise.all([getMarketingStats(), getMarketingSetup()]).then(([counts, setup]) => {
+        void Promise.all([getMarketingStats(), getMarketingSetup(), getMarketingEmailSenders()]).then(([counts, setup, smtp]) => {
             if (!current) return
             setError(('error' in counts ? counts.error : !setup.success ? setup.error : '') || '')
             setStats('error' in counts ? null : counts)
-            if (setup.success) { setChannels(setup.channels); setCanManage(setup.canManage); setCanExecute(setup.canExecute) }
+            if (setup.success) { setChannels([...setup.channels, ...(smtp.success ? smtp.channels : [])]); setCanManage(setup.canManage); setCanExecute(setup.canExecute) }
             else { setChannels([]); setCanManage(false); setCanExecute(false) }
         }).catch(() => { if (current) { setStats(null); setError('No se pudo cargar el resumen de Marketing.') } })
         return () => { current = false }
@@ -39,8 +40,8 @@ export function MarketingDashboard({ initialCampaign }: { initialCampaign?: Sele
     }
     const summary = [
         { label: 'Campañas', count: stats?.totalCampaigns, icon: Layers },
-        { label: 'Aceptados por Meta', count: stats?.totalMessages, icon: Send },
-        { label: 'Entregados · incluye leídos', count: stats?.totalDelivered, icon: CheckCheck },
+        { label: 'Mensajes aceptados', count: stats?.totalMessages, icon: Send },
+        { label: 'Entregados por WhatsApp', count: stats?.totalDelivered, icon: CheckCheck },
     ]
     return <div className="space-y-5 pb-8">
         <SectionHeader title="Campañas masivas" subtitle="Tu centro de envíos: audiencias, mensajes y seguimiento." icon={Megaphone}

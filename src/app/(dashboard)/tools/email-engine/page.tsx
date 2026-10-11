@@ -4,6 +4,7 @@ import { getSmtpConfig } from "@/modules/features/notifications/actions/smtp-act
 import { EmailSettingsPage } from "@/modules/features/notifications/components/email-settings-page"
 import { Loader2 } from "lucide-react"
 import { createClient } from "@/modules/core/database/supabase-server"
+import { getCurrentOrganizationId } from "@/modules/core/organizations/actions/crud"
 import { redirect } from "next/navigation"
 
 export const metadata = {
@@ -19,21 +20,8 @@ export default async function Page() {
         redirect("/login")
     }
 
-    // Get Active Organization for the user
-    // We assume the user is visiting the platform, so we get their first org or active one
-    // Ideally this logic is centrally handled, but for now we fetch it.
-    const { data: member } = await supabase
-        .from('organization_members')
-        .select('organization_id')
-        .eq('user_id', user.id)
-        .limit(1)
-        .single()
-
-    if (!member) {
-        return <div>No organization found</div>
-    }
-
-    const organizationId = member.organization_id
+    const organizationId = await getCurrentOrganizationId()
+    if (!organizationId) return <div>Selecciona una organización para configurar el correo.</div>
 
     // Parallel fetching
     const [templates, smtpConfig] = await Promise.all([

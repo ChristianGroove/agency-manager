@@ -34,10 +34,11 @@ export async function getMarketingSetup(connectionId?: string) {
     } catch (error) { return { success: false as const, error: publicMarketingError(error) } }
 }
 
-export async function getAudienceReadiness(filters: unknown) {
+export async function getAudienceReadiness(filters: unknown, channel: 'whatsapp' | 'email' = 'whatsapp') {
     try {
         const access = await requireMarketingAccess('view')
-        const result = await access.session.rpc('marketing_audience_summary', { p_org: access.organizationId, p_filters: audienceFiltersSchema.parse(filters || {}) })
+        z.enum(['whatsapp', 'email']).parse(channel)
+        const result = await access.session.rpc(channel === 'email' ? 'marketing_email_audience_summary' : 'marketing_audience_summary', { p_org: access.organizationId, p_filters: audienceFiltersSchema.parse(filters || {}) })
         if (result.error || !result.data) throw new Error('No se pudo revisar la autorización de los destinatarios.')
         return { success: true as const, audience: result.data as AudienceReadiness }
     } catch (error) { return { success: false as const, error: publicMarketingError(error) } }

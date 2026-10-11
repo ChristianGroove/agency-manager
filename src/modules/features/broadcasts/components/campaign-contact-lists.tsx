@@ -9,7 +9,7 @@ import type { ContactListPage } from '../marketing-workspace'
 import dynamic from 'next/dynamic'
 const CampaignListAuthorization = dynamic(() => import('./campaign-list-authorization').then(module => module.CampaignListAuthorization))
 
-export function CampaignContactLists({ value, disabled, onSelect, refresh = 0, canAuthorize = false, onAuthorized }: {
+export function CampaignContactLists({ value, disabled, onSelect, refresh = 0, canAuthorize = false, onAuthorized, channel = 'whatsapp' }: { channel?: 'whatsapp' | 'email';
     value?: string; disabled: boolean; onSelect: (id?: string) => void; refresh?: number; canAuthorize?: boolean; onAuthorized?: (count: number) => void;
 }) {
     const [authorizationOpen, setAuthorizationOpen] = useState(false)
@@ -31,13 +31,13 @@ export function CampaignContactLists({ value, disabled, onSelect, refresh = 0, c
         <div className="flex items-center gap-3 rounded-xl border border-primary/15 bg-primary/5 p-3">
             <List className="h-5 w-5 shrink-0 text-primary" />
             <div className="min-w-0 flex-1"><p className="text-sm font-semibold">{value ? page?.selected?.name || (loading ? 'Consultando lista…' : 'Lista guardada') : 'Contactos del CRM'}</p>
-                <p className="mt-0.5 text-xs text-muted-foreground">{value ? 'Solo contactos de esta lista con autorización vigente.' : 'Contactos con teléfono y autorización vigente. Puedes elegir una lista importada.'}</p>
+                <p className="mt-0.5 text-xs text-muted-foreground">{value ? 'Solo contactos de esta lista con autorización vigente.' : `Contactos con ${channel === 'email' ? 'email' : 'teléfono'} y autorización vigente. Puedes elegir una lista importada.`}</p>
             </div>
             <Button type="button" size="sm" variant="outline" disabled={disabled} onClick={() => setOpen(!open)} aria-expanded={open}>Elegir lista</Button>
         </div>
         {error && <p role="alert" className="text-xs text-destructive">{error}</p>}
         {value && canAuthorize && <div className="flex flex-wrap items-center justify-between gap-2"><p className="text-xs text-muted-foreground">¿La empresa ya obtuvo el permiso fuera de Pixy?</p><Button size="sm" variant="outline" disabled={disabled} onClick={() => setAuthorizationOpen(true)}>Registrar autorización de la lista</Button></div>}
-        {authorizationOpen && value && <CampaignListAuthorization key={value} listId={value} onClose={() => setAuthorizationOpen(false)} onSaved={count => { setAuthorizationOpen(false); setRevision(n => n + 1); onAuthorized?.(count) }} />}
+        {authorizationOpen && value && <CampaignListAuthorization channel={channel} key={value} listId={value} onClose={() => setAuthorizationOpen(false)} onSaved={count => { setAuthorizationOpen(false); setRevision(n => n + 1); onAuthorized?.(count) }} />}
         {!loading && !error && value && page && !page.selected && <p role="alert" className="text-xs text-destructive">La lista guardada no está disponible. Elige otra antes de enviar.</p>}
         {open && <div className="space-y-3 rounded-xl border border-border/60 bg-muted/20 p-3">
             <form className="flex gap-2" onSubmit={event => { event.preventDefault(); setQuery(search.trim()); setCursor(null); setRevision(n => n + 1) }}>

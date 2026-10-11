@@ -1,27 +1,27 @@
 # Campañas masivas: cierre de implementación
 
-Fecha: 10 de octubre de 2026. Rama: `codex/marketing-campaign-hardening`.
-Implementación de referencia: `8f82db13`. Este cierre añade documentación; no cambia el comportamiento del producto.
+Fecha: 11 de octubre de 2026. Rama: `codex/marketing-campaign-hardening`.
+La referencia anterior `8f82db13` corresponde a las etapas 1–13. La [etapa 14](implementation-stage-14.md) integra campañas de email con SMTP del tenant.
 
 ## Estado de entrega
 
 La implementación actual está terminada y guardada localmente. Se ha comprobado con pruebas automatizadas y build, pero **no está habilitada para envíos masivos en producción**. Las migraciones de Marketing se aplicaron únicamente en Supabase Docker local. La revisión visual autenticada y una campaña real pequeña siguen pendientes.
 
-Correo y SMS quedan aplazados por decisión del usuario. Hay servicios de correo/SMTP y SMS en otros módulos; su existencia no equivale a una integración operativa con este motor de campañas. No se habilitan sus selectores ni se ofrece entrega simulada como funcional.
+WhatsApp y email mediante SMTP verificado comparten el flujo de campañas; SMS sigue aplazado. Email tiene permisos, bajas y outbox propios, sin sustituir el transporte Meta ni los correos transaccionales. SMTP solo acredita aceptación del servidor. Consulta la [etapa 14](implementation-stage-14.md) para migraciones, configuración y límites.
 
 ## Alcance implementado
 
-- Producto **Campañas masivas**, con WhatsApp operativo en esta versión. Meta Ads conserva su módulo independiente.
+- Producto **Campañas masivas**, con WhatsApp y email integrados en esta versión local. Meta Ads conserva su módulo independiente.
 - Listado paginado con búsqueda y estados reales. Crear/abrir una campaña usa un espacio flotante; los enlaces directos siguen disponibles.
 - Orden: canal, mensaje, destinatarios, revisión y envío. Actividad concentra resultados/historial. Filtros adicionales, segmentos y programación son opcionales.
 - Plantillas WhatsApp validadas y variables por destinatario. Una secuencia principal de mensajes y esperas, con controles de orden y protección del diseño activado.
-- Listas importadas con nombre y contactos compartidos con CRM. CSV simple: teléfono obligatorio, nombre/email opcionales; hasta 1.000 filas y 5 MB. El formato antiguo con evidencia individual mantiene 100 filas y 1 MB.
+- Listas importadas con nombre y contactos compartidos con CRM. CSV de WhatsApp: teléfono obligatorio, nombre/email opcionales; email: email obligatorio y nombre opcional; hasta 1.000 filas y 5 MB. El formato antiguo con evidencia individual mantiene 100 filas y 1 MB.
 - Importar guarda contactos, no envía ni concede autorización. La declaración explícita de autorización externa puede registrarse una vez por lista, con actor/fecha; Pixy no verifica retrospectivamente cómo se obtuvo. Bajas y revocaciones no se revierten por esa declaración.
 - Revisión final con elegibles/exclusiones. Confirmación ligada al actor, organización, operación, contenido y audiencia; ticket de 10 minutos, invalidable ante cambios.
 - Activación/snapshot transaccionales, idempotencia, pausa/reanudación sin reinscribir y recuperación de resultados inciertos sin reenvío ciego.
 - Ritmo por número físico compartido entre campañas, ventana horaria y variación opcional. Conservador, Equilibrado y Rápido indican cadencia; no garantizan evitar restricciones de Meta.
 - Espera opcional por destinatario entre campañas de una organización: 0–720 horas. Nuevos borradores proponen 24 horas; campañas antiguas sin ese campo conservan su configuración. El último contacto aceptado se conserva aunque falle un seguimiento posterior.
-- Respuestas reales detienen siguientes pasos de esa inscripción. Se comprueban al procesar/recuperar el siguiente paso y antes de reservar otro envío. No es cancelación instantánea por webhook ni puede retirar una solicitud ya enviada a Meta.
+- En WhatsApp, respuestas reales detienen siguientes pasos de esa inscripción. Se comprueban al procesar/recuperar el siguiente paso y antes de reservar otro envío. No es cancelación instantánea por webhook ni puede retirar una solicitud ya enviada a Meta.
 - Resultados distinguen procesamiento, aceptación, entrega, lectura y fallos. Historial paginado y exportación CSV protegidos por organización/permisos.
 
 ## Relación con CRM e Inbox
@@ -34,7 +34,15 @@ Los controles añadidos al outbox se condicionan a operaciones de campaña. No s
 
 ## Evidencia de validación
 
-La evidencia final de código corresponde a la [etapa 13](implementation-stage-13.md):
+La [etapa 14](implementation-stage-14.md) añade email y está validada localmente:
+
+- 271 pruebas de Marketing, rutas y SMTP en 29 archivos.
+- 242 pruebas de regresión de canales, mensajería, CRM y notificaciones en 60 archivos; seis pruebas SMTP están incluidas en ambos recorridos.
+- Ocho suites SQL con fixtures sintéticos y rollback, incluyendo email.
+- Build `next build --webpack` completo y TypeScript correctos.
+- Preview aislado en `localhost:3002`, con envíos deshabilitados y base Docker local. La sesión anterior caducó; falta el recorrido visual autenticado y el envío SMTP real controlado.
+
+La evidencia histórica de la [etapa 13](implementation-stage-13.md) se conserva para comparación:
 
 - 253 pruebas distintas de Marketing/outbox en 26 archivos. El recorrido completo inicial tenía 252; la prueba adicional de cancelación concurrente se comprobó después en el archivo del worker.
 - Siete suites SQL locales con datos sintéticos y `ROLLBACK`: seguridad, operaciones revisadas, workspace, editor, listas, listas simples y respuesta/frecuencia.
@@ -42,7 +50,7 @@ La evidencia final de código corresponde a la [etapa 13](implementation-stage-1
 - TypeScript y build local correctos; aviso previo de configuración local de FlowsCrypto conservado.
 - Proveedores simulados: no son pruebas Meta Live, de volumen real ni de entrega a destinatarios.
 
-Este cierre documental no vuelve a ejecutar ni atribuye esas pruebas a otra rama. Las evidencias detalladas y limitaciones se conservan en los reportes por etapa.
+Las evidencias detalladas y limitaciones se conservan en los reportes por etapa. No se atribuyen pruebas simuladas a entrega real o a producción.
 
 ## Preparación de producción pendiente
 
@@ -69,8 +77,12 @@ Orden cronológico; archivos en `supabase/migrations/`:
 10. `20261010060000_marketing_contact_lists.sql`
 11. `20261010070000_marketing_simple_lists.sql`
 12. `20261010080000_marketing_recipient_followups.sql`
+13. `20261011120000_marketing_email_campaigns.sql`
+14. `20261011123000_marketing_email_lists.sql`
+15. `20261011130000_marketing_email_integration.sql`
+16. `20261011133000_marketing_email_permission.sql`
 
-La última añade índices de mensajes/outbox. En una base grande, su creación normal puede bloquear escrituras. La [etapa 13](implementation-stage-13.md) explica cómo prepararlos con `CREATE INDEX CONCURRENTLY` fuera de una transacción y reutilizarlos mediante `IF NOT EXISTS`. Preparar ese paso sobre el esquema/volumen reales antes del despliegue.
+La migración de seguimiento/frecuencia añade índices de mensajes/outbox. En una base grande, su creación normal puede bloquear escrituras. La [etapa 13](implementation-stage-13.md) explica cómo prepararlos con `CREATE INDEX CONCURRENTLY` fuera de una transacción y reutilizarlos mediante `IF NOT EXISTS`. Preparar ese paso sobre el esquema/volumen reales antes del despliegue.
 
 ### Programador en Coolify
 
@@ -86,7 +98,10 @@ Ante incidencias: deshabilitar nuevas ejecuciones y pausar campañas afectadas, 
 
 | Pendiente | Siguiente acción |
 |---|---|
-| Email/SMS | Proveedores/conexiones por tenant; despacho, estados y bajas específicos. Mantener pendientes hasta completar el flujo. |
+| SMS | Integrar proveedor por tenant, despacho, estados y bajas antes de habilitar. |
+| Email: eventos y respuestas | SMTP está integrado; faltan eventos de entrega/rebotes/quejas y recepción de respuestas en Inbox. SMTP no acredita entrega ni lectura. |
+| SMTP heredado | Revisar cifrado por defecto y migrar credenciales antes de cambiar `SMTP_ENC_KEY`; preservar correo transaccional. |
+| Email incierto | Comprobar registros del proveedor y resolver administrativamente; no hay reenvío automático ni conciliación por webhook en esta etapa. |
 | Importaciones mayores de 1.000 | Job por lotes con archivo privado, progreso y cancelación; medir antes de ampliar trabajo síncrono. |
 | Audiencias grandes/capacidad | Medir consultas, latencia, equidad y throughput; decidir lotes/concurrencia limitada preservando idempotencia y ritmo. |
 | Retención de revisiones/historial | Definir conservación y limpieza, revisar cascadas al eliminar contactos y probar recuperación/auditoría. |

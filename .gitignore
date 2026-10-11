@@ -75,3 +75,5 @@ pixy-local-data-restore-fixed.sql
 
 # Agent working trees
 .agents/
+
+!scripts/tests/marketing-email.sql

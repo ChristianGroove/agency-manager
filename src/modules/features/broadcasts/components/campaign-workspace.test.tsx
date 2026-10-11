@@ -1,7 +1,7 @@
 import { act, fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 const mocks = vi.hoisted(() => ({
-    campaign: vi.fn(), flows: vi.fn(), audience: vi.fn(), metrics: vi.fn(), setup: vi.fn(), readiness: vi.fn(),
+    emailSetup: vi.fn(), campaign: vi.fn(), flows: vi.fn(), audience: vi.fn(), metrics: vi.fn(), setup: vi.fn(), readiness: vi.fn(),
     update: vi.fn(), saveAudience: vi.fn(), create: vi.fn(), sequence: vi.fn(), add: vi.fn(), edit: vi.fn(), remove: vi.fn(), principal: vi.fn(), page: vi.fn(), toast: vi.fn(), reorder: vi.fn(), assignees: vi.fn()
 }))
 vi.mock('../marketing-actions', () => ({
@@ -10,6 +10,7 @@ vi.mock('../marketing-actions', () => ({
 }))
 vi.mock('../marketing-workspace-actions', () => ({ getCampaignAudience: mocks.audience, saveCampaignAudience: mocks.saveAudience, getMarketingCampaignPage: mocks.page, reorderCampaignSteps: mocks.reorder, getMarketingAssignees: mocks.assignees }))
 vi.mock('../marketing-preflight-actions', () => ({ getMarketingSetup: mocks.setup, getAudienceReadiness: mocks.readiness }))
+vi.mock('../marketing-email-actions', () => ({ getMarketingEmailSenders: mocks.emailSetup, saveCampaignSender: (...args: unknown[]) => mocks.update(args[0], { connection_id: args[1] }) }))
 vi.mock('next/dynamic', () => ({ default: () => () => null }))
 vi.mock('sonner', () => ({ toast: { error: mocks.toast, success: vi.fn() } }))
 vi.mock('./campaign-readiness', () => ({ CampaignReadiness: () => <p>Revisión del diseño guardado</p> }))
@@ -23,6 +24,7 @@ const id = '16000000-0000-4000-8000-000000000001', emitter = '18000000-0000-4000
 const saved = { has_phone: true, source: 'original', assigned_to: id, created_after: '2025-01-01T00:00:00Z' }
 beforeEach(() => {
     vi.resetAllMocks()
+    mocks.emailSetup.mockResolvedValue({ success: true, channels: [] })
     mocks.campaign.mockResolvedValue({ success: true, campaign: { id, status: 'draft', connection_id: emitter, delivery_config: { mode: 'growth', humanize: true, timezone: 'America/Bogota' } }, executionEnabled: false })
     mocks.flows.mockResolvedValue({ success: true, sequences: [{ id: 'sequence', is_active: true, steps: [{ id: 'step', type: 'whatsapp', name: 'Mensaje existente', content: { template_name: 'promo' } }] }] })
     mocks.audience.mockResolvedValue({ success: true, audience: { id: 'audience', filters: saved } })
@@ -246,4 +248,19 @@ describe('Floating campaign workspace', () => {
         expect(close).not.toHaveBeenCalled()
         await act(async () => resolve({ success: true }))
     })
+})
+
+it('opens email as the same campaign workspace and saves email content without calling the template editor', async () => {
+    mocks.campaign.mockResolvedValue({ success: true, campaign: { id, status: 'draft', channel: 'email', smtp_config_id: emitter, delivery_config: { mode: 'growth', humanize: true, timezone: 'America/Bogota' } }, executionEnabled: false })
+    mocks.emailSetup.mockResolvedValue({ success: true, channels: [{ id: `smtp:${emitter}`, name: 'Company SMTP' }] })
+    mocks.flows.mockResolvedValue({ success: true, sequences: [{ id: 'sequence', is_active: true, steps: [{ id: 'step', type: 'email', name: 'Email', content: { subject: 'Original subject', body: 'Original body' } }] }] })
+    mocks.edit.mockResolvedValue({ success: true })
+    await wizard()
+    expect(await screen.findByText('Campañas masivas · Email')).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: /^Editar$/ }))
+    const dialog = screen.getByRole('dialog')
+    expect(within(dialog).queryByText('Editor de plantilla')).not.toBeInTheDocument()
+    fireEvent.change(within(dialog).getByLabelText('Asunto'), { target: { value: 'Updated email subject' } })
+    fireEvent.click(within(dialog).getByRole('button', { name: 'Guardar contenido' }))
+    await waitFor(() => expect(mocks.edit).toHaveBeenCalledWith('step', expect.objectContaining({ type: 'email', content: { subject: 'Updated email subject', body: 'Original body' } })))
 })

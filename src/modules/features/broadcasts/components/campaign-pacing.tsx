@@ -10,7 +10,7 @@ const modes = [
     { value: 'turbo', title: 'Rápido', interval: '5 s', icon: Zap, color: 'text-rose-600', dot: 'bg-rose-500' },
 ] as const
 
-export function CampaignPacing({ value, disabled, onChange }: {
+export function CampaignPacing({ value, disabled, onChange, channel = 'whatsapp' }: { channel?: 'whatsapp' | 'email';
     value: DeliveryConfig; disabled: boolean; onChange: (value: DeliveryConfig) => void;
 }) {
     return <div className="space-y-3">
@@ -28,11 +28,11 @@ export function CampaignPacing({ value, disabled, onChange }: {
                 {value.mode === mode.value && <Check className="absolute right-2 top-2 h-3 w-3 text-primary" />}
             </button>)}
         </div>
-        {value.mode === 'turbo' && <p role="status" className="text-xs text-rose-700 dark:text-rose-300">El ritmo rápido requiere capacidad validada del número.</p>}
+        {value.mode === 'turbo' && <p role="status" className="text-xs text-rose-700 dark:text-rose-300">{channel === 'email' ? 'El ritmo rápido requiere capacidad validada de tu proveedor SMTP.' : 'El ritmo rápido requiere capacidad validada del número.'}</p>}
         <label className="flex items-center gap-2 text-xs text-muted-foreground">
             <input type="checkbox" disabled={disabled} checked={value.humanize} onChange={event => onChange({ ...value, humanize: event.target.checked })} />
             Añadir variación al intervalo
         </label>
-        <p className="text-[11px] leading-relaxed text-muted-foreground">Intervalo base compartido entre campañas del número. Los colores indican ritmo, no seguridad: ningún modo evita bloqueos ni sustituye la autorización y los límites de Meta.</p>
+        <p className="text-[11px] leading-relaxed text-muted-foreground">Intervalo base compartido entre campañas del emisor. Los colores indican ritmo, no seguridad: ningún modo evita bloqueos ni sustituye la autorización y los límites del proveedor.</p>
     </div>
 }

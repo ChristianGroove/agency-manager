@@ -1,4 +1,5 @@
 'use server'
+import { emailEnvironmentIssues } from './marketing-email-environment'
 
 import { z } from 'zod'
 import { supabaseAdmin } from '@/modules/core/database/supabase-admin'
@@ -68,7 +69,7 @@ export async function confirmMarketingImport(input: unknown) {
 }
 
 export interface ActivationReview {
-    token: string; expiresAt: string; issues: string[]; enabled: boolean; resume: boolean;
+    token: string; expiresAt: string; issues: string[]; enabled: boolean; resume: boolean; channel?: 'whatsapp' | 'email';
     audience: { matched: number; eligible: number; duplicates: number; invalidFormat: number; optedOut: number; missingConsent: number } | null;
     connectionId: string | null; channelName: string; timezone: string; mode: string; window: { start: number; end: number } | null;
     scheduledFor: string | null; recipientCooldownHours?: number; steps: { id: string; name: string; type: string; template: string | null; language: string | null; text: string; bindings: Record<string, string>; delay: unknown }[];
@@ -78,9 +79,25 @@ export async function prepareCampaignActivation(campaignId: string) {
     try {
         const access = await requireMarketingAccess('execute')
         z.string().uuid().parse(campaignId)
-        const visible = await access.session.from('marketing_campaigns').select('connection_id').eq('organization_id', access.organizationId).eq('id', campaignId).single()
+        const visible = await access.session.from('marketing_campaigns').select('connection_id,channel').eq('organization_id', access.organizationId).eq('id', campaignId).single()
         if (visible.error || !visible.data) throw new Error('Campaña no disponible.')
         if (visible.data.connection_id) assertMarketingChannelAccess(access, visible.data.connection_id)
+        if (visible.data.channel === 'email') {
+            const result = await supabaseAdmin.rpc('prepare_marketing_email_activation', { p_org: access.organizationId, p_actor: access.userId, p_campaign: campaignId })
+            if (result.error || !result.data?.review) throw new Error('No se pudo preparar la revisión de email.')
+            const { review, token, expiresAt } = result.data
+            const resume = review.campaign.execution_version === 3 && ['paused', 'active'].includes(review.campaign.status)
+            const config = review.campaign.delivery_config || {}, issues = campaignDesignIssues(review, resume)
+            issues.push(...emailEnvironmentIssues())
+            return { success: true as const, review: { token, expiresAt, channel: 'email', issues,
+                enabled: process.env.MARKETING_EXECUTION_ENABLED === 'true', resume, audience: review.audience,
+                connectionId: null, channelName: review.channel?.name || '', timezone: config.timezone || 'America/Bogota',
+                mode: config.mode || '', window: config.schedule_window || null, scheduledFor: review.campaign.scheduled_for,
+                recipientCooldownHours: config.recipient_cooldown_hours ?? 0,
+                steps: review.sequences.filter((seq: any) => seq.is_active).flatMap((seq: any) => seq.steps).map((step: any) => ({ id: step.id, name: step.name,
+                    type: step.type, template: step.content?.subject || null, language: null, text: step.content?.body || '', bindings: {}, delay: step.delay_config || null })),
+            } as ActivationReview }
+        }
         const result = await supabaseAdmin.rpc('prepare_marketing_activation_review', { p_org: access.organizationId, p_actor: access.userId, p_campaign: campaignId })
         if (result.error || !result.data?.review) throw new Error('No se pudo preparar la revisión final.')
         const { review, token, expiresAt } = result.data
