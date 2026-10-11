@@ -18,6 +18,7 @@
     "calling:status": "tsx scripts/setup-calling.ts -- --status",
     "clean": "tsx scripts/cleanup-workspace.ts",
     "test:release": "vitest run --reporter=dot --no-file-parallelism",
+    "test:tenant-db": "node --test scripts/test-tenant-provisioning-db.cjs scripts/test-tenant-audit-core.cjs",
     "check:types": "tsc --noEmit",
     "check:build": "next build --webpack"
   },
@@ -111,6 +112,7 @@
     "zod": "^4.2.1"
   },
   "devDependencies": {
+    "@electric-sql/pglite": "^0.5.8",
     "@tailwindcss/postcss": "^4",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.1",

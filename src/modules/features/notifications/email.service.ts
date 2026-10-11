@@ -223,7 +223,7 @@ export class EmailService {
     /**
      * Resolves the sender identity AND branding based on organization settings.
      */
-    private static async getSenderIdentity(organizationId: string): Promise<{
+    static async getSenderIdentity(organizationId: string): Promise<{
         senderName: string;
         replyTo: string | undefined;
         branding: EmailBranding;

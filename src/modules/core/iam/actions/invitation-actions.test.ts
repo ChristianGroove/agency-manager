@@ -44,4 +44,14 @@ describe('invitation provisioning authority', () => {
         expect((await createInviteLink()).success).toBe(false)
         expect(mocks.insert).not.toHaveBeenCalled()
     })
+    it('uses a cryptographically random code and normalizes recipient email', async () => {
+        expect((await createInviteLink({ recipient_email: ' OWNER@example.com ' })).success).toBe(true)
+        expect(mocks.insert).toHaveBeenCalledWith(expect.objectContaining({
+            code: expect.stringMatching(/^INV-[0-9A-F]{32}$/), recipient_email: 'owner@example.com'
+        }))
+    })
+    it.each([0, -1, 1.5])('rejects invalid usage limit %s', async max_uses => {
+        expect((await createInviteLink({ max_uses })).success).toBe(false)
+        expect(mocks.insert).not.toHaveBeenCalled()
+    })
 })

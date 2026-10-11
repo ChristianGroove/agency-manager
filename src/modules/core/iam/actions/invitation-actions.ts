@@ -1,5 +1,6 @@
 "use server"
 
+import { randomBytes } from 'node:crypto'
 import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import { createClient } from "@/modules/core/database/supabase-server"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/actions/crud"
@@ -55,20 +56,10 @@ export async function validateInviteCode(code?: string | null): Promise<InviteVa
         }
 
         if (invite.expires_at && new Date(invite.expires_at) < new Date()) {
-            // Update status to expired
-            await supabaseAdmin
-                .from('platform_access_invitations')
-                .update({ status: 'expired' })
-                .eq('id', invite.id)
             return { isValid: false, error: "La invitación ha expirado" }
         }
 
         if (invite.max_uses > 0 && invite.uses_count >= invite.max_uses) {
-            // Update status to exhausted
-            await supabaseAdmin
-                .from('platform_access_invitations')
-                .update({ status: 'exhausted' })
-                .eq('id', invite.id)
             return { isValid: false, error: "Esta invitación ha alcanzado su límite máximo de usos" }
         }
 
@@ -131,10 +122,16 @@ export async function createInviteLink(params: CreateInviteParams = {}) {
         }
     }
 
+    if (params.max_uses !== undefined && (!Number.isInteger(params.max_uses) || params.max_uses < 1)) {
+        return { success: false, error: 'El límite de usos debe ser un entero mayor a cero.' }
+    }
+    if (params.recipient_email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(params.recipient_email.trim())) {
+        return { success: false, error: 'Formato de email inválido' }
+    }
     // Generate random code if not provided
     const generatedCode = params.code 
         ? params.code.trim().toUpperCase() 
-        : `INV-${Math.random().toString(36).substring(2, 8).toUpperCase()}`
+        : `INV-${randomBytes(16).toString('hex').toUpperCase()}`
 
     let expiresAt: string | null = null
     if (params.expires_in_days && params.expires_in_days > 0) {
@@ -152,7 +149,7 @@ export async function createInviteLink(params: CreateInviteParams = {}) {
                 reseller_org_id: resellerOrgIdToSave,
                 target_app_id: params.target_app_id || null,
                 target_organization_type: params.target_organization_type || 'client',
-                recipient_email: params.recipient_email || null,
+                recipient_email: params.recipient_email?.trim().toLowerCase() || null,
                 max_uses: params.max_uses || 1,
                 uses_count: 0,
                 expires_at: expiresAt,
@@ -192,31 +189,4 @@ export async function createInviteLink(params: CreateInviteParams = {}) {
         console.error("Error creating invite link:", e)
         return { success: false, error: e.message }
     }
-}
-
-/**
- * Atomically consume an invitation code upon successful signup.
- */
-export async function consumeInviteCode(code: string) {
-    const cleanCode = code.trim().toUpperCase()
-    const { data: invite } = await supabaseAdmin
-        .from('platform_access_invitations')
-        .select('*')
-        .eq('code', cleanCode)
-        .maybeSingle()
-
-    if (!invite) return false
-
-    const newCount = (invite.uses_count || 0) + 1
-    const newStatus = (invite.max_uses > 0 && newCount >= invite.max_uses) ? 'exhausted' : 'active'
-
-    await supabaseAdmin
-        .from('platform_access_invitations')
-        .update({
-            uses_count: newCount,
-            status: newStatus
-        })
-        .eq('id', invite.id)
-
-    return true
 }

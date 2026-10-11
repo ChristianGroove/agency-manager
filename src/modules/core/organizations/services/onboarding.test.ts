@@ -2,18 +2,18 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mocks = vi.hoisted(() => ({
-    createClient: vi.fn(), from: vi.fn(), rpc: vi.fn(), generateLink: vi.fn(), listUsers: vi.fn(), adminUpdate: vi.fn(),
-    updateUser: vi.fn(), refreshSession: vi.fn(), switchOrganization: vi.fn(), validateInvite: vi.fn(), consumeInvite: vi.fn(),
+    createClient: vi.fn(), from: vi.fn(), rpc: vi.fn(), generateLink: vi.fn(), listUsers: vi.fn(), adminUpdate: vi.fn(), getUserById: vi.fn(),
+    updateUser: vi.fn(), refreshSession: vi.fn(), switchOrganization: vi.fn(), validateInvite: vi.fn(),
     superAdmin: vi.fn(), currentOrg: vi.fn(), userOrganizations: vi.fn(), sendEmail: vi.fn()
 }))
 vi.mock('@/modules/core/database/supabase-server', () => ({ createClient: mocks.createClient }))
 vi.mock('@/modules/core/database/supabase-admin', () => ({ supabaseAdmin: {
-    from: mocks.from, rpc: mocks.rpc, auth: { admin: { generateLink: mocks.generateLink, listUsers: mocks.listUsers, updateUserById: mocks.adminUpdate } }
+    from: mocks.from, rpc: mocks.rpc, auth: { admin: { generateLink: mocks.generateLink, listUsers: mocks.listUsers, updateUserById: mocks.adminUpdate, getUserById: mocks.getUserById } }
 } }))
 vi.mock('../actions/crud', () => ({ getCurrentOrganizationId: mocks.currentOrg, getUserOrganizations: mocks.userOrganizations, getCurrentOrgDetails: vi.fn() }))
 vi.mock('../actions/context', () => ({ switchOrganization: mocks.switchOrganization }))
 vi.mock('@/modules/core/iam/services/platform-roles', () => ({ isSuperAdmin: mocks.superAdmin }))
-vi.mock('@/modules/core/iam/actions/invitation-actions', () => ({ validateInviteCode: mocks.validateInvite, consumeInviteCode: mocks.consumeInvite }))
+vi.mock('@/modules/core/iam/actions/invitation-actions', () => ({ validateInviteCode: mocks.validateInvite }))
 vi.mock('@/modules/core/iam/services/role-service', () => ({ seedDefaultRoles: vi.fn() }))
 vi.mock('@/modules/features/crm/services/process-engine/init', () => ({ initializeOrganizationCRM: vi.fn() }))
 vi.mock('@/modules/features/notifications/email.service', () => ({ EmailService: {
@@ -36,7 +36,7 @@ const organization = (type = 'client') => ({ id: 'existing-org', name: 'Empresa 
 const membership = (org = organization()) => ({ organization_id: org.id, role: 'owner', status: 'active', permissions: {}, organization: org })
 
 beforeEach(() => {
-    vi.clearAllMocks()
+    vi.resetAllMocks()
     user = { id: 'owner', email: 'owner@example.com', user_metadata: { onboarding_completed: false, invited_by_code: 'INV-VALID' }, app_metadata: {} }
     memberships = []
     calls = []
@@ -45,9 +45,20 @@ beforeEach(() => {
     mocks.currentOrg.mockResolvedValue(null)
     mocks.userOrganizations.mockResolvedValue([])
     mocks.validateInvite.mockResolvedValue({ isValid: true, invitation: { id: 'inv', code: 'INV-VALID', target_organization_type: 'client' } })
-    mocks.consumeInvite.mockResolvedValue(true)
     mocks.switchOrganization.mockResolvedValue(undefined)
-    mocks.rpc.mockResolvedValue({ data: { success: true }, error: null })
+    mocks.rpc.mockImplementation(async (name, args) => {
+        if (name === 'provision_tenant_atomic') {
+            const payload = { ...args.p_input, owner_id: args.p_owner_id }
+            calls.push({ table: 'organizations', operation: 'insert', payload })
+            if (args.p_invite_code) memberships.push(membership({ ...organization(), id: 'new-org' }))
+            return { data: { organization: { id: 'new-org', ...payload } }, error: null }
+        }
+        if (name === 'claim_tenant_activation') return { data: { claimed: true, claim_id: 'claim' }, error: null }
+        return { data: null, error: null }
+    })
+    mocks.listUsers.mockResolvedValue({ data: { users: [] }, error: null })
+    mocks.getUserById.mockResolvedValue({ data: { user: { id: 'invited-owner', email: 'owner@example.com', invited_at: '2026-01-01',
+        user_metadata: { full_name: 'María' }, app_metadata: {} } }, error: null })
     mocks.updateUser.mockImplementation(async ({ data }) => { Object.assign(user.user_metadata, data); return { error: null } })
     mocks.refreshSession.mockResolvedValue({ error: null })
     mocks.adminUpdate.mockResolvedValue({ error: null })
@@ -73,7 +84,7 @@ beforeEach(() => {
             }
             let data: any = null
             if (table === 'organization_members' && operation === 'select') data = single ? memberships[0] : memberships
-            if (table === 'organizations') data = operation === 'insert' ? { id: 'new-org', ...payload } : { id: 'platform', organization_type: 'platform' }
+            if (table === 'organizations') data = operation === 'insert' ? { id: 'new-org', ...payload } : { id: 'new-org', name: 'Empresa', status: 'active', owner_id: 'invited-owner', organization_type: 'platform' }
             if (table === 'saas_products') data = { id: 'product' }
             if (table === 'saas_apps') data = { category: 'agency', slug: 'saas-space' }
             return Promise.resolve({ data, error: table === 'organization_members' && operation === 'select' ? queryError : null }).then(resolve)
@@ -99,7 +110,7 @@ describe('tenant activation and autonomous onboarding', () => {
         expect(mocks.switchOrganization).toHaveBeenCalledWith('existing-org')
         expect(mocks.updateUser).toHaveBeenCalledWith({ data: { onboarding_completed: true } })
         expect(mocks.refreshSession).toHaveBeenCalled()
-        expect(mocks.consumeInvite).not.toHaveBeenCalled()
+        expect(mocks.rpc).not.toHaveBeenCalledWith('provision_tenant_atomic', expect.anything())
     })
 
     it('requires and confirms a password for a new directly invited owner', async () => {
@@ -122,8 +133,7 @@ describe('tenant activation and autonomous onboarding', () => {
         expect(result.success).toBe(true)
         expect(inserts()[0].payload.organization_type).toBe(type)
         if (type === 'client') expect(inserts()[0].payload.parent_organization_id).toBe('reseller-parent')
-        expect(calls).toContainEqual(expect.objectContaining({ table: 'organization_members', operation: 'insert', payload: expect.objectContaining({ role: 'owner', user_id: 'owner' }) }))
-        expect(mocks.consumeInvite).toHaveBeenCalledWith('INV-VALID')
+        expect(mocks.rpc).toHaveBeenCalledWith('provision_tenant_atomic', expect.objectContaining({ p_owner_id: 'owner', p_invite_code: 'INV-VALID' }))
         expect(mocks.refreshSession).toHaveBeenCalled()
     })
 
@@ -132,7 +142,7 @@ describe('tenant activation and autonomous onboarding', () => {
         expect((await completeOrganizationOnboarding({ name: 'Empresa', slug: 'empresa', app_id: 'saas-space' })).success).toBe(false)
         expect((await completeOrganizationOnboarding({ name: 'Empresa', slug: 'empresa', app_id: 'saas-space' })).success).toBe(true)
         expect(inserts()).toHaveLength(1)
-        expect(mocks.consumeInvite).toHaveBeenCalledTimes(1)
+        expect(mocks.rpc.mock.calls.filter(([name]) => name === 'provision_tenant_atomic')).toHaveLength(1)
     })
 
     it('rejects blocked membership, suspended organizations and lookup failures', async () => {
@@ -217,6 +227,7 @@ describe('direct provisioning', () => {
         mocks.listUsers.mockResolvedValueOnce({ error: null, data: { users: Array.from({ length: 1000 }, (_, index) => ({ id: `other-${index}`, email: `other-${index}@example.com` })) } })
         mocks.listUsers.mockResolvedValueOnce({ error: null, data: { users: [{ id: 'existing-owner', email: 'owner@example.com', email_confirmed_at: '2026-01-01',
             user_metadata: { full_name: 'María', password_configured: true }, app_metadata: { provider: 'email' } }] } })
+        mocks.getUserById.mockResolvedValue({ error: null, data: { user: { id: 'existing-owner', email: 'owner@example.com', email_confirmed_at: '2026-01-01', user_metadata: { full_name: 'María', password_configured: true }, app_metadata: { provider: 'email' } } } })
         expect((await createOrganization({ name: 'Empresa', slug: 'empresa', app_id: 'saas-space', admin_email: 'owner@example.com' })).success).toBe(true)
         expect(mocks.listUsers).toHaveBeenCalledWith({ page: 2, perPage: 1000 })
         expect(mocks.adminUpdate).toHaveBeenCalledWith('existing-owner', expect.objectContaining({
@@ -225,12 +236,35 @@ describe('direct provisioning', () => {
         }))
     })
 
-    it('reverts a tenant when app provisioning fails, before emailing or adding members', async () => {
+    it('returns transactional errors without sending activation or making manual tenant writes', async () => {
         mocks.rpc.mockResolvedValue({ data: { success: false }, error: null })
         expect((await createOrganization({ name: 'Empresa', slug: 'empresa', app_id: 'saas-space', admin_email: 'owner@example.com' })).success).toBe(false)
-        expect(calls.some(call => call.table === 'organizations' && call.operation === 'delete')).toBe(true)
-        expect(mocks.generateLink).not.toHaveBeenCalled()
+        expect(calls.some(call => call.table === 'organizations' && ['insert','update','delete'].includes(call.operation))).toBe(false)
         expect(mocks.sendEmail).not.toHaveBeenCalled()
+    })
+
+    it('records delivery failure while keeping the created tenant available for activation retry', async () => {
+        mocks.sendEmail.mockResolvedValue({ success: false })
+        const result = await createOrganization({ name: 'Empresa', slug: 'empresa', app_id: 'saas-space', admin_email: 'owner@example.com' })
+        expect(result.success).toBe(true)
+        expect(result.data?.id).toBe('new-org')
+        expect(result.data?.invitation_sent).toBe(false)
+        expect(mocks.rpc).toHaveBeenCalledWith('finish_tenant_activation', expect.objectContaining({ p_error: expect.any(String) }))
+    })
+
+    it('does not create a tenant when the owner account cannot be resolved', async () => {
+        mocks.listUsers.mockResolvedValue({ data: null, error: new Error('Auth unavailable') })
+        expect((await createOrganization({ name: 'Empresa', slug: 'empresa', app_id: 'saas-space', admin_email: 'owner@example.com' })).success).toBe(false)
+        expect(mocks.rpc).not.toHaveBeenCalled()
+    })
+
+    it('does not send again on a retry whose activation is already recorded as sent', async () => {
+        mocks.rpc.mockImplementation(async (name, args) => name === 'provision_tenant_atomic'
+            ? { data: { organization: { id: 'new-org', ...args.p_input } }, error: null }
+            : { data: { already_sent: true }, error: null })
+        expect((await createOrganization({ name: 'Empresa', slug: 'empresa', app_id: 'saas-space', admin_email: 'owner@example.com' })).data?.invitation_sent).toBe(true)
+        expect(mocks.sendEmail).not.toHaveBeenCalled()
+        expect(mocks.adminUpdate).not.toHaveBeenCalled()
     })
 })
 
