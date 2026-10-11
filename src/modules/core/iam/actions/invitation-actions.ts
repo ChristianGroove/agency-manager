@@ -3,6 +3,7 @@
 import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import { createClient } from "@/modules/core/database/supabase-server"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/actions/crud"
+import { isSuperAdmin } from "@/modules/core/iam/services/platform-roles"
 
 export interface InviteValidationResult {
     isValid: boolean
@@ -77,7 +78,7 @@ export async function validateInviteCode(code?: string | null): Promise<InviteVa
                 id: invite.id,
                 code: invite.code,
                 target_app_id: invite.target_app_id,
-                target_organization_type: (invite as any).target_organization_type || 'client',
+                target_organization_type: invite.target_organization_type === 'reseller' ? 'reseller' : 'client',
                 reseller_org_id: invite.reseller_org_id,
                 recipient_email: invite.recipient_email,
                 max_uses: invite.max_uses,
@@ -99,6 +100,23 @@ export async function createInviteLink(params: CreateInviteParams = {}) {
     if (!user) return { success: false, error: "Unauthorized" }
 
     const currentOrgId = await getCurrentOrganizationId()
+
+    const platformAdmin = await isSuperAdmin(user.id)
+    if (!platformAdmin) {
+        if (!currentOrgId) return { success: false, error: 'No tienes permiso para crear invitaciones.' }
+        const { data: membership, error } = await supabase
+            .from('organization_members')
+            .select('role, status, organization:organizations!inner(organization_type)')
+            .eq('user_id', user.id)
+            .eq('organization_id', currentOrgId)
+            .maybeSingle()
+        const organization = membership?.organization as unknown as { organization_type: string } | undefined
+        if (error || !membership || membership.status === 'blocked' ||
+            !['owner', 'admin'].includes(membership.role) || organization?.organization_type !== 'reseller' ||
+            params.target_organization_type === 'reseller') {
+            return { success: false, error: 'No tienes permiso para crear esta invitación.' }
+        }
+    }
 
     let resellerOrgIdToSave: string | null = null
     if (currentOrgId) {

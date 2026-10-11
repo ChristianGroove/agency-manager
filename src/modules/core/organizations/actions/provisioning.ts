@@ -10,34 +10,71 @@ import { EmailService } from "@/modules/features/notifications/email.service"
 import { getCurrentOrganizationId, getUserOrganizations, getCurrentOrgDetails } from "./crud"
 import { switchOrganization } from "./context"
 import { DEFAULT_REAL_ESTATE_CATEGORIES } from "../vertical-registry"
+import { resolveOnboardingContext } from "../services/onboarding-context"
+import type { InviteValidationResult } from "@/modules/core/iam/actions/invitation-actions"
 
 /**
  * Create a new Organization (Tenant Provisioning)
  */
-export async function createOrganization(formData: {
+type OrganizationCreationInput = {
     name: string
     slug: string
     logo_url?: string
     app_id: string
-    parent_organization_id?: string
+    parent_organization_id?: string | null
     organization_type?: 'platform' | 'reseller' | 'operator' | 'client'
     admin_email?: string
-    acquired_by_reseller_id?: string
-}) {
+    acquired_by_reseller_id?: string | null
+}
+
+export async function createOrganization(formData: OrganizationCreationInput) {
+    const supabase = await createClient()
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { success: false, error: 'Unauthorized' }
+    if (!(await isSuperAdmin(user.id))) {
+        const currentOrgId = await getCurrentOrganizationId()
+        const organizations = await getUserOrganizations()
+        const reseller = organizations.find(member =>
+            member.organization_id === currentOrgId &&
+            member.organization?.organization_type === 'reseller' &&
+            member.status !== 'blocked' && ['owner', 'admin'].includes(member.role)
+        )
+        if (!reseller || (formData.organization_type && formData.organization_type !== 'client')) {
+            return { success: false, error: 'No tienes permiso para aprovisionar esta organización.' }
+        }
+        // A reseller can provision only within their own network.
+        formData = { ...formData, parent_organization_id: reseller.organization_id, acquired_by_reseller_id: reseller.organization_id }
+    }
+    return provisionOrganization(formData)
+}
+
+async function provisionOrganization(formData: OrganizationCreationInput, onboardingInvite?: NonNullable<InviteValidationResult['invitation']>) {
     const supabase = await createClient()
     const { data: { user } } = await supabase.auth.getUser()
 
     if (!user) return { success: false, error: "Unauthorized" }
 
+    formData = { ...formData, name: formData.name.trim(), slug: formData.slug.trim().toLowerCase(), admin_email: formData.admin_email?.trim().toLowerCase() || undefined }
+    if (!formData.name || !/^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(formData.slug)) {
+        return { success: false, error: 'Ingresa un nombre y un identificador válido (letras, números y guiones).' }
+    }
+    if (formData.admin_email && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.admin_email)) {
+        return { success: false, error: 'Formato de email inválido' }
+    }
+
     const creatorOrgId = await getCurrentOrganizationId()
 
-    if (!creatorOrgId && formData.organization_type !== 'client') {
+    if (!onboardingInvite && !creatorOrgId && formData.organization_type !== 'client' && !(await isSuperAdmin(user.id))) {
         return { success: false, error: 'No se pudo determinar la organización del creador' }
     }
 
     try {
         // V2: Verify Parent Permission
-        if (formData.parent_organization_id) {
+        if (onboardingInvite) {
+            formData.organization_type = onboardingInvite.target_organization_type || 'client'
+            formData.parent_organization_id = onboardingInvite.reseller_org_id
+            formData.acquired_by_reseller_id = onboardingInvite.reseller_org_id
+        } else if (formData.parent_organization_id) {
             const { data: membership } = await supabase
                 .from('organization_members')
                 .select('role')
@@ -91,7 +128,7 @@ export async function createOrganization(formData: {
                 computedParentId = creatorOrgId
             } else if (creatorType === 'reseller' && newOrgType === 'client') {
                 computedParentId = creatorOrgId
-            } else if (!computedParentId && newOrgType === 'client') {
+            } else if (!computedParentId && (newOrgType === 'client' || (!!onboardingInvite && newOrgType === 'reseller'))) {
                 const { data: platformOrg } = await supabaseAdmin
                     .from('organizations')
                     .select('id')
@@ -123,11 +160,13 @@ export async function createOrganization(formData: {
         // Determine space category from app
         let appCategory: string | null = null
         if (formData.app_id) {
-            const { data: appData } = await supabaseAdmin
+            const { data: appData, error: appError } = await supabaseAdmin
                 .from('saas_apps')
                 .select('category, space_category, slug')
-                .or(`id.eq.${formData.app_id},slug.eq.${formData.app_id}`)
+                .eq('id', formData.app_id)
+                .eq('is_active', true)
                 .maybeSingle()
+            if (appError || !appData) return { success: false, error: 'El espacio seleccionado no está disponible.' }
             appCategory = (appData as any)?.space_category || (appData as any)?.category || null
             if (!appCategory && ((appData as any)?.slug === 'real-estate-pro' || (appData as any)?.slug === 'real_estate')) {
                 appCategory = 'real_estate'
@@ -138,9 +177,7 @@ export async function createOrganization(formData: {
             formData.app_id === 'real-estate-pro' ||
             formData.app_id === 'real_estate'
 
-        const resellerOrgIdFromMeta = user?.user_metadata?.reseller_org_id
-        const inviteCodeFromMeta = user?.user_metadata?.invited_by_code
-        const targetResellerId = formData.acquired_by_reseller_id || resellerOrgIdFromMeta || null
+        const targetResellerId = formData.acquired_by_reseller_id || null
 
         while (attempts < maxAttempts) {
             const { data, error } = await supabaseAdmin
@@ -187,13 +224,17 @@ export async function createOrganization(formData: {
         if (orgError) throw orgError;
         if (!newOrg) throw new Error("No se pudo generar un slug único para la organización tras varios intentos.");
 
-        if (inviteCodeFromMeta) {
-            try {
-                const { consumeInviteCode } = await import('@/modules/core/iam/actions/invitation-actions')
-                await consumeInviteCode(inviteCodeFromMeta)
-            } catch (invErr) {
-                console.error("Warning: Failed to consume invite code", invErr)
-            }
+        // Assign the app before memberships or activation emails can expose the tenant.
+        const { data: assignment, error: assignmentError } = await supabaseAdmin.rpc('assign_app_to_organization', {
+            p_organization_id: newOrg.id,
+            p_app_id: formData.app_id,
+            p_enable_optional_modules: true
+        })
+        if (assignmentError || assignment?.success === false) {
+            const { error: cleanupError } = await supabaseAdmin.from('organizations').delete().eq('id', newOrg.id)
+            throw new Error(cleanupError
+                ? 'El espacio no pudo configurarse ni revertirse. Contacta a soporte antes de reintentar.'
+                : 'No se pudo configurar el espacio de la organización. Intenta de nuevo.')
         }
 
         // Track who provisioned this organization (always)
@@ -216,7 +257,7 @@ export async function createOrganization(formData: {
                 creatorType = cOrg?.organization_type || null
             }
 
-            const isPrivilegedCreator = creatorType === 'platform' || creatorType === 'reseller'
+            const isPrivilegedCreator = !onboardingInvite && (creatorType === 'platform' || creatorType === 'reseller')
 
             if (isPrivilegedCreator) {
                 // SuperAdmin/Reseller: add as admin proxy, NOT as owner
@@ -329,7 +370,8 @@ export async function createOrganization(formData: {
                         options: {
                             data: {
                                 full_name: 'Admin',
-                                invited_org_id: newOrg.id
+                                invited_org_id: newOrg.id,
+                                onboarding_completed: true
                             },
                             redirectTo: `${getAuthRedirectBase()}/auth/confirm`
                         }
@@ -340,9 +382,16 @@ export async function createOrganization(formData: {
 
                     if (inviteError) {
                         if (inviteError.message.includes('already been registered') || inviteError.status === 422) {
-                            const { data: { users } } = await supabaseAdmin.auth.admin.listUsers()
                             const adminEmailLower = (formData.admin_email || "").toLowerCase()
-                            const existingUser = (users || []).find((u: any) => u.email?.toLowerCase() === adminEmailLower)
+                            let existingUser
+                            let page = 1
+                            do {
+                                const { data, error } = await supabaseAdmin.auth.admin.listUsers({ page, perPage: 1000 })
+                                if (error) throw error
+                                existingUser = data.users.find(u => u.email?.toLowerCase() === adminEmailLower)
+                                if (existingUser || data.users.length < 1000) break
+                                page++
+                            } while (!existingUser)
                             
                             if (existingUser) {
                                 invitedUser = existingUser
@@ -358,7 +407,7 @@ export async function createOrganization(formData: {
                                         inviteLink = `${getAuthRedirectBase()}/login`
                                     }
                                 } else {
-                                    inviteLink = `${getAuthRedirectBase()}/login`
+                                    inviteLink = `${getAuthRedirectBase()}/onboarding`
                                 }
                             } else {
                                 invitationError = inviteError.message
@@ -369,19 +418,21 @@ export async function createOrganization(formData: {
                     } else if (linkData?.properties?.action_link) {
                         const actionLink = (linkData as any).properties?.action_link
                         const verificationType = (linkData as any).properties?.verification_type || 'invite'
-                        inviteLink = getSecureAuthLink(actionLink, verificationType, getAuthRedirectBase(), '/update-password')
+                        inviteLink = getSecureAuthLink(actionLink, verificationType, getAuthRedirectBase(), '/onboarding')
                     }
 
                     if (invitedUser && inviteLink) {
                         // Add invited user as the real owner
-                        await supabaseAdmin.from('organization_members').insert({
+                        const { error: ownerMemberError } = await supabaseAdmin.from('organization_members').upsert({
                             organization_id: newOrg.id,
                             user_id: invitedUser.id,
                             role: 'owner'
-                        })
-                        await supabaseAdmin.from('organizations')
+                        }, { onConflict: 'organization_id,user_id' })
+                        if (ownerMemberError) throw ownerMemberError
+                        const { error: ownerError } = await supabaseAdmin.from('organizations')
                             .update({ owner_id: invitedUser.id })
                             .eq('id', newOrg.id)
+                        if (ownerError) throw ownerError
 
                         // Add the creator (SuperAdmin/Reseller) as admin proxy
                         // so they can manage/switch to this tenant
@@ -394,12 +445,20 @@ export async function createOrganization(formData: {
                             }, { onConflict: 'organization_id,user_id' })
                         }
 
-                        await supabaseAdmin.auth.admin.updateUserById(invitedUser.id, {
-                            user_metadata: { 
-                                full_name: 'Admin',
-                                onboarding_completed: false 
+                        const { error: metadataError } = await supabaseAdmin.auth.admin.updateUserById(invitedUser.id, {
+                            user_metadata: {
+                                ...invitedUser.user_metadata,
+                                invited_org_id: newOrg.id,
+                                onboarding_completed: true
+                            },
+                            app_metadata: {
+                                ...invitedUser.app_metadata,
+                                invited_org_id: newOrg.id,
+                                password_setup_required: !inviteError || invitedUser.app_metadata?.password_setup_required === true ||
+                                    (!invitedUser.email_confirmed_at && !!invitedUser.invited_at && invitedUser.user_metadata?.password_configured !== true)
                             }
                         })
+                        if (metadataError) throw metadataError
 
                         const identity = await (EmailService as any).getSenderIdentity(creatorOrgId || 'PLATFORM')
                         let emailHtml = ''
@@ -435,12 +494,6 @@ export async function createOrganization(formData: {
             }
         }
 
-        await supabaseAdmin.rpc('assign_app_to_organization', {
-            p_organization_id: newOrg.id,
-            p_app_id: formData.app_id,
-            p_enable_optional_modules: true
-        })
-
         try {
             const { initializeOrganizationCRM } = await import('@/modules/features/crm/services/process-engine/init')
             const crmTemplateId = isRealEstate ? 'real_estate' : (appCategory || 'agency')
@@ -461,13 +514,18 @@ export async function createOrganization(formData: {
                     .single()
                 creatorType = cOrgSwitch?.organization_type || null
             }
-            const isSelfService = creatorType !== 'platform' && creatorType !== 'reseller'
+            const isSelfService = !!onboardingInvite || (creatorType !== 'platform' && creatorType !== 'reseller')
             if (isSelfService) {
                 await switchOrganization(newOrg.id)
-                await supabaseAdmin.auth.admin.updateUserById(
-                    user.id,
-                    { user_metadata: { onboarding_completed: true } }
-                )
+                if (onboardingInvite) {
+                    const { consumeInviteCode } = await import('@/modules/core/iam/actions/invitation-actions')
+                    await consumeInviteCode(onboardingInvite.code)
+                } else {
+                    const { error } = await supabase.auth.updateUser({ data: { onboarding_completed: true } })
+                    if (error) throw error
+                    const { error: refreshError } = await supabase.auth.refreshSession()
+                    if (refreshError) throw refreshError
+                }
             }
         }
 
@@ -495,11 +553,81 @@ export async function createClientOrganization(formData: {
     app_id: string
     admin_email?: string
 }) {
-    return await createOrganization({
-        ...formData,
-        organization_type: 'client',
-        parent_organization_id: undefined
-    })
+    return completeOrganizationOnboarding({ name: formData.name, slug: formData.slug, app_id: formData.app_id })
+}
+
+/** Resolve activation vs. autonomous creation from verified memberships. */
+export async function getOnboardingContext() {
+    try {
+        const supabase = await createClient()
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) return { success: false as const, error: 'Inicia sesión para continuar.' }
+        return { success: true as const, data: await resolveOnboardingContext(user) }
+    } catch (error) {
+        return { success: false as const, error: error instanceof Error ? error.message : 'No se pudo cargar tu cuenta.' }
+    }
+}
+
+export async function completeOrganizationOnboarding(input: {
+    name?: string; slug?: string; app_id?: string; password?: string; confirmPassword?: string; fullName?: string
+}) {
+    try {
+        const supabase = await createClient()
+        const { data: { user } } = await supabase.auth.getUser()
+        if (!user) return { success: false, error: 'Inicia sesión para continuar.' }
+        const context = await resolveOnboardingContext(user)
+
+        if (context.requiresPassword && !input.password) {
+            return { success: false, error: 'Crea una contraseña para activar tu acceso.' }
+        }
+        if (input.password) {
+            if (input.password.length < 6 || input.password !== input.confirmPassword) {
+                return { success: false, error: 'La contraseña debe tener al menos 6 caracteres y ambas deben coincidir.' }
+            }
+            const { updatePassword } = await import('@/modules/core/auth/actions')
+            const passwordData = new FormData()
+            passwordData.set('password', input.password)
+            const result = await updatePassword(passwordData)
+            if (!result.success) return result
+        }
+
+        let organizationId = context.organization?.id
+        if (!organizationId) {
+            if (!input.name?.trim() || !input.slug || !input.app_id || !context.invitation) {
+                return { success: false, error: 'Completa el nombre, identificador y espacio de tu organización.' }
+            }
+            // Scope is supplied only by the validated server-side invitation.
+            const result = await provisionOrganization({
+                name: input.name, slug: input.slug, app_id: input.app_id,
+                organization_type: context.invitation.target_organization_type || 'client'
+            }, context.invitation)
+            if (!result.success || !result.data) return { success: false, error: result.error || 'No se pudo crear tu organización.' }
+            organizationId = result.data.id
+        }
+
+        if (!organizationId) throw new Error('No se pudo determinar la organización creada. Intenta de nuevo.')
+        await switchOrganization(organizationId)
+        // Password setup may have refreshed cookies through another server client.
+        const sessionClient = await createClient()
+        const { error } = await sessionClient.auth.updateUser({ data: {
+            onboarding_completed: true,
+            ...(input.fullName?.trim() ? { full_name: input.fullName.trim() } : {})
+        } })
+        if (error) throw error
+        if (input.fullName?.trim()) {
+            const results = await Promise.all([
+                supabaseAdmin.from('profiles').upsert({ id: user.id, full_name: input.fullName.trim() }, { onConflict: 'id' }),
+                supabaseAdmin.from('organization_members').update({ full_name: input.fullName.trim() }).eq('user_id', user.id)
+            ])
+            if (results.some(result => result.error)) console.warn('Onboarding: profile name could not be synchronized')
+        }
+        // Admin provisioning and auth metadata updates must also reach the browser's JWT/cookies.
+        const { error: refreshError } = await sessionClient.auth.refreshSession()
+        if (refreshError) throw refreshError
+        return { success: true, organizationId }
+    } catch (error) {
+        return { success: false, error: error instanceof Error ? error.message : 'No se pudo completar la activación. Intenta de nuevo.' }
+    }
 }
 
 /**

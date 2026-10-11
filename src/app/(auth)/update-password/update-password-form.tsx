@@ -2,7 +2,6 @@
 
 import { useState, useEffect } from "react"
 import { supabase } from "@/modules/core/database/supabase"
-import { createBrowserClient } from "@supabase/ssr"
 import { updatePassword } from "@/modules/core/auth/actions"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -93,42 +92,14 @@ export function UpdatePasswordForm() {
             return
         }
 
-        // Use Client SDK for Update (Works with the recovered session above)
-        // Singleton 'supabase' already has the session from setSession above
-        let { error } = await supabase.auth.updateUser({
-            password: password
-        })
-
-        // RETRY MECHANISM: If Singleton fails (e.g. Invalid API Key), try FRESH Client
-        if (error && error.message.includes("Invalid API Key")) {
-            console.warn("Singleton failed with Invalid API Key. Retrying with Fresh Client...")
-            const freshSupabase = createBrowserClient(
-                process.env.NEXT_PUBLIC_SUPABASE_URL!,
-                process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-            )
-            // Re-hydrate session on fresh client
-            const { data: { session } } = await supabase.auth.getSession()
-            if (session) {
-                await freshSupabase.auth.setSession({
-                    access_token: session.access_token,
-                    refresh_token: session.refresh_token
-                })
-            }
-
-            const retryResult = await freshSupabase.auth.updateUser({
-                password: password
-            })
-            error = retryResult.error
-        }
-
-        if (error) {
-            setError(error.message)
+        try {
+            const result = await updatePassword(formData)
+            if (!result.success) throw new Error(result.error)
+            setMessage("Contraseña guardada. Continuando...")
+            window.location.assign(result.redirectTo || '/dashboard')
+        } catch (cause) {
+            setError(cause instanceof Error ? cause.message : 'No se pudo guardar la contraseña. Intenta de nuevo.')
             setIsLoading(false)
-        } else {
-            setMessage("Contraseña actualizada correctamente. Redirigiendo...")
-            setTimeout(() => {
-                window.location.href = "/login" // Force hard reload to login
-            }, 2000)
         }
     }
 
@@ -147,7 +118,7 @@ export function UpdatePasswordForm() {
                     <CardHeader className="space-y-1 text-center pb-8">
                         <CardTitle className="text-2xl font-bold tracking-tight">Nueva Contraseña</CardTitle>
                         <CardDescription className="text-gray-400">
-                            Ingresa tu nueva contraseña para recuperar el acceso
+                            Guarda una contraseña para ingresar con tu correo
                         </CardDescription>
                     </CardHeader>
                     <form onSubmit={handleSubmit}>
@@ -158,6 +129,7 @@ export function UpdatePasswordForm() {
                                     id="password"
                                     name="password"
                                     type="password"
+                                    autoComplete="new-password"
                                     required
                                     minLength={6}
                                     style={{ color: 'white' }}
@@ -170,6 +142,7 @@ export function UpdatePasswordForm() {
                                     id="confirmPassword"
                                     name="confirmPassword"
                                     type="password"
+                                    autoComplete="new-password"
                                     required
                                     minLength={6}
                                     style={{ color: 'white' }}
@@ -181,6 +154,7 @@ export function UpdatePasswordForm() {
                                     {error}
                                 </div>
                             )}
+                            {message && <p role="status" className="text-sm text-green-300 text-center">{message}</p>}
                         </CardContent>
                         <CardFooter className="pt-4 pb-8">
                             <Button

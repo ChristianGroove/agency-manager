@@ -96,7 +96,7 @@ export function CreateOrganizationSheet({ open, onOpenChange, onSuccess, initial
     const handleNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const val = e.target.value
         setName(val)
-        setSlug(val.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, ''))
+        setSlug(val.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)+/g, ''))
     }
 
     const handleCreateDirect = async () => {
@@ -131,7 +131,7 @@ export function CreateOrganizationSheet({ open, onOpenChange, onSuccess, initial
 
             if (result.success) {
                 if (result.data?.invitation_sent) {
-                    toast.success(`Organización creada exitosamente. Invitación enviada a ${adminEmail}`)
+                    toast.success(`Organización creada exitosamente. Enlace de activación enviado a ${adminEmail}`)
                 } else if (result.data?.invitation_error) {
                     toast.success('Organización creada exitosamente')
                     toast.warning(`No se pudo enviar la invitación: ${result.data.invitation_error}`)
@@ -149,6 +149,7 @@ export function CreateOrganizationSheet({ open, onOpenChange, onSuccess, initial
         } catch (error) {
             console.error(error)
             toast.error("Error inesperado")
+        } finally {
             setIsLoading(false)
         }
     }
@@ -274,11 +275,11 @@ export function CreateOrganizationSheet({ open, onOpenChange, onSuccess, initial
                                             </div>
 
                                             <div className="space-y-3">
-                                                <Label className="font-bold text-slate-900 dark:text-zinc-100 text-xs">URL del Espacio (Slug)</Label>
+                                                <Label className="font-bold text-slate-900 dark:text-zinc-100 text-xs">Identificador del Espacio (Slug)</Label>
                                                 <div className="flex items-center h-11 px-3.5 rounded-xl bg-slate-100 dark:bg-zinc-900 border border-slate-300 dark:border-zinc-700 text-slate-500 dark:text-zinc-400 text-xs font-mono">
-                                                    app.pixy.com/
                                                     <span className="text-slate-900 dark:text-white font-bold ml-0.5">{slug}</span>
                                                 </div>
+                                                <p className="text-[11px] text-slate-500">Identifica la organización y se usa en su subdominio.</p>
                                             </div>
 
                                             <div className="space-y-3 pt-2">
@@ -288,12 +289,13 @@ export function CreateOrganizationSheet({ open, onOpenChange, onSuccess, initial
                                                 </Label>
                                                 <Input
                                                     className="h-11 bg-slate-50 dark:bg-zinc-900 border border-slate-300 dark:border-zinc-700 text-slate-900 dark:text-white placeholder:text-slate-400 dark:placeholder:text-zinc-500 focus:bg-white dark:focus:bg-zinc-950 focus:border-indigo-500 font-medium text-xs rounded-xl shadow-xs"
+                                                    type="email"
                                                     placeholder="admin@cliente.com (Opcional)"
                                                     value={adminEmail}
                                                     onChange={(e) => setAdminEmail(e.target.value)}
                                                 />
                                                 <p className="text-[11px] text-slate-500 dark:text-zinc-400">
-                                                    Si ingresas un correo, le enviaremos una invitación mágica para acceder instantáneamente a esta organización.
+                                                    Le enviaremos un enlace para activar su acceso y crear su contraseña. La organización y el espacio ya quedarán configurados.
                                                 </p>
                                             </div>
 

@@ -75,6 +75,9 @@ export async function signup(formData: FormData) {
     if (!inviteCheck.isValid) {
         return { error: inviteCheck.error || "Se requiere una invitación válida para registrarse." }
     }
+    if (inviteCheck.invitation?.recipient_email && inviteCheck.invitation.recipient_email.trim().toLowerCase() !== email?.trim().toLowerCase()) {
+        return { error: 'Esta invitación pertenece a otro correo electrónico.' }
+    }
 
     // 0. Captcha Verification
     if (process.env.TURNSTILE_SECRET_KEY) {
@@ -120,6 +123,7 @@ export async function signup(formData: FormData) {
                 redirectTo: redirectUrl,
                 data: {
                     full_name: fullName,
+                    password_configured: true,
                     onboarding_completed: false,
                     invited_by_code: inviteCheck.invitation?.code,
                     invited_app_id: inviteCheck.invitation?.target_app_id,
@@ -188,6 +192,13 @@ export async function signup(formData: FormData) {
             }
             console.error("Signup Link Gen Error:", linkError)
             return { error: linkError.message }
+        }
+        // Persist the invitation binding outside user-editable profile metadata.
+        if (linkData.user) {
+            const { error: bindingError } = await supabaseAdmin.auth.admin.updateUserById(linkData.user.id, {
+                app_metadata: { ...linkData.user.app_metadata, onboarding_invite_code: inviteCheck.invitation?.code }
+            })
+            if (bindingError) return { error: 'No se pudo vincular tu invitación. Intenta de nuevo.' }
         }
         const props = (linkData as any).properties
         const actionLink = props?.action_link
@@ -382,17 +393,33 @@ export async function resetPasswordRequest(formData: FormData) {
 export async function updatePassword(formData: FormData) {
     const supabase = await createClient()
     const password = formData.get('password') as string
+    const { data: { user } } = await supabase.auth.getUser()
+    if (!user) return { success: false, error: 'Inicia sesión o solicita un nuevo enlace de acceso.' }
+    if (typeof password !== 'string' || password.length < 6) {
+        return { success: false, error: 'La contraseña debe tener al menos 6 caracteres.' }
+    }
 
     const { error } = await supabase.auth.updateUser({
         password: password,
+        data: { password_configured: true },
     })
 
-    if (error) {
+    if (error && !(error.code === 'same_password' && user.user_metadata?.password_configured === true)) {
         return { success: false, error: error.message }
     }
 
+    if (user.app_metadata?.password_setup_required) {
+        const { supabaseAdmin } = await import('@/modules/core/database/supabase-admin')
+        const { error: metadataError } = await supabaseAdmin.auth.admin.updateUserById(user.id, {
+            app_metadata: { ...user.app_metadata, password_setup_required: false }
+        })
+        if (metadataError) return { success: false, error: 'Contraseña guardada. Intenta de nuevo para finalizar la activación.' }
+    }
+    const { error: refreshError } = await supabase.auth.refreshSession()
+    if (refreshError) return { success: false, error: 'Contraseña guardada. Inicia sesión para continuar.' }
+
     revalidatePath('/', 'layout')
-    return { success: true }
+    return { success: true, redirectTo: user.user_metadata?.onboarding_completed === false || user.app_metadata?.password_setup_required ? '/onboarding' : '/dashboard' }
 }
 
 /**
