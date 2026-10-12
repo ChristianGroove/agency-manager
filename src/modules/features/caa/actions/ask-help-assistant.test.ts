@@ -89,6 +89,23 @@ describe('help conversations through the server action', () => {
         expect(mocks.execute.mock.calls[0][0].payload.articles.map((item: HelpArticle) => item.id)).toEqual(['inbox.notes'])
     })
 
+    it('handles casual chat after a product discussion without searching or asking about errors', async () => {
+        mocks.stored = [{ role: 'assistant', content: 'No puedo confirmar si permite stickers.' }, { role: 'user', content: '¿Puedo cargar stickers propios?' }]
+        const response = await askHelpAssistant('sabes chistes?', [], threadId)
+        expect(response).toMatchObject({ success: true, message: expect.stringContaining('Pixy') })
+        expect(response.message).not.toMatch(/opción|error|pantalla|documentación/)
+        expect(mocks.execute).not.toHaveBeenCalled()
+        expect(mocks.inserted.filter(row => row.table === 'help_chat_messages').map(row => row.value.role)).toEqual(['user', 'assistant'])
+        expect(diagnostic()).toMatchObject({ mode: 'casual', model_calls: 0 })
+    })
+
+    it('persists a natural uncertain reply when the model repeats the previous source narration', async () => {
+        mocks.execute.mockResolvedValue({ success: true, data: 'No puedo confirmar esa función, ya que la documentación disponible no registra esa funcionalidad.' })
+        const response = await askHelpAssistant('Nota interna inbox')
+        expect(response.message).toBe('No puedo confirmarlo por ahora.')
+        expect(mocks.inserted.at(-1)?.value.content).toBe(response.message)
+    })
+
     it('bounds assisted selection to authorized guides and records two model calls', async () => {
         mocks.execute.mockResolvedValueOnce({ success: true, data: { articleIds: ['admin.roles', 'inbox.notes', 'invented.guide'] } })
             .mockResolvedValueOnce({ success: true, data: 'Usa Nota.' })

@@ -12,7 +12,7 @@ export class HelpDiagnostics {
     private finished = false
     phase: Phase = 'validation'
     failedPhase?: Phase
-    mode: 'unselected' | 'legacy' | 'v2' = 'unselected'
+    mode: 'unselected' | 'legacy' | 'v2' | 'casual' = 'unselected'
     organizationId?: string
     corpusRevision?: string
     authorizedCount = 0

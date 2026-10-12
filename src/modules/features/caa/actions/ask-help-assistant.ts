@@ -11,6 +11,7 @@ import { resolveHelpAccess } from '../library/session'
 import { boundedHistory, canReadArticle, retrieveHelp } from '../library/retrieval'
 import { selectAuthorizedArticles } from '../library/selection'
 import { HelpDiagnostics } from '../library/diagnostics'
+import { casualHelpReply, naturalizeHelpUncertainty } from '../library/response-policy'
 
 export interface HelpChatMessage {
     role: "user" | "assistant"
@@ -156,6 +157,11 @@ async function processHelpQuestion(
         }
 
         // 3. Off-topic Detection
+        const casualReply = casualHelpReply(sanitizedQuestion)
+        if (casualReply) {
+            trace.mode = 'casual'
+            return { success: true, message: casualReply }
+        }
         if (isOffTopic(sanitizedQuestion)) {
             return {
                 success: false,
@@ -206,7 +212,7 @@ async function processHelpQuestion(
                 },
             }))
             if (!response.success || typeof response.data !== 'string') return { success: false, error: 'No pudimos procesar tu pregunta.' }
-            return { success: true, message: response.data }
+            return { success: true, message: naturalizeHelpUncertainty(response.data) }
         }
 
         // 6. Get Space Category for tailored context
@@ -234,7 +240,7 @@ async function processHelpQuestion(
 
             return {
                 success: true,
-                message: content
+                message: typeof content === 'string' ? naturalizeHelpUncertainty(content) : content
             }
         }
 

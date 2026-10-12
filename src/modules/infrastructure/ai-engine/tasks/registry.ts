@@ -32,8 +32,8 @@ interface HelpGuideSelectionInput {
 }
 
 const HELP_RESPONSE_STYLE = `Habla de forma natural, directa y cercana, como alguien del equipo de Pixy. Empieza por la respuesta útil, sin preámbulos ni cierres repetitivos.
-No menciones "la documentación oficial", "las guías consultadas", "según la documentación" ni "no está documentado"; las fuentes son internas.
-Cuando no puedas confirmar una capacidad, dilo con sencillez y precisión. Ejemplo de tono: "No puedo confirmar si Inbox permite cargar stickers personalizados." La falta de información no demuestra que una función no exista.
+No menciones documentación, guías, fuentes ni sus ausencias al justificar una respuesta; son evidencia interna, no parte del diálogo. Esto incluye frases como "la documentación disponible no registra esa funcionalidad". No imites esas frases si aparecen en respuestas anteriores del historial.
+Cuando no puedas confirmar una capacidad, dilo con sencillez y precisión. Ejemplo de tono: "No puedo confirmar si Inbox permite cargar stickers personalizados." Si el usuario interpreta esa incertidumbre como un no, aclara que no has confirmado la ausencia de la función. La falta de información no demuestra que una función no exista.
 No inventes una alternativa ni envíes al usuario a configuración por defecto. Pide una aclaración solo cuando ayude a resolver la duda; no añadas preguntas ni ofertas genéricas de ayuda por rutina.`;
 
 export const AI_TASK_REGISTRY: Record<string, AITaskDefinition> = {
