@@ -35,6 +35,8 @@ export const AIEngine = {
      */
     async executeTask(options: TaskExecutionOptions): Promise<AIEngineResponse> {
         const { organizationId, taskType, payload, bypassCache } = options;
+        // Retrieval adds top-level knowledgeContext later. Both cache operations must hash the same input.
+        const cachePayload = { ...payload };
 
         // 1. Load Task Definition
         const taskDef = getTaskDefinition(taskType);
@@ -66,8 +68,8 @@ export const AIEngine = {
         }
 
         // Cached content must respect the same organization kill-switch as provider calls.
-        if (!bypassCache && taskType !== 'contract.generate_v1') {
-            const cached = await getCachedResponse(organizationId, taskType, payload);
+        if (!bypassCache && taskDef.cacheable !== false && taskType !== 'contract.generate_v1') {
+            const cached = await getCachedResponse(organizationId, taskType, cachePayload);
             if (cached) return { success: true, data: cached, provider: 'cache' };
         }
 
@@ -190,6 +192,7 @@ export const AIEngine = {
         const userMessage = taskDef.userPrompt(payload);
         const messages = [
             { role: 'system', content: systemMessage },
+            ...(taskDef.conversationMessages?.(payload) || []),
             { role: 'user', content: userMessage }
         ];
 
@@ -242,7 +245,7 @@ export const AIEngine = {
                 }
 
                 // CACHE RESULT
-                await setCachedResponse(organizationId, taskType, payload, parsedData);
+                if (taskDef.cacheable !== false) await setCachedResponse(organizationId, taskType, cachePayload, parsedData);
 
                 return {
                     success: true,

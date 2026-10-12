@@ -6,6 +6,9 @@ import { getCurrentOrganizationId } from "@/modules/core/organizations/organizat
 import { getOrgSpaceCategory } from "@/modules/core/organizations/space-helpers"
 import { createClient } from "@/modules/core/database/supabase-server"
 import { z } from 'zod'
+import { helpCorpus, helpV2Enabled } from '../library/runtime'
+import { resolveHelpAccess } from '../library/session'
+import { boundedHistory, retrieveHelp } from '../library/retrieval'
 
 export interface HelpChatMessage {
     role: "user" | "assistant"
@@ -25,7 +28,7 @@ export interface HelpChatResponse {
 const RATE_LIMIT_WINDOW_MS = 60 * 1000 // 1 minute
 const MAX_REQUESTS_PER_WINDOW = 10
 const MAX_INPUT_LENGTH = 500
-const MAX_CONVERSATION_HISTORY = 4 // Only keep last 4 messages for context
+const MAX_CONVERSATION_HISTORY = 12 // Legacy task still limits its own context below.
 
 // In-memory rate limit store (in production, use Redis)
 const rateLimitStore = new Map<string, { count: number, timestamp: number }>()
@@ -115,7 +118,8 @@ function sanitizeInput(input: string): string {
  */
 async function processHelpQuestion(
     question: string,
-    conversationHistory: HelpChatMessage[] = []
+    conversationHistory: HelpChatMessage[] = [],
+    currentRoute?: string,
 ): Promise<HelpChatResponse> {
     try {
         const organizationId = await getCurrentOrganizationId()
@@ -156,7 +160,26 @@ async function processHelpQuestion(
         }
 
         // 5. Limit conversation history to save tokens
-        const limitedHistory = conversationHistory.slice(-MAX_CONVERSATION_HISTORY)
+        const limitedHistory = conversationHistory.slice(-4)
+
+        if (helpV2Enabled(organizationId)) {
+            const { data: { user } } = await (await createClient()).auth.getUser()
+            if (!user) return { success: false, error: 'Inicia sesión para usar la ayuda.' }
+            const access = await resolveHelpAccess(organizationId, user.id, helpCorpus.articles, currentRoute)
+            const prior = conversationHistory.filter(message => message.role === 'user').at(-1)?.content || ''
+            const articles = retrieveHelp(helpCorpus.articles, sanitizedQuestion, access, prior)
+            if (!articles.length) return { success: true, message: 'Todavía no tengo una guía publicada y autorizada que resuelva esta pregunta. Indícame el módulo y la acción que estás intentando realizar para orientar la revisión.' }
+            const response = await AIEngine.executeTask({
+                organizationId, taskType: 'help-assistant-v2', payload: {
+                    question: sanitizedQuestion, history: boundedHistory(conversationHistory),
+                    session: { route: access.route, vertical: access.vertical, modules: access.modules, tenantAdmin: access.tenantAdmin, platformAdmin: access.platformAdmin },
+                    articles, corpusRevision: helpCorpus.revision,
+                },
+            })
+            if (!response.success || typeof response.data !== 'string') return { success: false, error: 'No pudimos procesar tu pregunta.' }
+            // Fixed source titles come from authorized retrieval, never from model-generated URLs.
+            return { success: true, message: `${response.data}\n\nGuías consultadas: ${articles.map(article => article.title).join(' · ')}` }
+        }
 
         // 6. Get Space Category for tailored context
         const spaceCategory = await getOrgSpaceCategory(organizationId)
@@ -203,12 +226,16 @@ export async function askHelpAssistant(
     question: string,
     conversationHistory: HelpChatMessage[] = [],
     threadId?: string,
+    currentRoute?: string,
 ): Promise<HelpChatResponse> {
     if (typeof question !== 'string' || question.trim().length < 3 || question.length > MAX_INPUT_LENGTH) {
         return { success: false, error: 'Escribe una pregunta de entre 3 y 500 caracteres.' }
     }
     if (threadId && !z.string().uuid().safeParse(threadId).success) {
         return { success: false, error: 'Conversación inválida.' }
+    }
+    if (currentRoute !== undefined && !z.string().max(200).regex(/^\/[a-zA-Z0-9_/[\].-]*$/).safeParse(currentRoute).success) {
+        return { success: false, error: 'Vista de ayuda inválida.' }
     }
     // Validate even the fallback history supplied by the browser.
     const history = z.array(z.object({ role: z.enum(['user', 'assistant']), content: z.string().max(20000) }))
@@ -242,7 +269,7 @@ export async function askHelpAssistant(
         const { error } = await client.from('help_chat_messages').insert({ thread_id: activeId, role: 'user', content: question.trim() })
         if (error) return { success: false, threadId: activeId, error: 'No se pudo guardar tu pregunta. Intenta nuevamente.' }
     }
-    const response = await processHelpQuestion(question, context)
+    const response = await processHelpQuestion(question, context, currentRoute)
     // Failed requests remain as an unanswered question; technical errors are not persisted as AI answers.
     if (activeId && response.success && typeof response.message === 'string') {
         const { error } = await client.from('help_chat_messages').insert({ thread_id: activeId, role: 'assistant', content: response.message })

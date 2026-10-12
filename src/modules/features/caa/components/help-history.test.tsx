@@ -7,6 +7,7 @@ vi.mock('../actions/help-history', () => ({ listHelpThreads: mocks.list, loadHel
 vi.mock('../actions/ask-help-assistant', () => ({ askHelpAssistant: mocks.ask }))
 vi.mock('@/modules/core/pet/pet-provider', () => ({ usePet: () => null }))
 vi.mock('@/modules/core/pet/use-pet-motion', () => ({ usePetMedia: () => false }))
+vi.mock('next/navigation', () => ({ usePathname: () => '/dashboard' }))
 
 const thread = { id: '11111111-1111-4111-8111-111111111111', title: 'Cambiar tema', created_at: '2026-10-11T00:00:00Z' }
 const stored = [{ id: 'a', role: 'user', content: '¿Cómo cambio el tema?', created_at: thread.created_at },
@@ -39,7 +40,7 @@ describe('private help history UI', () => {
         fireEvent.change(screen.getByRole('textbox'), { target: { value: '¿Y en móvil?' } })
         fireEvent.submit(screen.getByRole('textbox').closest('form')!)
         await screen.findByText('Respuesta nueva.')
-        expect(mocks.ask).toHaveBeenCalledWith('¿Y en móvil?', stored, thread.id)
+        expect(mocks.ask).toHaveBeenCalledWith('¿Y en móvil?', stored, thread.id, '/dashboard')
     })
     it('keeps help usable and warns when history storage is unavailable', async () => {
         mocks.list.mockResolvedValue({ threads: [], hasMore: false, error: 'Historial no disponible.' })

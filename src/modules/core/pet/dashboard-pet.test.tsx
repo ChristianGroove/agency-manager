@@ -12,6 +12,7 @@ const mocks = vi.hoisted(() => ({ ask: vi.fn() }))
 vi.mock('@/modules/features/caa/actions/ask-help-assistant', () => ({ askHelpAssistant: mocks.ask }))
 vi.mock('@/modules/features/caa/actions/help-history', () => ({ listHelpThreads: vi.fn(async () => ({ threads: [], hasMore: false })), loadHelpThread: vi.fn() }))
 vi.mock('next-themes', () => ({ useTheme: () => ({ theme: 'light', setTheme: vi.fn() }) }))
+vi.mock('next/navigation', () => ({ usePathname: () => '/dashboard' }))
 vi.mock('next/image', () => ({ default: () => null }))
 vi.mock('next/dynamic', () => ({ default: () => function Modal({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
     return open ? <div role="dialog" aria-label="Ayuda"><button onClick={() => onOpenChange(false)}>Cerrar ayuda</button></div> : null

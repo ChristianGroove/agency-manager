@@ -1,0 +1,54 @@
+// Synthetic fixtures only; never publishes Gemini drafts or changes the real corpus.
+import fs from 'node:fs'
+import path from 'node:path'
+import crypto from 'node:crypto'
+import assert from 'node:assert/strict'
+import { spawnSync } from 'node:child_process'
+import yaml from 'js-yaml'
+
+const workspace = fs.realpathSync(process.cwd())
+const parent = path.join(workspace, 'tmp')
+fs.mkdirSync(parent, { recursive: true })
+const fixture = fs.mkdtempSync(path.join(parent, 'help-pipeline-'))
+const sha = data => crypto.createHash('sha256').update(data).digest('hex')
+const articleDir = path.join(fixture, 'docs/1-product/help-library/drafts/articles')
+const evidencePath = 'src/app/(dashboard)/dashboard/page.tsx'
+const evidence = 'export function ThemeButton() { return null }'
+for (const dir of [articleDir, path.dirname(path.join(fixture, evidencePath)), path.join(fixture, 'src/modules/features/caa/library')]) fs.mkdirSync(dir, { recursive: true })
+fs.writeFileSync(path.join(fixture, evidencePath), evidence)
+const content = '## Cambiar el tema\nUsa el botón del sidebar para alternar entre tema claro y oscuro. La selección se aplica sin guardar y no requiere abrir un menú.\n\n## Notas de verificación\nInformación interna que no debe publicarse.'
+const meta = { schema_version: 1, id: 'dashboard.theme', title: 'Cambiar el tema', module: 'dashboard', status: 'draft', audience: 'tenant-user', source_revision: 'a'.repeat(40), verified_on: '2026-10-12', verification: 'source-only', routes: ['/dashboard'], keywords: ['tema'], requirements: [], evidence: [{ path: evidencePath, symbol: 'ThemeButton', claim: 'Existe el control' }] }
+const filename = path.join(articleDir, 'dashboard.theme.md')
+const writeDraft = data => fs.writeFileSync(filename, `---\n${yaml.dump(data, { schema: yaml.JSON_SCHEMA })}---\n${content}`)
+const run = (...args) => spawnSync(process.execPath, [path.join(workspace, 'node_modules/tsx/dist/cli.mjs'), path.join(workspace, 'scripts/help-library.mjs'), ...args], {
+    cwd: fixture, encoding: 'utf8', env: { ...process.env, TSX_TSCONFIG_PATH: path.join(workspace, 'tsconfig.json') },
+})
+try {
+    writeDraft(meta)
+    const validation = run('validate')
+    assert.equal(validation.status, 0, validation.stderr)
+    assert.notEqual(run('publish').status, 0, 'Publication without review must fail')
+    const reviewPath = path.join(fixture, 'review.json')
+    const review = { schema_version: 1, articles: [{ id: meta.id, draft_sha256: sha(fs.readFileSync(filename, 'utf8')), reviewed_by: 'Synthetic reviewer', reviewed_on: '2026-10-12', evidence_sha256: { [evidencePath]: sha(evidence) }, required_modules: [], required_permissions: [], verticals: [], link_route: '/dashboard' }] }
+    fs.writeFileSync(reviewPath, JSON.stringify(review))
+    const result = run('publish', reviewPath)
+    assert.equal(result.status, 0, result.stderr)
+    const output = path.join(fixture, 'src/modules/features/caa/library/published.json')
+    const artifact = fs.readFileSync(output, 'utf8')
+    assert.equal(JSON.parse(artifact).articles.length, 1)
+    assert(!artifact.includes('Información interna'))
+    assert(!artifact.includes('evidence'))
+    fs.appendFileSync(path.join(fixture, evidencePath), '\n// changed')
+    assert.notEqual(run('publish', reviewPath).status, 0, 'Changed source evidence must fail')
+    assert.equal(fs.readFileSync(output, 'utf8'), artifact, 'Failed publication must preserve old corpus')
+    fs.writeFileSync(path.join(fixture, evidencePath), evidence)
+    writeDraft({ ...meta, evidence: [{ ...meta.evidence[0], path: '../secret.txt' }] })
+    assert.notEqual(run('validate').status, 0, 'Path traversal must fail')
+    writeDraft({ ...meta, routes: ['/nonexistent'] })
+    assert.notEqual(run('validate').status, 0, 'Invented route must fail')
+    console.log('Publication pipeline: 7 assertions passed; only synthetic fixtures used.')
+} finally {
+    const resolved = fs.realpathSync(fixture)
+    if (!resolved.startsWith(fs.realpathSync(parent) + path.sep)) throw new Error('Fixture cleanup outside workspace')
+    fs.rmSync(resolved, { recursive: true })
+}

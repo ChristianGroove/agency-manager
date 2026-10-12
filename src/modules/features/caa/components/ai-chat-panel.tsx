@@ -10,6 +10,7 @@ import { PetVisual } from "@/modules/core/pet/pet-visual"
 import { usePetMedia } from "@/modules/core/pet/use-pet-motion"
 import { listHelpThreads, loadHelpThread, type HelpThread } from '../actions/help-history'
 import { HelpHistoryMenu } from './help-history-menu'
+import { usePathname } from 'next/navigation'
 
 interface AIChatPanelProps {
     initialQuery?: string
@@ -20,6 +21,7 @@ interface AIChatPanelProps {
  * Help conversation with one live robot beside the composer.
  */
 export function AIChatPanel({ initialQuery, className }: AIChatPanelProps) {
+    const currentRoute = usePathname()
     const pet = usePet()
     const mobile = usePetMedia('(max-width: 639px)')
     const reducedMotion = usePetMedia('(prefers-reduced-motion: reduce)')
@@ -141,7 +143,7 @@ export function AIChatPanel({ initialQuery, className }: AIChatPanelProps) {
         reportHelpState?.('thinking')
 
         try {
-            const response = await askHelpAssistant(question, messages, threadId)
+            const response = await askHelpAssistant(question, messages, threadId, currentRoute || undefined)
             if (!mountedRef.current) return
             setHistoryWarning(response.storageError)
             if (response.threadId) {
