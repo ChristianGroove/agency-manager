@@ -1,9 +1,9 @@
 {
-  "corpus_revision": "f79a1c4bca0f45975c5d9f38592af331439dfcc1e62f8b7ea2d19730e5ed12ec",
-  "articles": 20,
+  "corpus_revision": "53af2a393ba3be9a251c17fa1961aa0fdfc1ca307f7059f5768b50b767fdb6b7",
+  "articles": 21,
   "questions": 65,
   "covered_answer_cases": 56,
-  "retrieval_hits": 53,
+  "retrieval_hits": 56,
   "note": "This checks retrieval against expected article IDs, not factual correctness, model answers, latency, cost or runtime permissions.",
   "cases": [
     {
@@ -205,8 +205,8 @@
         "iam.manage-roles"
       ],
       "retrieved": [
-        "iam.invite-members",
         "iam.manage-roles",
+        "iam.invite-members",
         "inbox.manage-channels"
       ],
       "status": "retrieval_hit"
@@ -365,7 +365,7 @@
       "retrieved": [
         "crm.manage-contacts",
         "billing.manage-invoices",
-        "crm.manage-pipeline"
+        "inbox.manage-conversations"
       ],
       "status": "retrieval_hit"
     },
@@ -410,8 +410,8 @@
       ],
       "retrieved": [
         "billing.manage-invoices",
-        "crm.manage-pipeline",
-        "dashboard.overview"
+        "dashboard.overview",
+        "quotes.create-quotes"
       ],
       "status": "retrieval_hit"
     },
@@ -426,8 +426,8 @@
       ],
       "retrieved": [
         "billing.manage-invoices",
-        "crm.manage-pipeline",
-        "dashboard.overview"
+        "dashboard.overview",
+        "inbox.manage-conversations"
       ],
       "status": "retrieval_hit"
     },
@@ -456,11 +456,11 @@
         "automation.create-workflows"
       ],
       "retrieved": [
+        "automation.create-workflows",
         "quotes.create-quotes",
-        "iam.manage-roles",
         "inbox.manage-channels"
       ],
-      "status": "retrieval_miss"
+      "status": "retrieval_hit"
     },
     {
       "id": "Q30",
@@ -521,7 +521,7 @@
       "retrieved": [
         "billing.manage-invoices",
         "quotes.create-quotes",
-        "crm.manage-pipeline"
+        "dashboard.overview"
       ],
       "status": "retrieval_hit"
     },
@@ -753,11 +753,11 @@
         "iam.manage-roles"
       ],
       "retrieved": [
+        "iam.manage-roles",
         "help.chat-and-history",
-        "iam.invite-members",
-        "dashboard.overview"
+        "iam.invite-members"
       ],
-      "status": "retrieval_miss"
+      "status": "retrieval_hit"
     },
     {
       "id": "Q50",
@@ -788,7 +788,7 @@
       "retrieved": [
         "branding.manage-adn",
         "branding.brand-center",
-        "inbox.manage-conversations"
+        "crm.crm-reports"
       ],
       "status": "retrieval_hit"
     },
@@ -893,8 +893,8 @@
       ],
       "retrieved": [
         "iam.invite-members",
-        "iam.manage-roles",
-        "crm.manage-contacts"
+        "help.chat-and-history",
+        "iam.manage-roles"
       ],
       "status": "retrieval_hit"
     },
@@ -920,14 +920,14 @@
         "agency"
       ],
       "published_expected": [
-        "crm.manage-pipeline",
-        "dashboard.overview"
+        "crm.crm-reports"
       ],
       "retrieved": [
-        "iam.manage-roles",
+        "crm.crm-reports",
+        "crm.manage-pipeline",
         "quotes.create-quotes"
       ],
-      "status": "retrieval_miss"
+      "status": "retrieval_hit"
     },
     {
       "id": "Q61",
@@ -1003,7 +1003,7 @@
       "retrieved": [
         "inbox.manage-channels",
         "inbox.manage-conversations",
-        "automation.create-workflows"
+        "crm.manage-contacts"
       ],
       "status": "retrieval_hit"
     }

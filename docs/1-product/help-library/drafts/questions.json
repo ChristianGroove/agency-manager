@@ -924,15 +924,17 @@
       "question": "¿Dónde encuentro los reportes de rendimiento y conversión del CRM?",
       "audience": "tenant-admin",
       "view_id": "crm-reports",
-      "expected_article_ids": ["crm.manage-pipeline"],
+      "expected_article_ids": ["crm.crm-reports"],
       "expected_points": [
-        "En CRM > Reportes (/crm/reports) vinculado al módulo de CRM y Pipeline",
+        "En CRM > Reportes (/crm/reports)",
+        "El acceso desde el menú lateral está vinculado al módulo module_crm_reports y al rol de Dueño (owner) en module-config",
         "Permite visualizar tasas de conversión de oportunidades, ingresos por etapa y rendimiento de agentes con filtros de fecha",
         "Incluye exportación de informes comerciales en formato PDF"
       ],
       "must_not_claim": [
         "No afirmar que los reportes de conversión no están implementados",
-        "No afirmar que cualquier usuario con rol member puede ver reportes financieros"
+        "No afirmar que cualquier usuario con rol member o colaborador puede ver el acceso directo de reportes en el menú",
+        "No afirmar que existe un guard backend independiente que restrinja getAdvancedReports únicamente al rol Dueño"
       ],
       "expected_behavior": "answer"
     },

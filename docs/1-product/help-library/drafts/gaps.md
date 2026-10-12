@@ -1,7 +1,7 @@
 # Listado de Carencias y Contradicciones Detectadas (Gaps)
 
-Fecha de auditoría: 12 de octubre de 2026.  
-Rama inspeccionada: `pixyrobotpet` en `tmp/pet-workspace`.  
+Fecha de auditoría: 12 de octubre de 2026.
+Rama inspeccionada: `pixyrobotpet` en `tmp/pet-workspace`.
 Revisión de referencia (HEAD): `047fa7ee0cadc0f49d9ce08220f633885b0801a7`.
 
 ---
@@ -84,3 +84,13 @@ Es imprescindible distinguir entre el comportamiento del runtime histórico prev
 | Desconexión de canal en Pixy vs. Meta | `deleteChannel` en `actions.ts` borra el registro en BD de Pixy y cancela el tráfico local. En canales con modo `coexistence`, la app física sigue vinculada a Meta hasta que el usuario la desconecte desde el celular. | El operador debe completar la desvinculación manual en su teléfono móvil (*WhatsApp Business → Configuración → Cuenta → Plataforma empresarial*). |
 | Visibilidad de canales para agentes | Controlado por `evaluateInboxPermissions` (`inbox-permissions.ts`). Requiere `inbox.conversations.global_view` para ver todos los números conectados. | Sin este permiso, el agente no visualiza conversaciones de canales que no le hayan sido asignados de forma explícita. |
 | Respuestas automáticas fuera de horario | `EditChannelSheet` almacena `working_hours` y `auto_reply_when_offline`. Solo se despachan si el switch general de horarios está encendido. | Si el usuario redacta el mensaje de fuera de horario pero olvida activar el interruptor de horarios, ningún cliente recibirá respuesta automática nocturna. |
+
+---
+
+## 7. Reportes y Analítica del CRM: Visibilidad de Menú vs. Autorización Efectiva de Backend
+
+| Nivel de Control | Comprobación en código fuente | Discrepancia / Hallazgo técnico |
+|---|---|---|
+| Visibilidad en Menú Lateral | `src/modules/core/saas/module-config.ts` (`MODULE_ROUTES`) define `/crm/reports` con `parentModule: 'module_crm_reports'` y `access: { allowedRoles: ['owner'] }`. | `filterRoutesByModules` oculta el enlace de reportes a cualquier usuario que no tenga rol de Dueño (`owner` / `dueño`), requiriendo además el módulo `module_crm_reports`. |
+| Autorización de Página y Server Action | `src/app/(dashboard)/crm/reports/page.tsx` (`ReportsPage`) invoca `getAdvancedReports` en `src/modules/features/crm/services/logic/analytics-actions.ts`. | `getAdvancedReports` valida el `organization_id` de la sesión pero no comprueba `owner` ni el módulo `module_crm_reports` antes de ejecutar la RPC `get_advanced_crm_reports`. No hay guard de rol a nivel de servidor ni middleware para esa ruta. |
+| Tratamiento en Biblioteca de Ayuda | Separación de `crm.crm-reports` (exclusivo para analítica comercial, audiencia `tenant-admin`, módulo `module_crm_reports`) respecto a `crm.manage-pipeline` (audiencia `tenant-user`, módulo `core_crm`, permiso `crm.leads.view`). | Se evita mezclar reportes en la guía de pipeline para no ofrecer instrucciones de reportes a roles operativos o tenants sin el módulo de reportes. |

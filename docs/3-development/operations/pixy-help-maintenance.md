@@ -1,0 +1,103 @@
+# Bot de ayuda Pixy: guía de mantenimiento
+
+Estado vigente: 2026-10-12, rama `pixyrobotpet`. Punto de entrada para cualquier agente que intervenga el robot, el chat o su biblioteca. Los documentos de fases anteriores son registros históricos; sus cifras y pendientes no describen necesariamente el runtime actual.
+
+## Estado y límites
+
+- Dashboard: robot integrado con branding, hibernación, estados de ayuda y algunas operaciones/alertas; chat con Markdown seguro, historial privado, selector de conversaciones y navegador de preguntas a la derecha.
+- Ayuda V2: 21 guías publicadas. Evaluación offline: 56/56 casos de respuesta recuperan una guía esperada; otros 4 casos de aclaración y 5 de abstención requieren evaluación de comportamiento. No equivale a 100% de exactitud de la IA.
+- Piloto activado únicamente en el tenant Pixy de la base local. Portales: aún sin robot de ayuda ni sesión/historial de ayuda propios. Su diseño está en [el plan de Tasks](../../2-architecture/modules/pixy-help-tasks-portal-plan.md).
+- No hay consultas a datos vivos de negocio, acciones ejecutables, streaming, embeddings para esta biblioteca, resumen automático ni límites distribuidos. El bot explica procedimientos; no opera el sistema.
+
+## Separación de responsabilidades
+
+| Recurso | Responsable y regla |
+|---|---|
+| `docs/1-product/help-library/drafts/` | Gemini: lectura y contraste de fuentes, artículos, inventario, preguntas, gaps, handoff y propuesta de revisión. No modifica runtime ni publica. |
+| `docs/1-product/help-library/reviews/` | Integración: conserva snapshots revisados, incidencias y resultados reales. Nunca atribuir a Codex la revisión editorial realizada por Gemini. |
+| `src/modules/features/caa/library/published.json` | Artefacto compilado por el pipeline; no editar a mano ni incorporar borradores automáticamente. |
+| Sesión, filtros, motor, UI y pruebas | Codex/agente táctico: verifica contratos, acceso y comportamiento técnico sin repetir la auditoría editorial completa. |
+| Navegador y respuestas reales | Usuario: verificación manual. No automatizar el navegador en esta tarea. |
+
+## Mapa de intervención
+
+Rutas relativas al checkout:
+
+| Cambio | Archivos principales |
+|---|---|
+| Entrada, persistencia y política | `src/modules/features/caa/actions/ask-help-assistant.ts`, `actions/help-history.ts`, `library/response-policy.ts` |
+| Corpus y contrato | `library/schema.ts`, `library/runtime.ts`, `library/published.json` |
+| Acceso y búsqueda | `library/session.ts`, `library/retrieval.ts`, `library/selection.ts` |
+| Prompt, modelo, presupuesto | `src/modules/infrastructure/ai-engine/tasks/registry.ts` (`help-assistant-v2`, `help-select-guides-v1`, legacy `help-assistant`) |
+| Diagnóstico | `src/modules/features/caa/library/diagnostics.ts` |
+| Chat, formato, historial, barras | `src/modules/features/caa/components/ai-chat-panel.tsx`, `help-message-content.tsx`, `help-history-menu.tsx`, `help-turn-navigator.tsx` |
+| Robot y branding | `src/modules/core/pet/config.ts`, `config-actions.ts`, `pet-provider.tsx`, `pet-visual.tsx`, `pet-help-trigger.tsx`, `use-pet-hibernation.ts` |
+| Validación/publicación/evaluación | `scripts/help-library.mjs`, `scripts/evaluate-help-retrieval.mjs`, `scripts/tests/help-library-pipeline.mjs` |
+
+`library/` y `actions/` abreviados en las filas del corpus pertenecen a `src/modules/features/caa/`. Los bots de Inbox y otras tareas del motor no se modifican como consecuencia automática de cambios en la ayuda.
+
+## Flujo de una consulta
+
+1. Validar consulta (3–500 caracteres), ruta, historial y UUID de hilo. Resolver usuario autenticado y organización en servidor.
+2. Si existe hilo, verificar propietario y tenant y cargar sus mensajes del servidor. No sustituirlos por historial del navegador si la carga falla. El historial del navegador solo sirve como fallback sin hilo persistido.
+3. Persistir la pregunta; aplicar límite actual de 10 solicitudes/minuto por organización en memoria y políticas de conversación.
+4. V2: resolver membresía, permisos IAM, módulos y vertical. Filtrar guías antes de recuperar contexto. La ruta del navegador no otorga permisos.
+5. Buscar léxicamente. Máximo 5 artículos / 16.000 caracteres, sin cortar procedimientos. Solo cuando no se recupera ninguno y existen guías autorizadas, solicitar selección asistida sobre hasta 40 entradas del catálogo; validar hasta 3 IDs y descartar IDs inventados/no autorizados.
+6. Generar con guías autorizadas, contexto limitado de sesión y hasta 12 mensajes / 10.000 caracteres con roles. Las dos tareas V2 desactivan caché compartida y el KB legacy. Sin guías relevantes, aclarar sin inventar; solicitudes directas de chistes tienen respuesta breve local sin llamada al modelo.
+7. Normalizar el caso acotado de incertidumbre que repite ausencia de documentación, persistir la respuesta y devolverla sin fuentes ni diagnóstico visible. Nunca convertir falta de evidencia en ausencia de capacidad.
+8. Diagnóstico opcional: un registro de metadatos por solicitud, sin cuerpos de mensajes, claves, tokens, IDs de usuario/hilo ni errores del proveedor. Un fallo de logging no interrumpe el chat.
+
+La clasificación de conversación es limitada, no un clasificador semántico universal. El control de salida es estrecho: no editar fragmentos arbitrarios de respuestas ni ocultar negaciones verificadas. El límite en memoria no protege de forma global varias instancias.
+
+## Mantenimiento de artículos y publicación
+
+1. Gemini revisa funciones y condiciones reales, redacta por tarea y superficie, conserva `status: draft` y `verification: source-only`, y añade evidencia con archivo/símbolo/afirmación. Las notas internas van en `Notas de verificación`.
+2. Mapea filtros reales: audiencia, módulos, permisos canónicos y vertical. Separar tareas si sus condiciones de acceso difieren; por ejemplo, pipeline y reportes CRM. La presencia de un botón o un filtro del menú no demuestra autorización en backend.
+3. Actualiza preguntas, inventario, gaps y handoff. Preparar `drafts/publication-review.json`: snapshot COMPLETO de la biblioteca deseada, con identidad de Gemini y SHA-256 UTF-8 de borradores y todas las evidencias. No fabricar revisión recalculando hashes de fuentes que nadie revisó.
+4. Integración verifica diferencias/omisiones, contratos, permisos y hashes. Si cambió una fuente durante trabajo concurrente, devolver la incidencia al revisor. Un cambio de saltos de línea también cambia los hashes: no saltarse el control ni inventar equivalencias.
+5. Conservar la propuesta aceptada bajo un nombre nuevo en `reviews/`; no sobrescribir snapshots históricos. Ejecutar:
+
+```text
+npm run help:validate
+npm run help:publish -- docs/1-product/help-library/reviews/<snapshot>.json
+node node_modules/tsx/dist/cli.mjs scripts/evaluate-help-retrieval.mjs
+node scripts/tests/help-library-pipeline.mjs
+node node_modules/vitest/vitest.mjs run src/modules/features/caa/actions/ask-help-assistant.test.ts src/modules/features/caa/library src/modules/features/caa/components --reporter=dot
+```
+
+6. Revisar fallos del evaluador: usa perfiles sintéticos permisivos y vertical compatible para medir recuperación; no mide permisos efectivos, texto de respuesta, coste ni latencia. No modificar expectativas solo para obtener aciertos. Los casos `clarify`/`abstain` se evalúan aparte.
+7. Compilar y reiniciar el piloto; el corpus se importa durante el build. Validación editorial, publicación, build y activación son pasos distintos. El usuario comprueba el flujo en navegador. Registrar resultado, limitaciones y commit local.
+
+El publicador valida antes de reemplazar el corpus y preserva el anterior si falla. Rechaza IDs duplicados, fuentes modificadas, rutas no comprobadas, evidencia circular/externa, HTML/enlaces sin control y permisos desconocidos. El contrato/ejemplo detallado está en [reviews/README](../../1-product/help-library/reviews/README.md).
+
+## Interruptores y operación local
+
+| Control | Efecto |
+|---|---|
+| `PIXY_HELP_V2_ENABLED=true` + `PIXY_HELP_V2_TENANTS=<UUIDs>` | V2 solo en tenants listados. Por defecto apagado; `*` amplía explícitamente a todos y no se usa en este piloto. |
+| `PIXY_HELP_DIAGNOSTICS_ENABLED=true` | Metadatos `[PixyHelp]` en logs del servidor. Independiente del robot/V2. No es un panel de métricas ni una estimación de tokens/coste. |
+| `platform_settings.pet_config` | Apariencia, audiencia y activación de mascota; independiente de ayuda V2. Gestionado en super admin. |
+
+Entorno de este tramo:
+
+- Checkout de trabajo: `G:\Pixy\agency-manager\tmp\pet-workspace`, rama `pixyrobotpet`. Root en otra rama de Cartera: no cambiarlo ni incluir sus cambios.
+- Aplicación: `http://127.0.0.1:3005`; Supabase local: API `55321`, DB `55322`. No usar otro stack ni credenciales/remoto por inferencia. No imprimir `.env`.
+- El `node_modules` del worktree es un enlace al del root; no borrar, podar ni reinstalar dependencias masivamente. `react-markdown` tiene runtime local auxiliar: preservar sus enlaces mientras el servidor los necesite.
+- Build en el worktree: `node node_modules/next/dist/bin/next build --webpack`.
+- Arranque desde el root mediante helper local ignorado: `node tmp/start-pet-isolated.cjs --help-v2-pilot --help-diagnostics`. Verifica base local y usa el worktree aislado. El helper no forma parte del checkout portable: recrearlo/verificarlo si se cambia de máquina.
+- Antes de reiniciar, comprobar que el propietario de 3005 corresponde exactamente a `...\tmp\pet-workspace\node_modules\next\dist\bin\next start ... --port 3005`. No detener procesos genéricos Node ni Cartera/3000.
+- Migraciones ya aplicadas solo local: `20261011000001_platform_robot_pet.sql` y `20261011000003_help_chat_history.sql`. Este cierre de corpus no requiere migración.
+
+Apagar V2 restaura el camino legacy, no elimina historial ni configuración del robot. Para revertir contenido, recuperar un `published.json` anterior de Git, compilar y reiniciar; no publicar un manifiesto histórico sobre fuentes actuales distintas. No ejecutar resets globales. Una reversión o despliegue remoto requiere alcance explícito.
+
+## Robot y experiencia
+
+- Global Pixy usa colores configurados; otros tenants usan primario/secundario de branding cuando corresponde. La configuración permite apagado con acceso simple de ayuda como fallback.
+- Hibernación configurable: 5 minutos por defecto sin hover/focus/touch sobre el robot; se despierta con esa interacción. El movimiento global del cursor no reinicia el plazo. Respetar movimiento reducido, visibilidad y puntero.
+- Un robot grande junto al input del chat; sin header ornamental, miniavatares por mensaje ni tooltip del robot. Barras centradas a la derecha, ola por fotograma con ancho real/extremos redondeados y máximo 23,4 px.
+- Markdown seguro: sin HTML, imágenes ni enlaces ejecutables. Las respuestas nuevas no tienen pie de guías; el renderer oculta el pie legacy sin reescribir la base. Evitar frases repetidas sobre documentación.
+- Cambios de prompt: modificar solo las tareas de ayuda, mantener anclaje a fuentes y permisos, invalidar versión de caché legacy si corresponde. No cambiar modelos/tier de todo el motor para corregir una respuesta de ayuda.
+
+## Cierre y siguiente intervención
+
+Ver [cierre del tramo](../../1-product/help-library/reviews/dashboard-closeout-20261012.md) y [plan Tasks](../../2-architecture/modules/pixy-help-tasks-portal-plan.md). Siguiente entrega: biblioteca y matriz de capacidades del portal a cargo de Gemini; sesión/acceso, contratos por superficie, UI/historial y pruebas a cargo táctico. El estado «preparado» no implica portal activo ni autorización ya implementada.

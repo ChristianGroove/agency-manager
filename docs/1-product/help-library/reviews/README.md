@@ -1,5 +1,7 @@
 # Publicación de la biblioteca
 
+Entrada vigente para futuras intervenciones: [guía de mantenimiento](../../../3-development/operations/pixy-help-maintenance.md). Consultar el [cierre actual](dashboard-closeout-20261012.md) para distinguir el estado integrado de los informes históricos de esta carpeta.
+
 Reparto acordado el 2026-10-12: Gemini realiza la revisión editorial y la lectura/verificación de código. Puede entregar `drafts/publication-review.json` con su identidad de revisor y los filtros comprobados. Codex valida contratos, hashes, permisos canónicos y pruebas de integración, sin repetir la auditoría documental completa. Las revisiones anteriores identificadas como Codex corresponden a los lotes que sí revisó; no deben reutilizarse para afirmar que revisó entregas futuras de Gemini.
 
 `drafts/` pertenece al trabajo de Gemini. El runtime nunca lee esa carpeta. Los artículos publicados residen en `src/modules/features/caa/library/published.json`, un artefacto del build, inicialmente vacío.

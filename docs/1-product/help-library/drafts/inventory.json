@@ -225,14 +225,12 @@
       "name": "Embudo de Ventas (Pipeline)",
       "implementation_status": "implemented",
       "routes": [
-        "/crm/pipeline",
-        "/crm/reports"
+        "/crm/pipeline"
       ],
       "evidence_paths": [
         "src/app/(dashboard)/crm/pipeline/page.tsx",
         "src/modules/features/crm/components/crm-dashboard.tsx",
-        "src/modules/features/crm/crm-actions.ts",
-        "src/app/(dashboard)/crm/reports/page.tsx"
+        "src/modules/features/crm/crm-actions.ts"
       ],
       "article_ids": [
         "crm.manage-pipeline"
@@ -242,6 +240,28 @@
       ],
       "manual_checks_pending": [
         "Verificar arrastre drag-and-drop de tarjetas entre etapas y recálculo de valor estimado"
+      ]
+    },
+    {
+      "id": "crm-reports",
+      "name": "Reportes y Analítica del CRM",
+      "implementation_status": "implemented",
+      "routes": [
+        "/crm/reports"
+      ],
+      "evidence_paths": [
+        "src/app/(dashboard)/crm/reports/page.tsx",
+        "src/modules/features/crm/services/logic/analytics-actions.ts",
+        "src/modules/core/saas/module-config.ts"
+      ],
+      "article_ids": [
+        "crm.crm-reports"
+      ],
+      "gaps": [
+        "La visibilidad en el menú lateral está acotada a rol Dueño ('owner') en module-config.ts bajo module_crm_reports, mientras que la acción de servidor getAdvancedReports filtra por organization_id sin un guard de rol estricto a nivel de backend."
+      ],
+      "manual_checks_pending": [
+        "Verificar renderizado de gráficas Recharts y exportación html-to-image/jsPDF en navegador"
       ]
     },
     {
