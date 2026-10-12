@@ -12,10 +12,11 @@ export interface RobotHeadViewProps {
     state: PetState
     size: number
     animate?: boolean
+    hibernating?: boolean
     onFailure?: () => void
 }
 
-export function RobotHeadView({ settings, palette, state, size, animate = false, onFailure }: RobotHeadViewProps) {
+export function RobotHeadView({ settings, palette, state, size, animate = false, hibernating = false, onFailure }: RobotHeadViewProps) {
     const reducedMotion = usePetMedia('(prefers-reduced-motion: reduce)')
     const finePointer = usePetMedia('(any-hover: hover) and (any-pointer: fine)')
     const visible = usePetPageVisible()
@@ -25,7 +26,7 @@ export function RobotHeadView({ settings, palette, state, size, animate = false,
     const nodeRef = useRef<HTMLSpanElement>(null)
     const tracking = settings.interactive && state === 'idle' && finePointer
     const contextualRest = settings.animation === 'contextual' && settled
-    const paused = (!animate && !tracking) || settings.animation === 'off' || reducedMotion || !visible || !inViewport || (contextualRest && !tracking)
+    const paused = hibernating || (!animate && !tracking) || settings.animation === 'off' || reducedMotion || !visible || !inViewport || (contextualRest && !tracking)
     const pointerOnly = tracking && settings.animation !== 'continuous' && (!animate || contextualRest)
 
     useEffect(() => {

@@ -24,6 +24,11 @@ beforeEach(() => {
 afterEach(() => { cleanup(); mediaObservers.clear(); vi.useRealTimers(); vi.restoreAllMocks(); vi.unstubAllGlobals() })
 
 describe('pet motion policy', () => {
+    it('unsubscribes cursor tracking and continuous drawing while hibernating', () => {
+        render(<RobotHeadView {...props} settings={{ ...props.settings, interactive: true, animation: 'continuous' }} state="sleeping" animate hibernating />)
+        expect(screen.getByTestId('motion')).toHaveAttribute('data-paused', 'true')
+        expect(screen.getByTestId('motion')).toHaveAttribute('data-interactive', 'false')
+    })
     it('keeps idle static without requiring an animation loop', () => {
         render(<RobotHeadView {...props} state="idle" />)
         expect(screen.getByTestId('motion')).toHaveAttribute('data-paused', 'true')

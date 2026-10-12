@@ -23,6 +23,8 @@ export interface PetSettings {
     antenna: boolean
     floorShadow: boolean
     alertReactions: boolean
+    hibernateEnabled: boolean
+    hibernateAfterMinutes: number
 }
 
 export const DEFAULT_PET_SETTINGS: Readonly<PetSettings> = {
@@ -30,6 +32,7 @@ export const DEFAULT_PET_SETTINGS: Readonly<PetSettings> = {
     shape: 'rectangle', color: '#4F46E5', trimColor: '#EC4899', screenColor: '#E8F2FF',
     desktopSize: 64, mobileSize: 48, animation: 'contextual', speed: 1,
     interactive: false, antenna: true, floorShadow: true, alertReactions: false,
+    hibernateEnabled: true, hibernateAfterMinutes: 5,
 }
 
 export interface DashboardPetConfig {

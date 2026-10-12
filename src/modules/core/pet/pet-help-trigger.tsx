@@ -16,12 +16,13 @@ export function PetHelpTrigger({ onOpenHelp }: { onOpenHelp: () => void }) {
 
     return <button
         type="button" aria-label="Abrir ayuda"
-        onClick={onOpenHelp} onMouseEnter={() => setEngaged(true)} onMouseLeave={() => setEngaged(false)}
-        onFocus={() => setEngaged(true)} onBlur={() => setEngaged(false)}
+        onClick={onOpenHelp} onMouseEnter={() => { pet.wake(); setEngaged(true) }} onMouseLeave={() => setEngaged(false)}
+        onFocus={() => { pet.wake(); setEngaged(true) }} onBlur={() => setEngaged(false)}
+        onTouchStart={pet.wake}
         className="fixed right-6 z-40 rounded-2xl bg-transparent p-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
         style={{ bottom: 'calc(1.5rem + env(safe-area-inset-bottom))' }}
     >
         <PetVisual settings={settings} palette={pet.palette} state={pet.state} size={size}
-            animate={animate} onFailure={pet.reportRendererFailure} />
+            animate={animate} hibernating={pet.sleeping} onFailure={pet.reportRendererFailure} />
     </button>
 }

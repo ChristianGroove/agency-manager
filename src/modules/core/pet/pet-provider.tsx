@@ -3,6 +3,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react'
 import { useBranding } from '@/components/providers/branding-provider'
 import { resolvePetPalette, type DashboardPetConfig, type PetSettings, type PetState } from './config'
+import { usePetHibernation } from './use-pet-hibernation'
 
 interface PetContextValue {
     config: DashboardPetConfig
@@ -13,6 +14,8 @@ interface PetContextValue {
     reportCriticalAlert: (active: boolean) => void
     reportRendererFailure: () => void
     beginOperation: () => (state: 'happy' | 'error' | 'idle') => void
+    sleeping: boolean
+    wake: () => void
 }
 
 const PetContext = createContext<PetContextValue | null>(null)
@@ -44,6 +47,7 @@ export function PetProvider({ config, children }: { config: DashboardPetConfig; 
         return () => clearTimeout(timer)
     }, [operation])
     const enabled = config.enabled && failedSettings !== config.settings
+    const { sleeping, wake } = usePetHibernation(enabled && config.settings.hibernateEnabled, config.settings.hibernateAfterMinutes)
     const reportHelpState = useCallback((state: PetState) => {
         if (config.enabled) setHelpState(state)
     }, [config.enabled])
@@ -59,11 +63,12 @@ export function PetProvider({ config, children }: { config: DashboardPetConfig; 
     }, [helpState])
 
     const palette = useMemo(() => resolvePetPalette(config, branding), [config, branding])
+    const activeState = criticalAlert && config.settings.alertReactions ? 'error' as const
+        : helpState !== 'idle' ? helpState : config.settings.alertReactions ? operation.state : 'idle'
     const value = useMemo(() => ({
-        config, enabled, state: criticalAlert && config.settings.alertReactions ? 'error' as const
-            : helpState !== 'idle' ? helpState : config.settings.alertReactions ? operation.state : 'idle', palette,
-        reportHelpState, reportCriticalAlert, reportRendererFailure, beginOperation,
-    }), [config, enabled, criticalAlert, helpState, operation.state, palette, reportHelpState, reportCriticalAlert, reportRendererFailure, beginOperation])
+        config, enabled, state: activeState === 'idle' && sleeping ? 'sleeping' as const : activeState, palette,
+        sleeping, wake, reportHelpState, reportCriticalAlert, reportRendererFailure, beginOperation,
+    }), [config, enabled, activeState, sleeping, wake, palette, reportHelpState, reportCriticalAlert, reportRendererFailure, beginOperation])
 
     return <PetContext.Provider value={value}>{children}</PetContext.Provider>
 }

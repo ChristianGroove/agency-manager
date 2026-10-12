@@ -135,6 +135,16 @@ export function PetSettingsManager() {
                         <Switch id={`pet-${key}`} checked={settings[key]} onCheckedChange={value => update(key, value)} />
                     </div>)}
                     <p className="text-xs text-muted-foreground">La animación contextual es breve y mantiene reposo estático. La continua consume más recursos. Se respeta el movimiento reducido. El estado de prueba no se guarda.</p>
+                    <div className="flex items-center justify-between gap-4">
+                        <Label htmlFor="pet-hibernate">Hibernar sin interacción con el robot</Label>
+                        <Switch id="pet-hibernate" checked={settings.hibernateEnabled} onCheckedChange={value => update('hibernateEnabled', value)} />
+                    </div>
+                    <div className="space-y-2">
+                        <Label htmlFor="pet-hibernate-minutes">Tiempo activo (minutos)</Label>
+                        <Input id="pet-hibernate-minutes" type="number" min={1} max={30} step={1} disabled={!settings.hibernateEnabled}
+                            value={settings.hibernateAfterMinutes} onChange={event => update('hibernateAfterMinutes', Number(event.target.value))} />
+                    </div>
+                    <p className="text-xs text-muted-foreground">Por defecto duerme a los 5 minutos. Pasar sobre el robot, enfocarlo con teclado o tocarlo renueva ese plazo. Mover el cursor por el resto de la página no lo despierta. Los estados de trabajo y error siguen visibles en reposo.</p>
                 </div>
             </div>
             <div className="flex flex-wrap items-center justify-between gap-3 border-t pt-4">

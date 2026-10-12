@@ -21,6 +21,8 @@ export const petSettingsSchema = z.object({
     antenna: z.boolean().default(true),
     floorShadow: z.boolean().default(true),
     alertReactions: z.boolean().default(false),
+    hibernateEnabled: z.boolean().default(true),
+    hibernateAfterMinutes: z.number().int().min(1).max(30).default(5),
 }).strict().refine(settings => !settings.enabled || !!settings.pixyOrganizationId, {
     message: 'Selecciona la organización Pixy antes de activar la mascota.', path: ['pixyOrganizationId'],
 })

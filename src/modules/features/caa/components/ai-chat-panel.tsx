@@ -205,9 +205,9 @@ export function AIChatPanel({ initialQuery, className }: AIChatPanelProps) {
                         <Send className="h-5 w-5" />
                     </motion.button>
                     </div>
-                    {pet?.enabled && <div className="pointer-events-none absolute bottom-0 right-0" aria-hidden="true">
+                    {pet?.enabled && <div className="absolute bottom-0 right-0" aria-hidden="true" onMouseEnter={pet.wake} onTouchStart={pet.wake}>
                         <PetVisual settings={pet.config.settings} palette={pet.palette} state={pet.state}
-                            size={mobile ? 80 : 112} animate={pet.config.settings.animation === 'continuous' || pet.state !== 'idle'}
+                            size={mobile ? 80 : 112} animate={pet.config.settings.animation === 'continuous' || pet.state !== 'idle'} hibernating={pet.sleeping}
                             onFailure={pet.reportRendererFailure} />
                     </div>}
                 </form>
