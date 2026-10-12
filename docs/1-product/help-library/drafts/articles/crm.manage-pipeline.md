@@ -1,7 +1,7 @@
 ---
 schema_version: 1
 id: crm.manage-pipeline
-title: Gestionar el embudo de ventas y oportunidades (Pipeline)
+title: Gestionar el embudo de ventas, oportunidades y reportes de conversión
 module: crm-pipeline
 status: draft
 audience: tenant-user
@@ -10,6 +10,7 @@ verified_on: 2026-10-12
 verification: source-only
 routes:
   - /crm/pipeline
+  - /crm/reports
 keywords:
   - pipeline
   - embudo
@@ -18,6 +19,13 @@ keywords:
   - kanban
   - oportunidades
   - comercial
+  - reportes
+  - rendimiento
+  - conversion
+  - metricas
+  - crm
+  - analitica
+  - pdf
 requirements:
   - Módulo core_crm activo
   - Permiso crm.leads.view para visualizar y crm.leads.edit para gestionar
@@ -31,23 +39,27 @@ evidence:
   - path: src/modules/features/crm/crm-actions.ts
     symbol: getPipelineViewDataAction
     claim: Obtiene los leads agrupados por etapas y canales del pipeline desde el servidor.
+  - path: src/app/(dashboard)/crm/reports/page.tsx
+    symbol: ReportsPage
+    claim: Presenta métricas analíticas de rendimiento comercial, embudo de conversión y exportación de reportes en PDF.
 ---
 
-# Gestionar el embudo de ventas y oportunidades (Pipeline)
+# Gestionar el embudo de ventas, oportunidades y reportes de conversión
 
 ## Propósito
-Ofrecer una vista gráfica tipo Kanban para dar seguimiento al avance de las oportunidades comerciales, desde el primer contacto hasta el cierre de la venta, permitiendo proyectar ingresos y priorizar esfuerzos comerciales.
+Ofrecer una vista gráfica tipo Kanban para dar seguimiento al avance de las oportunidades comerciales y consultar reportes analíticos de rendimiento y conversión del CRM, permitiendo proyectar ingresos, evaluar el cierre de ventas y priorizar esfuerzos del equipo comercial.
 
 ## Requisitos y permisos
 - Que la empresa cuente con el módulo principal de CRM (`core_crm`).
 - Para consultar el tablero se requiere el permiso `crm.leads.view`.
 - Para crear oportunidades, modificar valores o mover tarjetas de etapa se requiere el permiso `crm.leads.edit`.
+- El acceso a reportes analíticos avanzados en `/crm/reports` está disponible para administradores o usuarios con privilegios analíticos asignados en su rol.
 
 ## Ubicación en pantalla
-- **Ruta web:** `/crm/pipeline`
-- **Menú lateral:** Sección **CRM** → opción **Pipeline** (icono de tablero Kanban).
+- **Tablero de Pipeline:** `/crm/pipeline` (Menú lateral **CRM** → opción **Pipeline**).
+- **Reportes analíticos:** `/crm/reports` (Menú lateral **CRM** → opción **Reportes**).
 
-## Componentes del tablero
+## Componentes del tablero Kanban
 - **Columnas de etapas:** Cada columna representa una fase del ciclo de ventas (por ejemplo: *Nuevo Prospecto*, *En Calificación*, *Cotización Presentada*, *Negociación*, *Cerrado Ganado*, *Cerrado Perdido*).
 - **Encabezado de etapa:** Muestra la cantidad de tratos activos en esa fase y la sumatoria del valor monetario acumulado.
 - **Tarjetas de oportunidad (Deals):** Cada tarjeta sintetiza:
@@ -58,38 +70,39 @@ Ofrecer una vista gráfica tipo Kanban para dar seguimiento al avance de las opo
   - Días transcurridos en la etapa actual.
 
 ## Pasos para gestionar una oportunidad
-1. Accede a **Pipeline** en el menú lateral.
-2. **Crear una nueva oportunidad:**
-   - Haz clic en el botón superior **Nuevo Trato** (o en el botón `+` de la primera columna).
-   - Ingresa el título del negocio, selecciona el contacto existente, ingresa el valor económico estimado y selecciona la fecha estimada de cierre.
-   - Presiona **Guardar**.
-3. **Avanzar una oportunidad de etapa:**
-   - Haz clic y mantén presionada la tarjeta deseada.
-   - Arrástrala horizontalmente a la columna de la siguiente fase (por ejemplo, de *Contacto Inicial* a *Propuesta Enviada*) y suéltala.
-   - Los totales financieros de ambas columnas se recalcularán de inmediato.
-4. **Cierre de venta:**
-   - Si la venta se concreta, arrastra la tarjeta a la columna **Cerrado Ganado**. Desde el deck de contexto podrás generar la factura correspondiente.
-   - Si el negocio no prospera, arrástrala a **Cerrado Perdido** registrando el motivo de descarte.
+1. Accede a **Pipeline** en el menú.
+2. Para mover una oportunidad al siguiente estado, haz clic sostenido sobre la tarjeta y arrástrala hacia la columna de destino (drag and drop).
+3. Al soltar la tarjeta, el sistema actualiza de inmediato la base de datos y recalcula los totales económicos de ambas columnas.
+4. Si la negociación concluye exitosamente, arrastra la tarjeta a la columna **Cerrado Ganado**. Si no prospera, muévela a **Cerrado Perdido** para mantener las estadísticas depuradas.
+
+## Reportes analíticos de rendimiento y conversión del CRM
+Para organizaciones que requieren métricas consolidadas sobre la eficiencia de su ciclo de ventas:
+- **Ubicación:** Menú lateral **CRM** → opción **Reportes** (ruta web `/crm/reports`).
+- **Métricas analíticas disponibles:**
+  - *Embudo y tasa de conversión:* Porcentaje de prospectos que avanzan satisfactoriamente entre etapas hasta el cierre ganado.
+  - *Ingresos y valor proyectado:* Sumatoria económica acumulada y ticket promedio por oportunidad.
+  - *Rendimiento por agente:* Desglose de tratos gestionados, tiempos de respuesta y ventas cerradas por cada miembro del equipo comercial.
+- **Filtros temporales:** Permite segmentar el análisis por rangos predeterminados (últimos 30 días, 7 días) o mediante un calendario de fechas personalizado.
+- **Exportación en PDF:** Botón para generar y descargar un informe formal imprimible con gráficos y datos de marca de la empresa (`CrmPdfTemplate`).
 
 ## Resultado esperado
-Visualización fluida del flujo de ingresos proyectados, facilitando el control comercial y la asignación equitativa de cuentas entre los agentes.
+Visualización fluida de las oportunidades en curso, actualización instantánea de los montos totales por fase y disponibilidad de estadísticas analíticas de conversión para la toma de decisiones directivas.
 
 ## Problemas habituales y causas comprobadas
-- **No se pueden mover tarjetas entre columnas:**
-  *Causa comprobada:* Tu usuario tiene asignado un rol con permiso de solo lectura (`crm.leads.view`), pero carece de `crm.leads.edit`. Contacta al administrador para elevar tus privilegios.
-- **Las etapas no coinciden con el proceso de mi empresa:**
-  *Causa comprobada:* Las etapas del embudo pueden configurarse de forma personalizada en `/crm/settings/pipeline` por usuarios administradores.
-- **El total monetario de una columna no coincide:**
-  *Causa comprobada:* Ocurre si existen tratos registrados en monedas diferentes o con el campo de valor en cero. Verifica las monedas configuradas en cada oportunidad.
+- **No es posible arrastrar tarjetas entre etapas:**
+  *Causa comprobada:* El usuario dispone de permiso de solo lectura (`crm.leads.view`) pero carece del permiso de modificación (`crm.leads.edit`).
+- **Los totales de la columna no coinciden con las tarjetas visibles:**
+  *Causa comprobada:* Hay un filtro de agente o fecha activo en la cabecera que oculta visualmente ciertos tratos mientras el contador conserva el total de la fase.
 
 ## Limitaciones conocidas
-- La reordenación vertical manual dentro de una misma columna no persiste un ordenamiento forzado; el listado se ordena por prioridad o fecha de modificación reciente.
+- Las etapas del pipeline se configuran a nivel organizacional en los ajustes del CRM; los usuarios regulares no pueden añadir o renombrar columnas desde la vista de tablero.
 
 ## Temas relacionados
 - [Administrar contactos y prospectos en el CRM](crm.manage-contacts.md)
-- [Crear y emitir cotizaciones comerciales](quotes.create-quotes.md)
+- [Crear y gestionar presupuestos comerciales](quotes.create-quotes.md)
 
 ## Notas de verificación
-- Ruta de página: `src/app/(dashboard)/crm/pipeline/page.tsx`
-- Componente visual: `src/modules/features/crm/components/pipeline-kanban.tsx`
-- Acciones de trato: `src/modules/features/crm/actions/deal-actions.ts`
+- Página principal de pipeline: `src/app/(dashboard)/crm/pipeline/page.tsx`
+- Componente de tablero: `src/modules/features/crm/components/crm-dashboard.tsx`
+- Página de reportes analíticos: `src/app/(dashboard)/crm/reports/page.tsx`
+- Lógica de servidor: `src/modules/features/crm/crm-actions.ts`

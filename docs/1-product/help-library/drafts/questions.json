@@ -463,9 +463,9 @@
       "expected_points": [
         "Acceder a CRM > Automatizaciones (/automations)",
         "Hacer clic en Nuevo Flujo",
-        "Seleccionar el disparador 'Nuevo prospecto registrado'",
-        "Conectar una acción de 'Enviar WhatsApp' y configurar el mensaje",
-        "Activar el flujo y guardar"
+        "Seleccionar el disparador 'Solo Primer Contacto (Lead Nuevo)' (first_contact) y vincular canales activos",
+        "Conectar una acción de Enviar mensaje por WhatsApp con el texto de bienvenida",
+        "Activar el interruptor de estado y guardar el flujo"
       ],
       "must_not_claim": [
         "No afirmar que las automatizaciones funcionan sin canales conectados"
@@ -760,11 +760,12 @@
       "view_id": "roles",
       "expected_article_ids": ["iam.manage-roles"],
       "expected_points": [
-        "En /platform/settings/roles en la columna izquierda",
+        "Acceder a /platform/settings/roles en la columna izquierda con permiso de administración (org.roles.manage)",
         "Los roles de sistema incluyen Dueño (owner), Administrador (admin) y Miembro (member) con distintivo 'System Role'"
       ],
       "must_not_claim": [
-        "No afirmar que los roles de sistema son editables en su nombre"
+        "No afirmar que los roles de sistema son editables en su nombre",
+        "No afirmar que un usuario con rol regular de miembro (member) puede acceder a la pantalla de roles"
       ],
       "expected_behavior": "answer"
     },
@@ -923,12 +924,14 @@
       "question": "¿Dónde encuentro los reportes de rendimiento y conversión del CRM?",
       "audience": "tenant-admin",
       "view_id": "crm-reports",
-      "expected_article_ids": ["crm.manage-pipeline", "dashboard.overview"],
+      "expected_article_ids": ["crm.manage-pipeline"],
       "expected_points": [
-        "En CRM > Reportes (/crm/reports)",
-        "Accesible por defecto para rol Dueño (owner) o usuarios con permisos de reportería"
+        "En CRM > Reportes (/crm/reports) vinculado al módulo de CRM y Pipeline",
+        "Permite visualizar tasas de conversión de oportunidades, ingresos por etapa y rendimiento de agentes con filtros de fecha",
+        "Incluye exportación de informes comerciales en formato PDF"
       ],
       "must_not_claim": [
+        "No afirmar que los reportes de conversión no están implementados",
         "No afirmar que cualquier usuario con rol member puede ver reportes financieros"
       ],
       "expected_behavior": "answer"

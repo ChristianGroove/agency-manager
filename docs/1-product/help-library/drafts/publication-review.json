@@ -3,13 +3,14 @@
   "articles": [
     {
       "id": "automation.create-workflows",
-      "draft_sha256": "2425695466efbe3ab92a545d1f566f3b570354e9afecaed51d44339e9ac6dd9f",
+      "draft_sha256": "2a7fa8c46d0af4ae6b366b633578756bd5566ab6adaec26741fc6c35d387d187",
       "reviewed_by": "Gemini: source verification and editorial review",
       "reviewed_on": "2026-10-12",
       "evidence_sha256": {
         "src/app/(dashboard)/automations/page.tsx": "d9aca9a84d3097c582179b35b7691a4d58a74b7a6c4782fe2c4fee8402aee26e",
         "src/modules/features/automation/components/automations-view.tsx": "196f00a7c70cf93d1078490d0371c4d5b2ae51dcd1e335737e1505e817f826ab",
-        "src/modules/features/automation/actions.ts": "9bc5526bc038fc4249974a73f8efc0374f0ed8123f89a61502b7149187368544"
+        "src/modules/features/automation/actions.ts": "9bc5526bc038fc4249974a73f8efc0374f0ed8123f89a61502b7149187368544",
+        "src/modules/features/automation/components/properties/TriggerProperties.tsx": "57da2624697a4ee457010efe0fcfa11d0044363f625ab0c75603be02fc078a51"
       },
       "required_modules": [
         "module_automation"
@@ -97,13 +98,14 @@
     },
     {
       "id": "crm.manage-pipeline",
-      "draft_sha256": "ff69d598ac9907f73c68874ed1b16de4e39a9ddb1efb600e8a8ebc686faa09e0",
+      "draft_sha256": "e001e178b722f783820d3afaba33f6f416aced747f26a9c326969bda67b68388",
       "reviewed_by": "Gemini: source verification and editorial review",
       "reviewed_on": "2026-10-12",
       "evidence_sha256": {
         "src/app/(dashboard)/crm/pipeline/page.tsx": "45acf11383be252721467618e81454c6f4907fb675411d0536aa3a15a762bf04",
         "src/modules/features/crm/components/crm-dashboard.tsx": "85bd4d89f319b449662b876df70ad69a5eaf3c5e23fce151001fa9f2d8d1ae2a",
-        "src/modules/features/crm/crm-actions.ts": "23448512224803fb70d778111f9926013b271b4171bb161736cb64d4c4710140"
+        "src/modules/features/crm/crm-actions.ts": "23448512224803fb70d778111f9926013b271b4171bb161736cb64d4c4710140",
+        "src/app/(dashboard)/crm/reports/page.tsx": "3c7cb8cdf46efed58731bddf8d10e25d44baf39c80d2d1eed1d2963664376950"
       },
       "required_modules": [
         "core_crm"
@@ -167,7 +169,7 @@
     },
     {
       "id": "iam.manage-roles",
-      "draft_sha256": "0e1a47b67e5f6b097837cf396ff5f1d0fd049b96092f38cf5a8492fcf05d838f",
+      "draft_sha256": "6b8796f9249c4567ec8c3e84523bea61c7049bf6eae79962f9038a2e1a0d6233",
       "reviewed_by": "Gemini: source verification and editorial review",
       "reviewed_on": "2026-10-12",
       "evidence_sha256": {

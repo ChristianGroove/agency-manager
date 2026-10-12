@@ -225,12 +225,14 @@
       "name": "Embudo de Ventas (Pipeline)",
       "implementation_status": "implemented",
       "routes": [
-        "/crm/pipeline"
+        "/crm/pipeline",
+        "/crm/reports"
       ],
       "evidence_paths": [
         "src/app/(dashboard)/crm/pipeline/page.tsx",
         "src/modules/features/crm/components/crm-dashboard.tsx",
-        "src/modules/features/crm/crm-actions.ts"
+        "src/modules/features/crm/crm-actions.ts",
+        "src/app/(dashboard)/crm/reports/page.tsx"
       ],
       "article_ids": [
         "crm.manage-pipeline"
@@ -278,7 +280,8 @@
       "evidence_paths": [
         "src/app/(dashboard)/automations/page.tsx",
         "src/modules/features/automation/components/automations-view.tsx",
-        "src/modules/features/automation/actions.ts"
+        "src/modules/features/automation/actions.ts",
+        "src/modules/features/automation/components/properties/TriggerProperties.tsx"
       ],
       "article_ids": [
         "automation.create-workflows"

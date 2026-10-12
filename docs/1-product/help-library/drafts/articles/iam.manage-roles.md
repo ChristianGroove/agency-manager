@@ -18,6 +18,13 @@ keywords:
   - accesos
   - seguridad
   - privilegios
+  - sistema
+  - consultar
+  - roles del sistema
+  - roles de sistema
+  - dueño
+  - administrador
+  - miembro
 requirements:
   - Permiso granular org.roles.manage (Gestionar Roles)
 evidence:
@@ -38,16 +45,25 @@ evidence:
 # Administrar roles personalizados y permisos del equipo (IAM V2)
 
 ## Propósito
-Permitir a los administradores diseñar y asignar perfiles de acceso a la medida de su equipo, concediendo únicamente los permisos necesarios para cada puesto de trabajo (vendedores, supervisores de soporte, cajeros, meseros u operativos) sin exponer información confidencial.
+Permitir a los administradores consultar los roles del sistema, diseñar y asignar perfiles de acceso a la medida de su equipo, concediendo únicamente los permisos necesarios para cada puesto de trabajo (vendedores, supervisores de soporte, cajeros, meseros u operativos) sin exponer información confidencial.
 
 ## Requisitos y permisos
 - Contar con el permiso granular **Gestionar Roles** (`org.roles.manage`).
 - Por defecto, este permiso está asignado a los roles de Dueño (`owner`) y Administrador (`admin`).
-- Los usuarios que carezcan de este privilegio son redirigidos automáticamente fuera de la página de gestión de roles.
+- Los usuarios que carezcan de este privilegio son redirigidos automáticamente fuera de la página de gestión de roles. La consulta y modificación de roles no está abierta a usuarios con rol regular de miembro (`member`).
 
 ## Ubicación en pantalla
 - **Ruta web:** `/platform/settings/roles`
 - **Navegación:** Sección **Plataforma** (Configuración) → pestaña o submenú de **Roles & Permisos**.
+
+## Roles predeterminados del sistema y roles personalizados
+En la columna izquierda de `/platform/settings/roles`, la plataforma presenta la lista completa de roles clasificados en:
+1. **Roles del Sistema (System Roles):** Identificados con la etiqueta distintiva *System Role*. Son los roles base de la organización:
+   - **Dueño (`owner`):** Control total administrativo, financiero y de suscripción de la organización.
+   - **Administrador (`admin`):** Gestión de operaciones, configuración, canales, automatizaciones y equipo.
+   - **Miembro (`member`):** Perfil operativo estándar con permisos acotados para sus tareas diarias.
+   *Nota de seguridad:* Los nombres de los roles de sistema no pueden renombrarse ni eliminarse de la base de datos para preservar la integridad del control de acceso.
+2. **Roles Personalizados (Custom Roles):** Creados por administradores para acotar permisos específicos (por ejemplo: 'Vendedor CRM', 'Supervisor de Soporte', 'Cajero').
 
 ## Estructura de la interfaz
 La pantalla se divide en dos áreas de trabajo:
@@ -58,69 +74,34 @@ La pantalla se divide en dos áreas de trabajo:
    - Menú de opciones por rol (tres puntos) con opción de eliminar roles personalizados.
 2. **Panel derecho (Editor de permisos):**
    - Campos de nombre y descripción del rol.
-   - Indicador de permisos habilitados vs. total de permisos disponibles.
-   - Acordeones desplegables con interruptores (*switches*) para cada permiso atómico.
+   - Selector en acordeón de permisos granulares agrupados por módulo.
+   - Interruptores individuales para activar o desactivar cada capacidad.
 
-## Catálogo de permisos por módulo
-Los permisos disponibles se ajustan dinámicamente a los módulos activos de la empresa:
-- **CRM y Clientes:**
-  - *Ver Leads (`crm.leads.view`):* Visualización de prospectos y detalles.
-  - *Editar Leads (`crm.leads.edit`):* Creación y modificación de datos de clientes.
-  - *Eliminar Leads (`crm.leads.delete`):* Borrado de registros de clientes.
-  - *Exportar Datos (`crm.data.export`):* Descarga de bases de datos en formato CSV.
-- **Bandeja y Mensajería (Inbox):**
-  - *Vista Global de Canales (`inbox.conversations.global_view`):* Acceso total a todos los canales de WhatsApp y redes sin requerir asignación previa.
-  - *Ver Todas las Conversaciones (`inbox.conversations.view_all`):* Modo supervisor para leer chats asignados a otros agentes o no asignados.
-  - *Supervisión de Equipo (`inbox.team.view`):* Monitoreo de carga y actividad de agentes.
-  - *Asignar Agentes (`inbox.conversations.assign`):* Reasignar conversaciones entre miembros.
-  - *Gestionar Canales (`inbox.channels.manage`):* Conectar o desconectar números de WhatsApp.
-- **Facturación y Finanzas:**
-  - *Ver Facturas (`invoicing.view`):* Consulta de comprobantes emitidos.
-  - *Gestionar Pagos (`invoicing.manage`):* Registrar abonos y crear facturas.
-  - *Exportar Reportes (`invoicing.export`):* Descargar reportes financieros.
-- **Configuración de Empresa:**
-  - *Gestionar Miembros (`org.members.manage`):* Invitar o dar de baja colaboradores.
-  - *Gestionar Roles (`org.roles.manage`):* Crear y editar roles y permisos.
-  - *Administrar Suscripción (`org.billing.manage`):* Métodos de pago y plan de la plataforma.
-  - *Gestionar Configuración (`org.settings.manage`):* Parámetros generales del tenant.
-- **Módulos Operativos (según vertical activa):**
-  - Tareas (`operations.tasks.view`, `operations.tasks.manage`), Catálogo (`operations.catalog.manage`), Sedes (`operations.locations.manage`), Asistencia (`operations.attendance.manage`), Menú digital y Pedidos de restaurante.
-
-## Pasos para crear y configurar un rol
+## Pasos para crear un rol personalizado
 1. Accede a `/platform/settings/roles`.
-2. Haz clic en el botón **`+`** en la parte superior de la lista izquierda. Se creará un nuevo rol con nombre provisional (*New Custom Role*).
-3. En el panel derecho, edita el nombre (por ejemplo: *"Agente de Ventas Junior"*) y escribe una descripción clara.
-4. Despliega los grupos de permisos que corresponden a sus funciones y enciende los interruptores necesarios.
-5. Haz clic en el botón superior **Guardar Cambios** (`Save`).
-6. El rol quedará disponible de inmediato para ser asignado a miembros nuevos o existentes.
-
-## Pasos para eliminar un rol personalizado
-1. Selecciona el rol en la lista izquierda.
-2. Haz clic en el icono de opciones (tres puntos) junto al nombre del rol.
-3. Selecciona **Eliminar**.
-4. Confirma la advertencia de que los usuarios que tenían asignado este rol perderán sus accesos asociados.
+2. Presiona el botón **`+`** o **Crear Rol**.
+3. Escribe un nombre identificativo (ej: *"Agente de Soporte WhatsApp"*).
+4. Despliega los grupos de permisos requeridos y enciende los interruptores correspondientes (ejemplo: en *Bandeja y Mensajería*, activar *Ver Todas las Conversaciones* y *Asignar Agentes*).
+5. Haz clic en **Guardar cambios**. El nuevo rol quedará disponible inmediatamente para ser asignado al invitar miembros o editar usuarios existentes.
 
 ## Resultado esperado
-Los cambios se persisten en la tabla `organization_roles`. Los miembros asignados a este rol verán adaptadas sus pantallas y opciones de menú de inmediato en su siguiente acción o recarga.
+El rol personalizado se registra en la base de datos de la empresa y restringe las vistas y acciones del usuario según los permisos configurados.
 
 ## Problemas habituales y causas comprobadas
-- **No aparece el botón de eliminar o el nombre del rol está bloqueado:**
-  *Causa comprobada:* El rol seleccionado es un **Rol de Sistema** predefinido (`is_system_role: true`, como Dueño o Administrador). Estos roles no pueden eliminarse ni renombrarse para proteger la estabilidad del sistema.
-- **Un usuario con permiso de ver leads no puede exportar datos:**
-  *Causa comprobada:* La exportación a CSV está segregada bajo el permiso independiente `crm.data.export`. Debes habilitar ese interruptor específico en el editor de roles.
-- **Un grupo de permisos completo no aparece en pantalla:**
-  *Causa comprobada:* El editor de roles oculta automáticamente los grupos cuyos módulos no estén contratados o habilitados en la organización activa para mantener limpia la configuración.
+- **Al intentar entrar a `/platform/settings/roles` el sistema redirige a `/platform/settings`:**
+  *Causa comprobada:* Tu usuario carece del permiso `org.roles.manage`. Solo los administradores o dueños pueden acceder a este módulo.
+- **No aparece el botón para eliminar un rol:**
+  *Causa comprobada:* Los roles base marcados como *System Role* no admiten eliminación.
 
 ## Limitaciones conocidas
-- La jerarquía de roles impide que un usuario edite un rol con mayor nivel de privilegios que el suyo propio.
-- Los superadministradores de la plataforma global gestionan sus permisos de forma externa a este panel de tenant.
+- La asignación de roles a miembros se gestiona desde `/platform/settings` en la pestaña de Miembros, no directamente en el editor de roles.
 
 ## Temas relacionados
-- [Invitar y gestionar miembros del equipo](iam.invite-members.md)
-- [Navegación y vista general del panel principal](dashboard.overview.md)
+- [Invitar miembros y asignar roles al equipo](iam.invite-members.md)
+- [Panel de control y visión general del sistema](dashboard.overview.md)
 
 ## Notas de verificación
-- Página: `src/app/(dashboard)/platform/settings/roles/page.tsx`
-- Componentes UI: `src/modules/core/iam/components/role-manager.tsx`, `role-editor.tsx`
-- Definición de permisos: `src/modules/core/iam/actions/permissions.ts`
-- Acciones de servidor: `src/modules/core/iam/actions/role-actions.ts`
+- Página principal: `src/app/(dashboard)/platform/settings/roles/page.tsx`
+- Gestor de roles: `src/modules/core/iam/components/role-manager.tsx`
+- Editor de permisos: `src/modules/core/iam/components/role-editor.tsx`
+- Catálogo de permisos: `src/modules/core/iam/actions/permissions.ts`
