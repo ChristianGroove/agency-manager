@@ -15,7 +15,7 @@ export function PetHelpTrigger({ onOpenHelp }: { onOpenHelp: () => void }) {
     const animate = settings.animation === 'continuous' || (!settings.interactive && engaged) || pet.state !== 'idle'
 
     return <button
-        type="button" aria-label="Abrir ayuda" title="Abrir ayuda"
+        type="button" aria-label="Abrir ayuda"
         onClick={onOpenHelp} onMouseEnter={() => setEngaged(true)} onMouseLeave={() => setEngaged(false)}
         onFocus={() => setEngaged(true)} onBlur={() => setEngaged(false)}
         className="fixed right-6 z-40 rounded-2xl bg-transparent p-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"

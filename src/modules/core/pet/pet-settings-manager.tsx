@@ -141,7 +141,7 @@ export function PetSettingsManager() {
                 <Button variant="outline" disabled={saving} onClick={() => setSettings({ ...DEFAULT_PET_SETTINGS, pixyOrganizationId: settings.pixyOrganizationId })}><RotateCcw className="mr-2 h-4 w-4" />Restaurar defaults</Button>
                 <Button disabled={saving || !available} onClick={save}>{saving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}Guardar mascota</Button>
             </div>
-            <p className="text-xs text-muted-foreground">Los cambios se aplican al recargar las sesiones abiertas. Al desactivar la mascota se recupera el acceso anterior a ayuda.</p>
+            <p className="text-xs text-muted-foreground">Los cambios se aplican al recargar las sesiones abiertas. Al desactivar la mascota queda un botón simple de ayuda.</p>
         </CardContent>
     </Card>
 }

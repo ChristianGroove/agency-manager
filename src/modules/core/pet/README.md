@@ -13,7 +13,7 @@ Only super admins can read the administration options or save configuration. The
 
 ## Scope and contracts
 
-- Global off, unavailable/invalid configuration, no organization or renderer failure → original help access.
+- Global off, unavailable/invalid configuration, no organization or renderer failure → simple direct help button. The legacy floating menu is removed.
 - Animation off → static pose; it does not disable chat.
 - Contextual → static idle by default, at most 2.5 seconds per gesture and 15 seconds for a waiting state. With cursor following enabled on devices with a fine pointer, a shared document listener wakes drawing only during movement plus 800 ms of settling. There is no hover or distance restriction. Visible animations are capped at 30 FPS.
 - Continuous → explicit opt-in, with higher CPU cost. Hidden/offscreen instances and reduced-motion preferences pause drawing.
@@ -21,7 +21,7 @@ Only super admins can read the administration options or save configuration. The
 - Pixy is matched by persisted organization ID; other tenants inherit primary/secondary from `BrandingProvider`, independently falling back for each missing or invalid HEX value.
 - Provider resets by organization, not by appearance changes; saving pet settings must not remount the dashboard or discard unrelated form state.
 - Chat reuses `AssistantModal`, `AIChatPanel` and `askHelpAssistant`. Rendering never initiates an AI request.
-- UI placement is initially bottom right, with a transparent launcher, a separate tools button and stacking below dialogs. The composer reserves room for its absolutely positioned robot so it cannot obstruct typing/sending. Further placement options are intentionally deferred.
+- UI placement is initially bottom right, with a transparent launcher without a tooltip and stacking below dialogs. Theme switching lives in a fixed-size sidebar button. The composer reserves room for its absolutely positioned robot so it cannot obstruct typing/sending. Further placement options are intentionally deferred.
 
 Future module integrations should publish scoped lifecycle signals through a bounded coordinator; do not import the vendor renderer into business services or persist animation state in the database. Voice/search/progress states must correspond to real signals.
 

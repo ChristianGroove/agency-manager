@@ -62,13 +62,13 @@ export function B2BAgencyLayout({
                 <GlobalInboxProvider>
                     <GlobalMessageListener />
                     <InboxOverlay />
-                    <FabController orgSlug={orgData?.slug} />
+                    <FabController />
                     <SystemAlertBanner />
                     {content}
                 </GlobalInboxProvider>
             ) : (
                 <>
-                    <FabController orgSlug={orgData?.slug} />
+                    <FabController />
                     <SystemAlertBanner />
                     {content}
                 </>

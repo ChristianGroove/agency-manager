@@ -10,8 +10,6 @@ import type { BrandingConfig } from '@/types/branding'
 
 const mocks = vi.hoisted(() => ({ ask: vi.fn() }))
 vi.mock('@/modules/features/caa/actions/ask-help-assistant', () => ({ askHelpAssistant: mocks.ask }))
-vi.mock('@/modules/infrastructure/meta/components/MetaControlSheet', () => ({ default: () => null }))
-vi.mock('@/hooks/use-assistant', () => ({ useAssistant: () => ({}) }))
 vi.mock('next-themes', () => ({ useTheme: () => ({ theme: 'light', setTheme: vi.fn() }) }))
 vi.mock('next/image', () => ({ default: () => null }))
 vi.mock('next/dynamic', () => ({ default: () => function Modal({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
@@ -42,9 +40,10 @@ beforeEach(() => {
 afterEach(() => { cleanup(); vi.useRealTimers() })
 
 describe('dashboard pet and help integration', () => {
-    it('opens the existing help modal in one click and preserves tools', () => {
+    it('opens help directly without the legacy tools menu or a pet tooltip', () => {
         render(wrapper(<FabController />))
-        expect(screen.getByRole('button', { name: 'Herramientas del dashboard' })).toBeInTheDocument()
+        expect(screen.queryByRole('button', { name: 'Herramientas del dashboard' })).not.toBeInTheDocument()
+        expect(screen.getByRole('button', { name: 'Abrir ayuda' })).not.toHaveAttribute('title')
         expect(screen.getByTestId('pet-visual')).toHaveAttribute('data-color', '#112233')
         fireEvent.click(screen.getByRole('button', { name: 'Abrir ayuda' }))
         expect(screen.getByRole('dialog', { name: 'Ayuda' })).toBeInTheDocument()
@@ -52,18 +51,17 @@ describe('dashboard pet and help integration', () => {
         fireEvent.click(screen.getByRole('button', { name: 'Cerrar ayuda' }))
         expect(screen.getByRole('button', { name: 'Abrir ayuda' })).toBeInTheDocument()
     })
-    it('restores the original help access after a rendering failure', () => {
+    it('keeps direct help access after a rendering failure', () => {
         render(wrapper(<FabController />))
         fireEvent.doubleClick(screen.getByTestId('pet-visual'))
-        expect(screen.queryByRole('button', { name: 'Abrir ayuda' })).not.toBeInTheDocument()
-        fireEvent.click(screen.getByRole('button', { name: 'Abrir herramientas y ayuda' }))
-        fireEvent.click(screen.getByRole('button', { name: 'Centro de Ayuda' }))
+        expect(screen.queryByTestId('pet-visual')).not.toBeInTheDocument()
+        fireEvent.click(screen.getByRole('button', { name: 'Abrir ayuda' }))
         expect(screen.getByRole('dialog', { name: 'Ayuda' })).toBeInTheDocument()
     })
     it('does not mount any renderer while disabled', () => {
         render(wrapper(<FabController />, { ...settings, enabled: false }))
         expect(screen.queryByTestId('pet-visual')).not.toBeInTheDocument()
-        expect(screen.getByRole('button', { name: 'Abrir herramientas y ayuda' })).toBeInTheDocument()
+        expect(screen.getByRole('button', { name: 'Abrir ayuda' })).toBeInTheDocument()
     })
     it('reports thinking, success and expiry using the real chat request lifecycle', async () => {
         let resolve!: (response: { success: boolean; message: string }) => void
