@@ -10,6 +10,7 @@ import { helpCorpus, helpV2Enabled } from '../library/runtime'
 import { resolveHelpAccess } from '../library/session'
 import { boundedHistory, canReadArticle, retrieveHelp } from '../library/retrieval'
 import { selectAuthorizedArticles } from '../library/selection'
+import { HelpDiagnostics } from '../library/diagnostics'
 
 export interface HelpChatMessage {
     role: "user" | "assistant"
@@ -121,7 +122,9 @@ async function processHelpQuestion(
     question: string,
     conversationHistory: HelpChatMessage[] = [],
     currentRoute?: string,
+    diagnostics?: HelpDiagnostics,
 ): Promise<HelpChatResponse> {
+    const trace = diagnostics || new HelpDiagnostics()
     try {
         const organizationId = await getCurrentOrganizationId()
 
@@ -133,6 +136,7 @@ async function processHelpQuestion(
         }
 
         // 1. Rate Limiting
+        trace.phase = 'policy'
         if (isRateLimited(organizationId)) {
             return {
                 success: false,
@@ -164,42 +168,55 @@ async function processHelpQuestion(
         const limitedHistory = conversationHistory.slice(-4)
 
         if (helpV2Enabled(organizationId)) {
+            trace.mode = 'v2'
+            trace.corpusRevision = helpCorpus.revision
             const { data: { user } } = await (await createClient()).auth.getUser()
             if (!user) return { success: false, error: 'Inicia sesión para usar la ayuda.' }
-            const access = await resolveHelpAccess(organizationId, user.id, helpCorpus.articles, currentRoute)
+            const access = await trace.measure('access', () => resolveHelpAccess(organizationId, user.id, helpCorpus.articles, currentRoute))
             const prior = conversationHistory.filter(message => message.role === 'user').at(-1)?.content || ''
-            let articles = retrieveHelp(helpCorpus.articles, sanitizedQuestion, access, prior)
+            let articles = await trace.measure('retrieval', () => retrieveHelp(helpCorpus.articles, sanitizedQuestion, access, prior))
             const authorized = helpCorpus.articles.filter(article => canReadArticle(article, access))
+            trace.authorizedCount = authorized.length
             if (!articles.length && authorized.length) {
                 // On lexical misses only, let the model understand paraphrases using an authorized catalogue.
                 // At most one selection request, followed by the normal answer request.
-                const selection = await AIEngine.executeTask({
+                trace.selectionUsed = true
+                trace.modelCalls++
+                const selection = await trace.measure('selection', () => AIEngine.executeTask({
                     organizationId, taskType: 'help-select-guides-v1', payload: {
                         question: sanitizedQuestion, priorQuestion: prior,
                         catalogue: authorized.slice(0, 40).map(article => ({ id: article.id, title: article.title, keywords: article.keywords,
                             sections: article.content.split('\n').filter(line => /^#{1,3}\s/.test(line)).slice(0, 12) })),
                     },
-                })
+                }))
                 if (!selection.success) return { success: false, error: 'No pudimos consultar la ayuda. Intenta nuevamente.' }
                 articles = selectAuthorizedArticles(selection.data, authorized)
             }
-            if (!articles.length) return { success: true, message: 'No tengo información verificada para ese caso. ¿Qué acción intentas realizar y qué opción o error ves en pantalla?' }
-            const response = await AIEngine.executeTask({
+            trace.articleIds = articles.map(article => article.id)
+            if (!articles.length) {
+                trace.noContext = true
+                return { success: true, message: 'No tengo información verificada para ese caso. ¿Qué acción intentas realizar y qué opción o error ves en pantalla?' }
+            }
+            trace.modelCalls++
+            const response = await trace.measure('generation', () => AIEngine.executeTask({
                 organizationId, taskType: 'help-assistant-v2', payload: {
                     question: sanitizedQuestion, history: boundedHistory(conversationHistory),
                     session: { route: access.route, vertical: access.vertical, modules: access.modules, tenantAdmin: access.tenantAdmin, platformAdmin: access.platformAdmin },
                     articles, corpusRevision: helpCorpus.revision,
                 },
-            })
+            }))
             if (!response.success || typeof response.data !== 'string') return { success: false, error: 'No pudimos procesar tu pregunta.' }
             return { success: true, message: response.data }
         }
 
         // 6. Get Space Category for tailored context
+        trace.mode = 'legacy'
+        trace.historyMessages = limitedHistory.length
         const spaceCategory = await getOrgSpaceCategory(organizationId)
 
         // 7. Execute with strict guardrails and industry context
-        const response = await AIEngine.executeTask({
+        trace.modelCalls++
+        const response = await trace.measure('generation', () => AIEngine.executeTask({
             organizationId,
             taskType: "help-assistant",
             payload: {
@@ -208,7 +225,7 @@ async function processHelpQuestion(
                 spaceCategory,
                 interfaceVersion: 'robot-pet-theme-v1' // Invalidate help cache after navigation/UI changes.
             }
-        })
+        }))
 
         if (response.success && response.data) {
             const content = typeof response.data === 'string'
@@ -236,11 +253,12 @@ async function processHelpQuestion(
 }
 
 /** Persist independently of the modal lifecycle. RLS always uses the signed-in user. */
-export async function askHelpAssistant(
+async function askAndPersistHelp(
     question: string,
     conversationHistory: HelpChatMessage[] = [],
     threadId?: string,
     currentRoute?: string,
+    trace: HelpDiagnostics = new HelpDiagnostics(),
 ): Promise<HelpChatResponse> {
     if (typeof question !== 'string' || question.trim().length < 3 || question.length > MAX_INPUT_LENGTH) {
         return { success: false, error: 'Escribe una pregunta de entre 3 y 500 caracteres.' }
@@ -255,23 +273,30 @@ export async function askHelpAssistant(
     const history = z.array(z.object({ role: z.enum(['user', 'assistant']), content: z.string().max(20000) }))
         .max(200).safeParse(conversationHistory)
     if (!history.success) return { success: false, error: 'Historial inválido.' }
-    const client = await createClient()
-    const { data: { user } } = await client.auth.getUser()
-    const org = await getCurrentOrganizationId()
+    const { client, user, org } = await trace.measure('session', async () => {
+        const client = await createClient()
+        const { data: { user } } = await client.auth.getUser()
+        const org = await getCurrentOrganizationId()
+        return { client, user, org }
+    })
     if (!user || !org) return { success: false, error: 'Inicia sesión para usar la ayuda.' }
+    trace.organizationId = org
     let activeId = threadId
     let context = history.data.slice(-MAX_CONVERSATION_HISTORY)
+    trace.historySource = context.length ? 'browser' : 'none'
     let storageError: string | undefined
     const warning = 'No se pudo guardar esta conversación. Los mensajes nuevos podrían perderse al cerrar.'
     if (activeId) {
-        const { data: thread, error } = await client.from('help_chat_threads').select('id')
-            .eq('id', activeId).eq('user_id', user.id).eq('organization_id', org).maybeSingle()
+        trace.phase = 'history'
+        const { data: thread, error } = await trace.measure('history', async () => await client.from('help_chat_threads').select('id')
+            .eq('id', activeId!).eq('user_id', user.id).eq('organization_id', org).maybeSingle())
         if (error || !thread) return { success: false, error: 'No se pudo abrir esta conversación. Inicia una nueva.' }
-        const { data: stored, error: loadError } = await client.from('help_chat_messages').select('role,content')
-            .eq('thread_id', activeId).order('created_at', { ascending: false }).order('id', { ascending: false }).limit(200)
+        const { data: stored, error: loadError } = await trace.measure('history', async () => await client.from('help_chat_messages').select('role,content')
+            .eq('thread_id', activeId!).order('created_at', { ascending: false }).order('id', { ascending: false }).limit(200))
         if (loadError) return { success: false, error: 'El historial no está disponible. Intenta nuevamente.' }
         if ((stored?.length ?? 0) >= 199) return { success: false, error: 'Esta conversación está completa. Inicia una nueva.' }
         context = (stored ?? []).slice(0, MAX_CONVERSATION_HISTORY).reverse() as HelpChatMessage[]
+        trace.historySource = 'database'
     } else {
         const { data, error } = await client.from('help_chat_threads').insert({
             user_id: user.id, organization_id: org, title: question.trim().slice(0, 80),
@@ -280,15 +305,36 @@ export async function askHelpAssistant(
         else activeId = data.id
     }
     if (activeId) {
-        const { error } = await client.from('help_chat_messages').insert({ thread_id: activeId, role: 'user', content: question.trim() })
+        trace.phase = 'question_storage'
+        const { error } = await trace.measure('question_storage', async () => await client.from('help_chat_messages').insert({ thread_id: activeId, role: 'user', content: question.trim() }))
         if (error) return { success: false, threadId: activeId, error: 'No se pudo guardar tu pregunta. Intenta nuevamente.' }
     }
-    const response = await processHelpQuestion(question, context, currentRoute)
+    trace.historyMessages = boundedHistory(context).length
+    const response = await processHelpQuestion(question, context, currentRoute, trace)
     // Failed requests remain as an unanswered question; technical errors are not persisted as AI answers.
     if (activeId && response.success && typeof response.message === 'string') {
-        const { error } = await client.from('help_chat_messages').insert({ thread_id: activeId, role: 'assistant', content: response.message })
+        trace.phase = 'answer_storage'
+        const { error } = await trace.measure('answer_storage', async () => await client.from('help_chat_messages').insert({ thread_id: activeId, role: 'assistant', content: response.message }))
         if (error) storageError = warning
     }
     return { ...response, threadId: activeId, storageError }
+}
+
+export async function askHelpAssistant(
+    question: string,
+    conversationHistory: HelpChatMessage[] = [],
+    threadId?: string,
+    currentRoute?: string,
+): Promise<HelpChatResponse> {
+    const trace = new HelpDiagnostics()
+    let response: HelpChatResponse = { success: false, error: 'Ocurrió un error inesperado. Intenta nuevamente.' }
+    try {
+        response = await askAndPersistHelp(question, conversationHistory, threadId, currentRoute, trace)
+        return response
+    } catch {
+        return response
+    } finally {
+        trace.complete(response)
+    }
 }
 
