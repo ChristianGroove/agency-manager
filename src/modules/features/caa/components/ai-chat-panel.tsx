@@ -11,7 +11,8 @@ import { usePetMedia } from "@/modules/core/pet/use-pet-motion"
 import { listHelpThreads, loadHelpThread, type HelpThread } from '../actions/help-history'
 import { HelpHistoryMenu } from './help-history-menu'
 import { usePathname } from 'next/navigation'
-import { cleanHelpMessage, HelpMessageContent } from './help-message-content'
+import { HelpMessageContent } from './help-message-content'
+import { HelpTurnNavigator } from './help-turn-navigator'
 
 interface AIChatPanelProps {
     initialQuery?: string
@@ -42,7 +43,6 @@ export function AIChatPanel({ initialQuery, className }: AIChatPanelProps) {
     const [historyWarning, setHistoryWarning] = useState<string>()
     const [awayFromBottom, setAwayFromBottom] = useState(false)
     const [activeTurn, setActiveTurn] = useState(0)
-    const [previewTurn, setPreviewTurn] = useState<number | null>(null)
     const scrollRef = useRef<HTMLDivElement>(null)
     const messageRefs = useRef<(HTMLDivElement | null)[]>([])
     const followBottomRef = useRef(true)
@@ -184,8 +184,9 @@ export function AIChatPanel({ initialQuery, className }: AIChatPanelProps) {
                     ++historyRequestRef.current; setThreadId(undefined); setMessages([]); setInput(''); setError(null)
                     setHistoryWarning(undefined); followBottomRef.current = true; setAwayFromBottom(false); reportHelpState?.('idle'); inputRef.current?.focus()
                 }} />
+            <div className="relative flex-1 min-h-0">
             {/* Native scrolling stays available without a visible scrollbar. */}
-            <div ref={scrollRef} onScroll={updateScroll} tabIndex={0} role="log" aria-label="Conversación de ayuda" aria-live="polite" aria-busy={historyLoading} className="relative flex-1 min-h-0 overflow-y-auto overscroll-contain p-4 pl-9 pt-16 space-y-4 no-scrollbar focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-primary/40">
+            <div ref={scrollRef} onScroll={updateScroll} tabIndex={0} role="log" aria-label="Conversación de ayuda" aria-live="polite" aria-busy={historyLoading} className="relative h-full min-h-0 overflow-y-auto overscroll-contain p-4 pr-11 pt-16 space-y-4 no-scrollbar focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-primary/40">
                 {historyWarning && <p role="status" className="text-xs text-amber-700 dark:text-amber-300">{historyWarning}</p>}
                 {historyLoading && <p role="status" className="text-center text-xs text-muted-foreground">Cargando historial…</p>}
                 {messages.length === 0 && !isLoading && (
@@ -262,19 +263,9 @@ export function AIChatPanel({ initialQuery, className }: AIChatPanelProps) {
 
                 <div ref={messagesEndRef} />
             </div>
-            {messages.some(message => message.role === 'user') && <nav aria-label="Navegar por preguntas" className="absolute left-2 top-20 z-30 flex max-h-[55%] w-5 flex-col overflow-y-auto no-scrollbar">
-                {messages.map((message, index) => message.role === 'user' && <button key={index} type="button"
-                    aria-label={`Ir a pregunta: ${message.content.slice(0, 80)}`} aria-current={activeTurn === index ? 'true' : undefined}
-                    onMouseEnter={() => setPreviewTurn(index)} onMouseLeave={() => setPreviewTurn(null)} onFocus={() => setPreviewTurn(index)} onBlur={() => setPreviewTurn(null)}
-                    onClick={() => { followBottomRef.current = false; messageRefs.current[index]?.scrollIntoView({ behavior: reducedMotion ? 'instant' : 'smooth', block: 'start' }) }}
-                    className="group flex h-4 shrink-0 items-center justify-center focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary">
-                    <span className={cn('h-0.5 rounded-full transition-all group-hover:w-4 group-hover:bg-zinc-700 dark:group-hover:bg-white', activeTurn === index ? 'w-4 bg-zinc-700 dark:bg-white' : 'w-2 bg-zinc-300 dark:bg-white/25')} />
-                </button>)}
-            </nav>}
-            {previewTurn !== null && messages[previewTurn] && <div aria-hidden="true" className="pointer-events-none absolute left-9 top-20 z-40 max-w-[min(20rem,75%)] rounded-2xl border border-zinc-200/60 bg-white/85 px-4 py-3 text-sm shadow-lg backdrop-blur-2xl dark:border-white/10 dark:bg-zinc-900/85">
-                <p className="line-clamp-2 font-medium">{messages[previewTurn].content}</p>
-                {messages[previewTurn + 1]?.role === 'assistant' && <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{cleanHelpMessage(messages[previewTurn + 1].content)}</p>}
-            </div>}
+            <HelpTurnNavigator key={threadId || 'new'} messages={messages} activeTurn={activeTurn} reducedMotion={reducedMotion}
+                onSelect={index => { followBottomRef.current = false; messageRefs.current[index]?.scrollIntoView({ behavior: reducedMotion ? 'instant' : 'smooth', block: 'start' }) }} />
+            </div>
             {awayFromBottom && <button type="button" aria-label="Ir al último mensaje" onClick={() => { followBottomRef.current = true; messagesEndRef.current?.scrollIntoView({ behavior: reducedMotion ? 'instant' : 'smooth', block: 'end' }) }}
                 className="absolute bottom-36 left-1/2 z-30 -translate-x-1/2 rounded-full border border-zinc-200/60 bg-white/70 p-2 shadow-sm backdrop-blur-xl dark:border-white/10 dark:bg-zinc-900/70"><ArrowDown className="h-4 w-4" /></button>}
 
