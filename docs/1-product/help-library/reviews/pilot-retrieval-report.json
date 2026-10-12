@@ -1,9 +1,9 @@
 {
-  "corpus_revision": "b433f8cb2270863043d5f8ae01f1a94a8a3e8b234a408fdc5c7f07c52608cf92",
-  "articles": 3,
+  "corpus_revision": "a326c3d5ba5654877b5db71cb7c3e4cec1f921921e6f1928833ee16a13a30394",
+  "articles": 6,
   "questions": 60,
-  "covered_answer_cases": 14,
-  "retrieval_hits": 14,
+  "covered_answer_cases": 23,
+  "retrieval_hits": 23,
   "note": "This checks retrieval against expected article IDs, not factual correctness, model answers, latency, cost or runtime permissions.",
   "cases": [
     {
@@ -13,7 +13,8 @@
         "theme.toggle-theme"
       ],
       "retrieved": [
-        "theme.toggle-theme"
+        "theme.toggle-theme",
+        "inbox.manage-conversations"
       ],
       "status": "retrieval_hit"
     },
@@ -25,7 +26,8 @@
       ],
       "retrieved": [
         "theme.toggle-theme",
-        "help.chat-and-history"
+        "help.chat-and-history",
+        "inbox.manage-conversations"
       ],
       "status": "boundary_requires_action_or_model_check"
     },
@@ -85,7 +87,7 @@
       ],
       "retrieved": [
         "help.chat-and-history",
-        "pet.pet-interaction"
+        "inbox.manage-conversations"
       ],
       "status": "retrieval_hit"
     },
@@ -108,18 +110,23 @@
         "help.chat-and-history"
       ],
       "retrieved": [
-        "help.chat-and-history"
+        "help.chat-and-history",
+        "inbox.manage-conversations"
       ],
       "status": "retrieval_hit"
     },
     {
       "id": "Q10",
       "expected_behavior": "answer",
-      "published_expected": [],
-      "retrieved": [
-        "theme.toggle-theme"
+      "published_expected": [
+        "branding.manage-adn"
       ],
-      "status": "coverage_pending"
+      "retrieved": [
+        "branding.manage-adn",
+        "theme.toggle-theme",
+        "inbox.manage-conversations"
+      ],
+      "status": "retrieval_hit"
     },
     {
       "id": "Q11",
@@ -129,7 +136,7 @@
       ],
       "retrieved": [
         "pet.pet-interaction",
-        "help.chat-and-history"
+        "branding.manage-adn"
       ],
       "status": "retrieval_hit"
     },
@@ -137,14 +144,19 @@
       "id": "Q12",
       "expected_behavior": "answer",
       "published_expected": [],
-      "retrieved": [],
+      "retrieved": [
+        "branding.manage-adn",
+        "inbox.manage-conversations"
+      ],
       "status": "coverage_pending"
     },
     {
       "id": "Q13",
       "expected_behavior": "answer",
       "published_expected": [],
-      "retrieved": [],
+      "retrieved": [
+        "branding.manage-adn"
+      ],
       "status": "coverage_pending"
     },
     {
@@ -164,7 +176,9 @@
     {
       "id": "Q16",
       "expected_behavior": "clarify",
-      "published_expected": [],
+      "published_expected": [
+        "pet.manage-pet"
+      ],
       "retrieved": [
         "pet.pet-interaction",
         "help.chat-and-history"
@@ -174,21 +188,25 @@
     {
       "id": "Q17",
       "expected_behavior": "answer",
-      "published_expected": [],
+      "published_expected": [
+        "pet.manage-pet"
+      ],
       "retrieved": [
+        "pet.manage-pet",
         "pet.pet-interaction",
-        "help.chat-and-history",
         "theme.toggle-theme"
       ],
-      "status": "coverage_pending"
+      "status": "retrieval_hit"
     },
     {
       "id": "Q18",
       "expected_behavior": "answer",
       "published_expected": [
+        "pet.manage-pet",
         "pet.pet-interaction"
       ],
       "retrieved": [
+        "pet.manage-pet",
         "pet.pet-interaction"
       ],
       "status": "retrieval_hit"
@@ -196,38 +214,53 @@
     {
       "id": "Q19",
       "expected_behavior": "answer",
-      "published_expected": [],
+      "published_expected": [
+        "inbox.manage-conversations"
+      ],
       "retrieved": [
+        "inbox.manage-conversations",
         "help.chat-and-history"
       ],
-      "status": "coverage_pending"
+      "status": "retrieval_hit"
     },
     {
       "id": "Q20",
       "expected_behavior": "answer",
-      "published_expected": [],
-      "retrieved": [],
-      "status": "coverage_pending"
+      "published_expected": [
+        "inbox.manage-conversations"
+      ],
+      "retrieved": [
+        "inbox.manage-conversations"
+      ],
+      "status": "retrieval_hit"
     },
     {
       "id": "Q21",
       "expected_behavior": "answer",
-      "published_expected": [],
-      "retrieved": [],
-      "status": "coverage_pending"
+      "published_expected": [
+        "inbox.manage-conversations"
+      ],
+      "retrieved": [
+        "inbox.manage-conversations"
+      ],
+      "status": "retrieval_hit"
     },
     {
       "id": "Q22",
       "expected_behavior": "answer",
       "published_expected": [],
-      "retrieved": [],
+      "retrieved": [
+        "inbox.manage-conversations"
+      ],
       "status": "coverage_pending"
     },
     {
       "id": "Q23",
       "expected_behavior": "answer",
       "published_expected": [],
-      "retrieved": [],
+      "retrieved": [
+        "inbox.manage-conversations"
+      ],
       "status": "coverage_pending"
     },
     {
@@ -242,6 +275,7 @@
       "expected_behavior": "answer",
       "published_expected": [],
       "retrieved": [
+        "inbox.manage-conversations",
         "help.chat-and-history"
       ],
       "status": "coverage_pending"
@@ -257,7 +291,9 @@
       "id": "Q27",
       "expected_behavior": "answer",
       "published_expected": [],
-      "retrieved": [],
+      "retrieved": [
+        "inbox.manage-conversations"
+      ],
       "status": "coverage_pending"
     },
     {
@@ -286,7 +322,8 @@
       "expected_behavior": "answer",
       "published_expected": [],
       "retrieved": [
-        "help.chat-and-history"
+        "help.chat-and-history",
+        "inbox.manage-conversations"
       ],
       "status": "coverage_pending"
     },
@@ -296,6 +333,7 @@
       "published_expected": [],
       "retrieved": [
         "pet.pet-interaction",
+        "inbox.manage-conversations",
         "theme.toggle-theme"
       ],
       "status": "coverage_pending"
@@ -331,38 +369,47 @@
     {
       "id": "Q37",
       "expected_behavior": "answer",
-      "published_expected": [],
-      "retrieved": [
-        "pet.pet-interaction",
-        "theme.toggle-theme",
-        "help.chat-and-history"
-      ],
-      "status": "coverage_pending"
-    },
-    {
-      "id": "Q38",
-      "expected_behavior": "answer",
       "published_expected": [
-        "pet.pet-interaction"
+        "pet.manage-pet"
       ],
       "retrieved": [
+        "pet.manage-pet",
         "pet.pet-interaction",
         "theme.toggle-theme"
       ],
       "status": "retrieval_hit"
     },
     {
+      "id": "Q38",
+      "expected_behavior": "answer",
+      "published_expected": [
+        "pet.manage-pet",
+        "pet.pet-interaction"
+      ],
+      "retrieved": [
+        "pet.pet-interaction",
+        "theme.toggle-theme",
+        "inbox.manage-conversations"
+      ],
+      "status": "retrieval_hit"
+    },
+    {
       "id": "Q39",
       "expected_behavior": "answer",
-      "published_expected": [],
-      "retrieved": [],
-      "status": "coverage_pending"
+      "published_expected": [
+        "branding.manage-adn"
+      ],
+      "retrieved": [
+        "branding.manage-adn"
+      ],
+      "status": "retrieval_hit"
     },
     {
       "id": "Q40",
       "expected_behavior": "clarify",
       "published_expected": [],
       "retrieved": [
+        "inbox.manage-conversations",
         "help.chat-and-history"
       ],
       "status": "boundary_requires_action_or_model_check"
@@ -379,7 +426,8 @@
       "expected_behavior": "abstain",
       "published_expected": [],
       "retrieved": [
-        "help.chat-and-history"
+        "help.chat-and-history",
+        "inbox.manage-conversations"
       ],
       "status": "boundary_requires_action_or_model_check"
     },
@@ -429,7 +477,8 @@
       "expected_behavior": "answer",
       "published_expected": [],
       "retrieved": [
-        "help.chat-and-history"
+        "help.chat-and-history",
+        "inbox.manage-conversations"
       ],
       "status": "coverage_pending"
     },
@@ -447,16 +496,25 @@
     {
       "id": "Q50",
       "expected_behavior": "answer",
-      "published_expected": [],
-      "retrieved": [],
-      "status": "coverage_pending"
+      "published_expected": [
+        "inbox.manage-conversations"
+      ],
+      "retrieved": [
+        "inbox.manage-conversations"
+      ],
+      "status": "retrieval_hit"
     },
     {
       "id": "Q51",
       "expected_behavior": "answer",
-      "published_expected": [],
-      "retrieved": [],
-      "status": "coverage_pending"
+      "published_expected": [
+        "branding.manage-adn"
+      ],
+      "retrieved": [
+        "branding.manage-adn",
+        "inbox.manage-conversations"
+      ],
+      "status": "retrieval_hit"
     },
     {
       "id": "Q52",
@@ -522,7 +580,8 @@
       "expected_behavior": "answer",
       "published_expected": [],
       "retrieved": [
-        "help.chat-and-history"
+        "help.chat-and-history",
+        "inbox.manage-conversations"
       ],
       "status": "coverage_pending"
     },

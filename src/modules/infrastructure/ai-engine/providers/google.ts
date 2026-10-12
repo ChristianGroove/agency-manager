@@ -36,6 +36,7 @@ export class GoogleProvider extends BaseAIProvider {
                 generationConfig: {
                     maxOutputTokens: options?.maxTokens,
                     temperature: options?.temperature,
+                    ...(options?.response_format?.type === 'json_object' ? { responseMimeType: 'application/json' } : {}),
                 }
             });
 

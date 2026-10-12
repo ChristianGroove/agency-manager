@@ -59,11 +59,11 @@ Permitir a los superadministradores de la plataforma gestionar de forma centrali
    - *Detalles Pixy:* Tonalidad de molduras y remates.
    - *LEDs:* Color de los ojos y expresiones en la pantalla del robot.
 6. **Dimensiones:**
-   - *Tamaño escritorio:* Selector entre 48, 56, 64 u 80 píxeles (predeterminado: 56 px).
+   - *Tamaño escritorio:* Selector entre 48, 56, 64 u 80 píxeles (predeterminado: 64 px).
    - *Tamaño móvil:* Selector entre 48, 56, 64 u 80 píxeles (predeterminado: 48 px).
 7. **Modo de animación:**
    - *Apagada:* Pose estática en reposo sin movimiento.
-   - *Contextual (Recomendado):* Reposo estático que se anima brevemente (máximo 2,5 segundos) ante interacción o cambios de estado, con límite estricto de 30 FPS.
+   - *Contextual:* Evita una animación continua en reposo. Las reacciones breves se estabilizan a los 2,5 segundos y los estados de procesamiento tienen una ventana de hasta 15 segundos. El seguimiento depende del ajuste de interactividad y de las condiciones del dispositivo.
    - *Continua:* Movimiento fluido constante. Requiere mayor consumo de CPU.
 8. **Velocidad:** Valor decimal entre 0.25x y 2.0x (predeterminado: 1.0x).
 9. **Comportamientos opcionales:**

@@ -11,6 +11,7 @@ import { usePetMedia } from "@/modules/core/pet/use-pet-motion"
 import { listHelpThreads, loadHelpThread, type HelpThread } from '../actions/help-history'
 import { HelpHistoryMenu } from './help-history-menu'
 import { usePathname } from 'next/navigation'
+import { cleanHelpMessage, HelpMessageContent } from './help-message-content'
 
 interface AIChatPanelProps {
     initialQuery?: string
@@ -216,7 +217,7 @@ export function AIChatPanel({ initialQuery, className }: AIChatPanelProps) {
                                 : "bg-zinc-100 dark:bg-white/5 text-zinc-700 dark:text-white/90 rounded-bl-md border border-zinc-200 dark:border-white/10 break-words whitespace-pre-wrap"
                         )}>
                             <span className="sr-only">{message.role === 'user' ? 'Tú: ' : 'Pixy: '}</span>
-                            {message.content}
+                            {message.role === 'assistant' ? <HelpMessageContent text={message.content} /> : message.content}
                         </div>
                     </motion.div>
                 ))}
@@ -272,7 +273,7 @@ export function AIChatPanel({ initialQuery, className }: AIChatPanelProps) {
             </nav>}
             {previewTurn !== null && messages[previewTurn] && <div aria-hidden="true" className="pointer-events-none absolute left-9 top-20 z-40 max-w-[min(20rem,75%)] rounded-2xl border border-zinc-200/60 bg-white/85 px-4 py-3 text-sm shadow-lg backdrop-blur-2xl dark:border-white/10 dark:bg-zinc-900/85">
                 <p className="line-clamp-2 font-medium">{messages[previewTurn].content}</p>
-                {messages[previewTurn + 1]?.role === 'assistant' && <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{messages[previewTurn + 1].content}</p>}
+                {messages[previewTurn + 1]?.role === 'assistant' && <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{cleanHelpMessage(messages[previewTurn + 1].content)}</p>}
             </div>}
             {awayFromBottom && <button type="button" aria-label="Ir al último mensaje" onClick={() => { followBottomRef.current = true; messagesEndRef.current?.scrollIntoView({ behavior: reducedMotion ? 'instant' : 'smooth', block: 'end' }) }}
                 className="absolute bottom-36 left-1/2 z-30 -translate-x-1/2 rounded-full border border-zinc-200/60 bg-white/70 p-2 shadow-sm backdrop-blur-xl dark:border-white/10 dark:bg-zinc-900/70"><ArrowDown className="h-4 w-4" /></button>}

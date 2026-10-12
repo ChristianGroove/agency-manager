@@ -10,6 +10,10 @@ beforeEach(() => {
     mocks.send.mockResolvedValue({ response: { text: () => 'Respuesta', usageMetadata: {} } })
 })
 describe('Google message role contract', () => {
+    it('requests JSON output for guide selection and other JSON tasks', async () => {
+        await new GoogleProvider().generateResponse([{ role: 'user', content: 'Select a guide' }], 'test-model', 'test-key', { response_format: { type: 'json_object' } })
+        expect(mocks.chat.mock.calls[0][0].generationConfig.responseMimeType).toBe('application/json')
+    })
     it('keeps system instructions separate and preserves user/assistant history', async () => {
         await new GoogleProvider().generateResponse([
             { role: 'system', content: 'Instrucciones verificadas' },

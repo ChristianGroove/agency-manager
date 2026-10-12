@@ -18,9 +18,18 @@ keywords:
   - clientes
   - agentes
   - conversaciones
+  - filtros
+  - asignar
+  - reasignar
+  - notas internas
+  - respuestas guardadas
+  - plantillas
+  - resolver
+  - archivar
+  - posponer
 requirements:
   - Módulo module_messaging activo en la organización
-  - Acceso a canales mediante permisos IAM (inbox.conversations.view_all o canal asignado)
+  - Acceso al canal mediante vista global o autorización específica; ver todas las conversaciones no equivale a acceso a todos los canales
 evidence:
   - path: src/app/(dashboard)/crm/inbox/page.tsx
     symbol: CRMInboxPage
@@ -31,6 +40,30 @@ evidence:
   - path: src/components/layout/sidebar.tsx
     symbol: SidebarContent
     claim: Colapsa automáticamente el menú principal al navegar a /crm/inbox para maximizar el área de trabajo.
+  - path: src/modules/features/messaging/components/sidebar/sidebar-conversation-list.tsx
+    symbol: SidebarConversationList
+    claim: Filtra conversaciones por estado, agente y búsqueda, respetando permisos de canales.
+  - path: src/modules/features/messaging/components/chat-area/chat-input.tsx
+    symbol: ChatInput
+    claim: Permite alternar Nota y Modo Nota y abrir respuestas guardadas o plantillas.
+  - path: src/modules/features/messaging/components/chat-area/chat-header.tsx
+    symbol: ChatHeader
+    claim: Ofrece acciones Resolver, Posponer y Archivar con actualización posterior a la acción de servidor.
+  - path: src/modules/features/messaging/components/quick-assign-panel.tsx
+    symbol: QuickAssignPanel
+    claim: Selector de agente para asignar una conversación, sujeto a permisos.
+  - path: src/modules/core/iam/utils/inbox-permissions.ts
+    symbol: evaluateInboxPermissions
+    claim: Distingue vista global de canales, supervisión de conversaciones y canales autorizados.
+  - path: src/modules/features/messaging/components/saved-replies-sheet.tsx
+    symbol: SavedRepliesSheet
+    claim: Permite gestionar respuestas rápidas y seleccionar contenido para insertarlo en el redactor.
+  - path: src/modules/features/messaging/components/chat-area/chat-area.tsx
+    symbol: ChatArea
+    claim: Abre respuestas guardadas y plantillas y conecta su selección con el campo de redacción.
+  - path: src/modules/features/messaging/hooks/use-chat-actions.ts
+    symbol: useChatActions
+    claim: Distingue nota interna de mensaje normal al preparar el envío.
 ---
 
 # Atender y gestionar conversaciones en la bandeja unificada (Inbox)
@@ -52,7 +85,8 @@ Centralizar las comunicaciones entrantes de clientes desde canales conectados (c
 
 ## Distribución de los tres paneles de trabajo
 1. **Panel izquierdo (Bandeja y filtros):**
-   - Pestañas superiores para filtrar chats: *Todos*, *Míos / Asignados*, *Sin Asignar*, y *Resueltos*.
+   - Pestañas **Conversaciones** y **Contactos**.
+   - Filtros de conversaciones **Todos**, **No leídos**, **Asignados a mí**, **Pospuestos** y **Archivados**. El filtro de agente y **Sin Asignar** dependen de los permisos de supervisión.
    - Selector o filtro por canal de mensajería (números de WhatsApp activos).
    - Lista cronológica de conversaciones con indicador de mensajes no leídos, nombre del contacto y última hora de interacción.
 2. **Panel central (Área de chat):**
@@ -69,15 +103,22 @@ Centralizar las comunicaciones entrantes de clientes desde canales conectados (c
 3. El panel central cargará el historial completo del chat.
 4. Escribe tu mensaje en la barra inferior. Si deseas enviar una nota para que solo la lean tus compañeros de equipo sin que le llegue al cliente, activa la opción de **Nota interna**.
 5. Presiona **Enviar** o la tecla `Enter`.
-6. Si requieres reasignar el chat a otro compañero, utiliza el selector de agente en la parte superior del chat o arrastra la tarjeta a la zona de asignación.
-7. Al concluir la gestión, haz clic en **Resolver conversación** para archivarla de la vista principal de pendientes.
+6. Para reasignar el chat, utiliza el selector de agente del panel de contexto si tu usuario tiene permiso. No confundas asignar un agente con arrastrar un chat entre zonas de estado.
+7. Al concluir la gestión, utiliza **Resolver** en la cabecera del chat. **Posponer** aplaza la conversación hasta el día siguiente y **Archivar** la retira de la lista activa. Resolver y archivar son acciones distintas; no equivalen a borrar el historial.
 
 ## Resultado esperado
-Los mensajes se envían de forma instantánea al teléfono del cliente a través del proveedor conectado, y las respuestas entrantes se sincronizan en tiempo real mediante Supabase Realtime.
+El sistema solicita el envío al proveedor y actualiza la conversación. La entrega depende del canal y de la conexión; un fallo puede generar un aviso. No se debe asumir entrega al teléfono por el solo hecho de redactar o pulsar Enviar.
+
+## Notas internas y respuestas rápidas
+
+- Para escribir algo solo para el equipo, activa **Nota** en el redactor. El control pasa a **Modo Nota**. Escribe la nota y envíala; vuelve a desactivar ese modo antes de redactar un mensaje para el cliente.
+- Las respuestas guardadas permiten reutilizar texto. Abre el selector desde los controles del redactor, elige una respuesta y revisa el texto insertado antes de enviarlo. Puedes gestionar el contenido en el panel **Plantillas de Mensaje**, cuya opción de creación es **Nueva Plantilla**.
+- Una respuesta rápida insertada en el redactor no debe confundirse con una plantilla oficial aprobada por el proveedor. El selector de plantillas oficiales tiene su propio panel. Cuando el canal restringe el texto libre, usar una respuesta guardada no evita esa restricción.
+- No se envía un mensaje al cliente por el solo hecho de abrir o seleccionar una respuesta; revisa el contenido y confirma el envío.
 
 ## Problemas habituales y causas comprobadas
 - **La bandeja aparece completamente vacía:**
-  *Causa comprobada:* Tu usuario no tiene el permiso `inbox.conversations.global_view` y no tiene canales asociados en su perfil, o no hay conversaciones en el filtro seleccionado. Selecciona la pestaña *"Todos"* o solicita a un administrador que asigne canales a tu usuario en Configuración de Equipo.
+  *Posibles causas a verificar:* No hay conversaciones en el filtro, el canal no tiene datos o tu usuario no tiene acceso. Prueba **Todos** y revisa el canal seleccionado. Si no tienes vista global ni canales autorizados, pide al administrador que revise tu acceso. Ver todas las conversaciones no concede automáticamente acceso a todos los canales.
 - **Error al enviar mensaje fuera de la ventana de 24 horas:**
   *Causa comprobada:* Políticas oficiales de Meta (WhatsApp Business Cloud API) impiden enviar mensajes de texto libre si el cliente no ha interactuado en las últimas 24 horas. Debes utilizar una **Plantilla aprobada** para restablecer la comunicación.
 - **El menú lateral se encogió solo:**

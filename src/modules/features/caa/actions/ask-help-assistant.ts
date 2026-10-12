@@ -8,7 +8,8 @@ import { createClient } from "@/modules/core/database/supabase-server"
 import { z } from 'zod'
 import { helpCorpus, helpV2Enabled } from '../library/runtime'
 import { resolveHelpAccess } from '../library/session'
-import { boundedHistory, retrieveHelp } from '../library/retrieval'
+import { boundedHistory, canReadArticle, retrieveHelp } from '../library/retrieval'
+import { selectAuthorizedArticles } from '../library/selection'
 
 export interface HelpChatMessage {
     role: "user" | "assistant"
@@ -167,8 +168,22 @@ async function processHelpQuestion(
             if (!user) return { success: false, error: 'Inicia sesión para usar la ayuda.' }
             const access = await resolveHelpAccess(organizationId, user.id, helpCorpus.articles, currentRoute)
             const prior = conversationHistory.filter(message => message.role === 'user').at(-1)?.content || ''
-            const articles = retrieveHelp(helpCorpus.articles, sanitizedQuestion, access, prior)
-            if (!articles.length) return { success: true, message: 'Todavía no tengo una guía publicada y autorizada que resuelva esta pregunta. Indícame el módulo y la acción que estás intentando realizar para orientar la revisión.' }
+            let articles = retrieveHelp(helpCorpus.articles, sanitizedQuestion, access, prior)
+            const authorized = helpCorpus.articles.filter(article => canReadArticle(article, access))
+            if (!articles.length && authorized.length) {
+                // On lexical misses only, let the model understand paraphrases using an authorized catalogue.
+                // At most one selection request, followed by the normal answer request.
+                const selection = await AIEngine.executeTask({
+                    organizationId, taskType: 'help-select-guides-v1', payload: {
+                        question: sanitizedQuestion, priorQuestion: prior,
+                        catalogue: authorized.slice(0, 40).map(article => ({ id: article.id, title: article.title, keywords: article.keywords,
+                            sections: article.content.split('\n').filter(line => /^#{1,3}\s/.test(line)).slice(0, 12) })),
+                    },
+                })
+                if (!selection.success) return { success: false, error: 'No pudimos consultar la ayuda. Intenta nuevamente.' }
+                articles = selectAuthorizedArticles(selection.data, authorized)
+            }
+            if (!articles.length) return { success: true, message: 'No tengo información verificada para ese caso. ¿Qué acción intentas realizar y qué opción o error ves en pantalla?' }
             const response = await AIEngine.executeTask({
                 organizationId, taskType: 'help-assistant-v2', payload: {
                     question: sanitizedQuestion, history: boundedHistory(conversationHistory),
@@ -177,8 +192,7 @@ async function processHelpQuestion(
                 },
             })
             if (!response.success || typeof response.data !== 'string') return { success: false, error: 'No pudimos procesar tu pregunta.' }
-            // Fixed source titles come from authorized retrieval, never from model-generated URLs.
-            return { success: true, message: `${response.data}\n\nGuías consultadas: ${articles.map(article => article.title).join(' · ')}` }
+            return { success: true, message: response.data }
         }
 
         // 6. Get Space Category for tailored context

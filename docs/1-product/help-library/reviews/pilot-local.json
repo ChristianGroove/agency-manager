@@ -4,7 +4,7 @@
     {
       "id": "theme.toggle-theme",
       "draft_sha256": "f5af70c0b6728e6df0a4f6f96ed148126e1d85f7d2275129ac8a5d6221e11a67",
-      "reviewed_by": "Codex: independent source review; manual browser QA pending",
+      "reviewed_by": "Codex: source review; browser QA remains manual",
       "reviewed_on": "2026-10-12",
       "evidence_sha256": {
         "src/components/layout/sidebar-theme-toggle.tsx": "911739d66f8273c13332a1a2eefedacfc4693385d7b77a3c1bada39b33011ba1",
@@ -19,13 +19,13 @@
     {
       "id": "pet.pet-interaction",
       "draft_sha256": "df95ada00a1e13bc2d67f48fb4f36418408e41202d6d6dbd2a8afffc6d969f31",
-      "reviewed_by": "Codex: independent source review; manual browser QA pending",
+      "reviewed_by": "Codex: source review; browser QA remains manual",
       "reviewed_on": "2026-10-12",
       "evidence_sha256": {
         "src/modules/core/pet/pet-help-trigger.tsx": "4bf90d9608250199cfa610e76951ee949b93bf50971c640c171be91fa74115c8",
         "src/modules/core/pet/use-pet-hibernation.ts": "a9ec4562b6c6faea4a704d90f284f1930ecdaca4e9614145b9526ac095193e6d",
         "src/components/layout/fab-controller.tsx": "22d67be25a63688dc51edd6f783e5be73d2ae85241e83adf35d21b153dd405e6",
-        "src/modules/features/caa/components/ai-chat-panel.tsx": "c71431d37a651eabe5232d1fa79e21de71be5f114bd1a869e65a2ad94a28c41d",
+        "src/modules/features/caa/components/ai-chat-panel.tsx": "21bf0c8061158d528aa2a5169a790b3d0667c807bd922b13168cd6e4be51b1ef",
         "src/modules/core/pet/robot-head-view.tsx": "7c40a31fae947729c28dd5e673c0eb201975a90100f29204c07e6683763328d5",
         "src/modules/core/pet/pet-provider.tsx": "73aa72c6e7eb32adaf64de5f66d1199820987f333b73ae4a9eb5b0977ea13e30"
       },
@@ -37,14 +37,72 @@
     {
       "id": "help.chat-and-history",
       "draft_sha256": "cec29e1755f51b2efbc1ab73159db36d1944b1b7af788b5521b1be2281a8ca69",
-      "reviewed_by": "Codex: independent source review; manual browser QA pending",
+      "reviewed_by": "Codex: source review; browser QA remains manual",
       "reviewed_on": "2026-10-12",
       "evidence_sha256": {
         "src/modules/features/caa/components/assistant-modal.tsx": "c1e0d427c686c162414f1c12389fba2120e10a084b2cf4ad1cd8e02721711820",
-        "src/modules/features/caa/components/ai-chat-panel.tsx": "c71431d37a651eabe5232d1fa79e21de71be5f114bd1a869e65a2ad94a28c41d",
+        "src/modules/features/caa/components/ai-chat-panel.tsx": "21bf0c8061158d528aa2a5169a790b3d0667c807bd922b13168cd6e4be51b1ef",
         "src/modules/features/caa/components/help-history-menu.tsx": "d5bafd0a54e13a80d055f1be90eae0cea9a37e8f3e7990bc0bf8c9a6440cc1f0",
         "src/modules/features/caa/actions/help-history.ts": "0e77ba009e84f54693a57373e7246223dffd7ed46e2ee29318aab906fa509221",
         "docs/2-architecture/modules/pixy-help-chat-history.md": "5f94e8d3ab8e14e38fc97d9b84d4e690ce0ea734af2f5a313fb2ba5b1606735d"
+      },
+      "required_modules": [],
+      "required_permissions": [],
+      "verticals": [],
+      "link_route": null
+    },
+    {
+      "id": "inbox.manage-conversations",
+      "draft_sha256": "7b430c789b73b65f9f20f35e56c0b9fd94d4dec12c96bff9f9862f261f1d461a",
+      "reviewed_by": "Codex: source review; browser QA remains manual",
+      "reviewed_on": "2026-10-12",
+      "evidence_sha256": {
+        "src/app/(dashboard)/crm/inbox/page.tsx": "f3b7bbe0ee10c98a1e62a1158b1ffbb08e31eeded37b7d725206e712f27f015d",
+        "src/modules/features/messaging/components/inbox-layout.tsx": "9539cd85be4a34ea8bad736619a7146e0b4738eb4e876d46f594411ae92477ac",
+        "src/components/layout/sidebar.tsx": "1aa7151f401dc366929ba1cba03ff3c87b2dcb10b4588a58c914e0342d9f9fe8",
+        "src/modules/features/messaging/components/sidebar/sidebar-conversation-list.tsx": "e14f751636b95e2b2660739e7f3dbf625ba99d03195570e24e862c4907f01ec4",
+        "src/modules/features/messaging/components/chat-area/chat-input.tsx": "18c7bd00e68cec9210a23eabc6d9ad64534185a35408cdb75759c5e74c256100",
+        "src/modules/features/messaging/components/chat-area/chat-header.tsx": "73296c6b07ac0340df9fef945a416006a02785f8cabb1d5c9d803763ad511a2b",
+        "src/modules/features/messaging/components/quick-assign-panel.tsx": "36fbcb3ae8d302c7fa5a8437e65bc32abfe1fbcb998655e19c017a907a784a13",
+        "src/modules/core/iam/utils/inbox-permissions.ts": "5761082a94bb4a2d0333940050b5967064b8da6c5e8f9795a1eabc4e60a25f4e",
+        "src/modules/features/messaging/components/saved-replies-sheet.tsx": "d1949c6fdd5d4d20350565a7d013f66e99d07885cff8aec8de9763d4e9f8667b",
+        "src/modules/features/messaging/components/chat-area/chat-area.tsx": "2a082d0f784caa243da284b1fd3bbbdd021b904d7d11750341dbfa60b22aba6b",
+        "src/modules/features/messaging/hooks/use-chat-actions.ts": "7f92d0db1d374e0165f1c00cf6b3cd7efa62d37e3fb2f633a812f8353460ecd1"
+      },
+      "required_modules": [
+        "module_messaging"
+      ],
+      "required_permissions": [],
+      "verticals": [],
+      "link_route": null
+    },
+    {
+      "id": "branding.manage-adn",
+      "draft_sha256": "948da91634b9288494397e707eb9cd604ba25c2cc7965533966a920a89fc4492",
+      "reviewed_by": "Codex: source review; browser QA remains manual",
+      "reviewed_on": "2026-10-12",
+      "evidence_sha256": {
+        "src/app/(dashboard)/platform/adn/page.tsx": "cd2a90fa7da9741dd1377b5c12356ebbf228508f99b5dd7a0803434e1d8506ac",
+        "src/modules/core/branding/components/identity-dashboard.tsx": "35427e34cedae768de317ef75ab32cfe39cfdf6fae5285b949fe27c76c9d819d",
+        "src/modules/core/branding/actions.ts": "04568e226093ec94b261d5bc2282ffea403b88a88017429f8b98114cd0df0d6a",
+        "src/modules/core/branding/components/operations-tab.tsx": "b133fb15110305857b0566655eb8d61d3c547ea5db548cf661f636a086b48d7c"
+      },
+      "required_modules": [
+        "core_settings"
+      ],
+      "required_permissions": [],
+      "verticals": [],
+      "link_route": null
+    },
+    {
+      "id": "pet.manage-pet",
+      "draft_sha256": "a2e4141643b47744a8657720313f3b3d2001181358f619d598ba29d55e0b407e",
+      "reviewed_by": "Codex: source review; browser QA remains manual",
+      "reviewed_on": "2026-10-12",
+      "evidence_sha256": {
+        "src/modules/core/pet/pet-settings-manager.tsx": "2093886690883b51302ae1fe6741260ed2df36667d12340c6ae497eaeb900656",
+        "src/modules/core/pet/config-actions.ts": "b28c11187454bf74f761f5646678be85ea1cdfe453c44e435bcb29dda8a93b4e",
+        "src/modules/core/pet/schema.ts": "3bce8c19729cf36d469ef839dfa6e17ea835e609d62ed6ec1393b7cc953eb752"
       },
       "required_modules": [],
       "required_permissions": [],

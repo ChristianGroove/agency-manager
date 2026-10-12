@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "revision": "b433f8cb2270863043d5f8ae01f1a94a8a3e8b234a408fdc5c7f07c52608cf92",
+  "revision": "a326c3d5ba5654877b5db71cb7c3e4cec1f921921e6f1928833ee16a13a30394",
   "articles": [
     {
       "id": "theme.toggle-theme",
@@ -73,6 +73,93 @@
       "verticals": [],
       "link_route": null,
       "revision": "cec29e1755f51b2efbc1ab73159db36d1944b1b7af788b5521b1be2281a8ca69"
+    },
+    {
+      "id": "inbox.manage-conversations",
+      "title": "Atender y gestionar conversaciones en la bandeja unificada (Inbox)",
+      "module": "inbox",
+      "audience": "tenant-user",
+      "routes": [
+        "/crm/inbox"
+      ],
+      "keywords": [
+        "inbox",
+        "mensajería",
+        "whatsapp",
+        "chat",
+        "clientes",
+        "agentes",
+        "conversaciones",
+        "filtros",
+        "asignar",
+        "reasignar",
+        "notas internas",
+        "respuestas guardadas",
+        "plantillas",
+        "resolver",
+        "archivar",
+        "posponer"
+      ],
+      "content": "# Atender y gestionar conversaciones en la bandeja unificada (Inbox)\n\n## Propósito\nCentralizar las comunicaciones entrantes de clientes desde canales conectados (como WhatsApp y mensajería oficial), permitiendo a los agentes responder en tiempo real, asignar chats, registrar notas internas y consultar el historial del contacto sin salir de la bandeja.\n\n## Requisitos y permisos\n- Que la organización tenga habilitado el módulo de mensajería (`module_messaging`).\n- Contar con permisos de acceso a canales:\n  - *Vista Global (`inbox.conversations.global_view`):* Permite acceder a todos los canales conectados de la empresa.\n  - *Asignación específica (`inbox_access`):* Si el usuario no tiene vista global, solo podrá ver los canales explícitamente autorizados en su perfil de miembro.\n  - *Supervisión (`inbox.conversations.view_all`):* Permite leer conversaciones de otros agentes o no asignadas.\n- Al menos un canal oficial de mensajería debe estar vinculado y activo.\n\n## Ubicación en pantalla\n- **Ruta web:** `/crm/inbox`\n- **Menú lateral:** Sección **CRM** → opción **Inbox** (icono de bandeja de entrada). Al ingresar, el menú lateral principal se colapsa automáticamente para otorgar el máximo espacio a la conversación.\n\n## Distribución de los tres paneles de trabajo\n1. **Panel izquierdo (Bandeja y filtros):**\n   - Pestañas **Conversaciones** y **Contactos**.\n   - Filtros de conversaciones **Todos**, **No leídos**, **Asignados a mí**, **Pospuestos** y **Archivados**. El filtro de agente y **Sin Asignar** dependen de los permisos de supervisión.\n   - Selector o filtro por canal de mensajería (números de WhatsApp activos).\n   - Lista cronológica de conversaciones con indicador de mensajes no leídos, nombre del contacto y última hora de interacción.\n2. **Panel central (Área de chat):**\n   - Historial de mensajes entre el cliente y el agente.\n   - Caja de redacción inferior con soporte para texto, emojis, notas internas privadas (visibles solo para el equipo) y envío de plantillas aprobadas.\n3. **Panel derecho (Deck de contexto del contacto):**\n   - Ficha del cliente: nombre, teléfono, correo y empresa.\n   - Estado comercial del contacto en el embudo (Pipeline de ventas).\n   - Acceso rápido a cotizaciones y notas históricas.\n\n## Pasos para atender una conversación\n1. Accede a **Inbox** en el menú lateral.\n2. En la columna izquierda, haz clic sobre una conversación no leída o pendiente.\n3. El panel central cargará el historial completo del chat.\n4. Escribe tu mensaje en la barra inferior. Si deseas enviar una nota para que solo la lean tus compañeros de equipo sin que le llegue al cliente, activa la opción de **Nota interna**.\n5. Presiona **Enviar** o la tecla `Enter`.\n6. Para reasignar el chat, utiliza el selector de agente del panel de contexto si tu usuario tiene permiso. No confundas asignar un agente con arrastrar un chat entre zonas de estado.\n7. Al concluir la gestión, utiliza **Resolver** en la cabecera del chat. **Posponer** aplaza la conversación hasta el día siguiente y **Archivar** la retira de la lista activa. Resolver y archivar son acciones distintas; no equivalen a borrar el historial.\n\n## Resultado esperado\nEl sistema solicita el envío al proveedor y actualiza la conversación. La entrega depende del canal y de la conexión; un fallo puede generar un aviso. No se debe asumir entrega al teléfono por el solo hecho de redactar o pulsar Enviar.\n\n## Notas internas y respuestas rápidas\n\n- Para escribir algo solo para el equipo, activa **Nota** en el redactor. El control pasa a **Modo Nota**. Escribe la nota y envíala; vuelve a desactivar ese modo antes de redactar un mensaje para el cliente.\n- Las respuestas guardadas permiten reutilizar texto. Abre el selector desde los controles del redactor, elige una respuesta y revisa el texto insertado antes de enviarlo. Puedes gestionar el contenido en el panel **Plantillas de Mensaje**, cuya opción de creación es **Nueva Plantilla**.\n- Una respuesta rápida insertada en el redactor no debe confundirse con una plantilla oficial aprobada por el proveedor. El selector de plantillas oficiales tiene su propio panel. Cuando el canal restringe el texto libre, usar una respuesta guardada no evita esa restricción.\n- No se envía un mensaje al cliente por el solo hecho de abrir o seleccionar una respuesta; revisa el contenido y confirma el envío.\n\n## Problemas habituales y causas comprobadas\n- **La bandeja aparece completamente vacía:**\n  *Posibles causas a verificar:* No hay conversaciones en el filtro, el canal no tiene datos o tu usuario no tiene acceso. Prueba **Todos** y revisa el canal seleccionado. Si no tienes vista global ni canales autorizados, pide al administrador que revise tu acceso. Ver todas las conversaciones no concede automáticamente acceso a todos los canales.\n- **Error al enviar mensaje fuera de la ventana de 24 horas:**\n  *Causa comprobada:* Políticas oficiales de Meta (WhatsApp Business Cloud API) impiden enviar mensajes de texto libre si el cliente no ha interactuado en las últimas 24 horas. Debes utilizar una **Plantilla aprobada** para restablecer la comunicación.\n- **El menú lateral se encogió solo:**\n  *Causa comprobada:* Es un comportamiento de diseño intencionado: al entrar a `/crm/inbox`, el sidebar se colapsa para ofrecer mayor amplitud al chat y al deck de contexto. Puedes expandirlo cuando quieras con el botón rosa circular.\n\n## Limitaciones conocidas\n- La subida de archivos multimedia adjuntos (imágenes, audios, documentos) está sujeta a los límites de tamaño establecidos por la API de Meta y las políticas de almacenamiento del tenant.\n\n## Temas relacionados\n- [Gestión de contactos y prospectos en CRM](crm.manage-contacts.md)\n- [Gestión de embudo de ventas y pipeline](crm.manage-pipeline.md)",
+      "required_modules": [
+        "module_messaging"
+      ],
+      "required_permissions": [],
+      "verticals": [],
+      "link_route": null,
+      "revision": "7b430c789b73b65f9f20f35e56c0b9fd94d4dec12c96bff9f9862f261f1d461a"
+    },
+    {
+      "id": "branding.manage-adn",
+      "title": "Personalizar el ADN de marca y la identidad del negocio",
+      "module": "branding",
+      "audience": "tenant-admin",
+      "routes": [
+        "/platform/adn"
+      ],
+      "keywords": [
+        "adn",
+        "marca",
+        "identidad",
+        "logotipo",
+        "colores",
+        "tipografía",
+        "portal",
+        "documentos"
+      ],
+      "content": "# Personalizar el ADN de marca y la identidad del negocio\n\n## Propósito\nPermitir a los administradores definir y unificar la identidad corporativa de su empresa en Pixy: logotipos, colores principales, datos de contacto comercial, membretes de documentos PDF y apariencia visual del portal para clientes.\n\n## Requisitos y permisos\n- Contar con rol de **Administrador** (`admin`) o **Dueño** (`owner`) en la organización activa.\n- Los usuarios con rol de miembro (`member`) o colaboradores no tienen acceso a esta sección y serán redirigidos.\n- Para subir imágenes (logotipos o fondos), el archivo debe ser formato de imagen válido (PNG, JPG, SVG, WebP) y tener un peso máximo de **5 MB**.\n\n## Ubicación en pantalla\n- **Ruta web:** `/platform/adn`\n- **Menú lateral:** Sección **Plataforma** (Configuración) → opción con icono de escaneo facial y etiqueta **ADN del Negocio**.\n\n## Pestañas de configuración\nEl panel se organiza en seis pestañas temáticas:\n\n### 1. Esencia\n- **Nombre comercial:** Nombre oficial del negocio que figurará en encabezados, facturas y correos.\n- **Logotipos:** Subida independiente de logotipo para fondo claro y fondo oscuro.\n- **Isotipo / Favicon:** Ícono cuadrado compacto visible en la pestaña del navegador y accesos directos.\n- **Paleta de colores:** Color primario (utilizado en botones de acción y destaques) y color secundario. En caso de que la mascota robot esté disponible para todos los tenants, adoptará estos tonos automáticamente.\n- **Tipografía de marca:** Fuente tipográfica preferida para la experiencia del cliente.\n\n### 2. Contacto\n- Datos institucionales: sitio web oficial, correo de atención, teléfono principal, dirección y canales de contacto.\n\n### 3. Portal\n- Configuración visual del portal público B2C para clientes (comensales, compradores o usuarios externos).\n- Logotipo específico del portal, imagen de fondo de inicio de sesión y color de fondo de login.\n- *Nota de plan:* Si la organización no cuenta con un plan que incluya personalización de portal (Tier Pro o Whitelabel), esta pestaña muestra un aviso de bloqueo indicando las ventajas de actualizar de plan.\n\n### 4. Documentos\n- Personalización de cotizaciones, cuentas de cobro y facturas en formato PDF.\n- Permite definir el texto legal del pie de página, tamaño del logotipo (pequeño, mediano, grande) y conmutar la marca de agua.\n\n### 5. Dominios\n- Asignación de dominio web personalizado para operar la plataforma bajo una dirección propia. Requiere soporte de dominio en el plan contratado.\n\n### 6. Operación\n- Configuración regional de la operación, como país, moneda base y zona horaria. No debe confundirse con los datos de contacto.\n\n## Pasos para actualizar la identidad\n1. Navega a **ADN del Negocio** en el menú lateral.\n2. Selecciona la pestaña que deseas modificar (por ejemplo, **Esencia** para cambiar colores o logos).\n3. Para cambiar una imagen, haz clic en el área de carga correspondiente, selecciona el archivo desde tu equipo y espera a que la miniatura se actualice.\n4. Para ajustar los colores, utiliza el selector visual de color o ingresa directamente el código HEX (ejemplo: `#3594F1`).\n5. Observa el panel derecho de **Vista previa**: podrás ver en tiempo real cómo lucen los cambios tanto en la maqueta de inicio de sesión como en la del panel de control.\n6. Una vez conforme, haz clic en el botón superior **Guardar Identidad** (icono de disquete).\n\n## Resultado esperado\nAparecerá una notificación de confirmación: *\"ADN Actualizado: La identidad de tu negocio se ha guardado correctamente.\"*. Los nuevos logotipos y colores se propagarán a la barra lateral, documentos PDF emitidos y portales públicos.\n\n## Problemas habituales y causas comprobadas\n- **Error al subir imagen (\"El archivo no debe superar 5MB\"):**\n  *Causa comprobada:* El archivo seleccionado supera el límite técnico permitido de 5 megabytes. Debes comprimir la imagen antes de subirla.\n- **Los cambios de color no se reflejan en el menú lateral de inmediato:**\n  *Causa comprobada:* Aunque el guardado emite el evento `branding-updated` para limpiar la memoria caché del navegador, en conexiones lentas puede requerirse una recarga de página (`F5`) para rehidratar el layout del servidor.\n- **La pestaña \"Portal\" aparece bloqueada con un candado:**\n  *Causa comprobada:* La función de personalización de portal (`custom_colors` o `remove_pixy_branding`) requiere un plan con características avanzadas de marca blanca. Contacta a administración o utiliza el botón de actualización directa.\n\n## Limitaciones conocidas\n- La eliminación física de imágenes reemplazadas en el almacenamiento de Supabase se procesa mediante llamadas administrativas; si se utiliza una URL externa manual no se podrá gestionar su borrado automático.\n\n## Temas relacionados\n- [Gestionar identidad en el Centro de Marca (Brand Center)](branding.brand-center.md)\n- [Cambiar entre tema claro y tema oscuro](theme.toggle-theme.md)",
+      "required_modules": [
+        "core_settings"
+      ],
+      "required_permissions": [],
+      "verticals": [],
+      "link_route": null,
+      "revision": "948da91634b9288494397e707eb9cd604ba25c2cc7965533966a920a89fc4492"
+    },
+    {
+      "id": "pet.manage-pet",
+      "title": "Configurar y administrar la mascota robot Pixy",
+      "module": "pet",
+      "audience": "platform-admin",
+      "routes": [
+        "/platform/admin"
+      ],
+      "keywords": [
+        "mascota",
+        "robot",
+        "pet",
+        "pixy",
+        "configuración",
+        "animación",
+        "hibernación",
+        "super admin"
+      ],
+      "content": "# Configurar y administrar la mascota robot Pixy\n\n## Propósito\nPermitir a los superadministradores de la plataforma gestionar de forma centralizada la activación, apariencia visual, rendimiento y políticas de animación de la mascota robot Pixy en el dashboard.\n\n## Requisitos y permisos\n- Acceso exclusivo para usuarios con privilegio de **Superadministrador de Plataforma** (`isSuperAdmin`).\n- Los administradores de organizaciones individuales (tenant admins) o usuarios regulares no pueden visualizar ni modificar esta configuración.\n- La base de datos debe tener aplicada la columna `pet_config` en la tabla `platform_settings` (migración `20261011000001_platform_robot_pet.sql`).\n\n## Ubicación en pantalla\n- **Ruta web:** `/platform/admin`\n- **Sección:** SaaS Engine → Marca Global → Tarjeta **Mascota Pixy**.\n\n## Parámetros disponibles\n1. **Activar mascota:** Conmutador principal que enciende o apaga la mascota a nivel global.\n2. **Organización Pixy:** Selector para identificar la organización interna titular de Pixy (sugerida automáticamente por slug `pixy-agency`).\n3. **Disponibilidad:**\n   - *Piloto: solo Pixy:* La mascota solo se visualiza dentro de la organización matriz de Pixy.\n   - *Todos los tenants:* Despliegue general para todas las empresas de la plataforma (en las cuales el robot adaptará sus colores a los del ADN de marca del tenant).\n4. **Forma de la cabeza:** Opciones geométricas: `Rectángulo`, `Cuadrado`, `Círculo` o `Hexágono`.\n5. **Colores personalizados de Pixy:**\n   - *Carcasa Pixy:* Color del cuerpo principal.\n   - *Detalles Pixy:* Tonalidad de molduras y remates.\n   - *LEDs:* Color de los ojos y expresiones en la pantalla del robot.\n6. **Dimensiones:**\n   - *Tamaño escritorio:* Selector entre 48, 56, 64 u 80 píxeles (predeterminado: 64 px).\n   - *Tamaño móvil:* Selector entre 48, 56, 64 u 80 píxeles (predeterminado: 48 px).\n7. **Modo de animación:**\n   - *Apagada:* Pose estática en reposo sin movimiento.\n   - *Contextual:* Evita una animación continua en reposo. Las reacciones breves se estabilizan a los 2,5 segundos y los estados de procesamiento tienen una ventana de hasta 15 segundos. El seguimiento depende del ajuste de interactividad y de las condiciones del dispositivo.\n   - *Continua:* Movimiento fluido constante. Requiere mayor consumo de CPU.\n8. **Velocidad:** Valor decimal entre 0.25x y 2.0x (predeterminado: 1.0x).\n9. **Comportamientos opcionales:**\n   - *Antena:* Mostrar u ocultar la antena superior.\n   - *Sombra:* Efecto de sombra proyectada en la base.\n   - *Seguir el cursor en toda la página:* Listener pasivo que orienta la mirada del robot hacia la posición del ratón en dispositivos con puntero fino.\n   - *Reaccionar a avisos críticos y operaciones:* Permite a la mascota expresar estados de trabajo (`working`), éxito (`happy`) o error (`error`) ante operaciones clave (como guardar el ADN de marca).\n10. **Política de hibernación:**\n    - *Hibernar sin interacción:* Conmutador que activa el modo de descanso tras inactividad.\n    - *Tiempo activo (minutos):* Rango de 1 a 30 minutos (predeterminado: 5 minutos). Al vencer el plazo sin pasar el cursor sobre el robot, entra en estado `sleeping` y pausa el dibujo en canvas.\n\n## Pasos para guardar la configuración\n1. Accede a `/platform/admin` con tu cuenta de superadministrador.\n2. Desplázate hasta la tarjeta **Mascota Pixy**.\n3. Ajusta los parámetros visuales deseados observando la **Vista previa** en tiempo real.\n4. Para comprobar diferentes expresiones antes de guardar, utiliza el desplegable **Estado de prueba** (por ejemplo: Pensando, Éxito, Error, Descansando).\n5. Haz clic en el botón **Guardar mascota**.\n6. Recarga las pestañas abiertas del dashboard para que el nuevo estado se refleje en los clientes conectados.\n\n## Resultado esperado\nUn aviso flotante de confirmación indicará *\"Configuración de mascota actualizada.\"*. Al navegar al dashboard de la organización autorizada, la mascota se renderizará con los tamaños, paleta y animaciones definidas.\n\n## Problemas habituales y causas comprobadas\n- **Aparece un aviso amarillo indicando que la configuración no está habilitada:**\n  *Causa comprobada:* Falta ejecutar la migración SQL `platform_robot_pet` en la base de datos para crear la columna `pet_config` en `platform_settings`. La mascota permanecerá apagada hasta su aplicación.\n- **Los cambios guardados no se ven de inmediato en otros navegadores:**\n  *Causa comprobada:* La plataforma no implementa suscripciones Realtime ni polling continuo para la configuración de la mascota a fin de proteger los recursos del servidor. Los usuarios deben recargar su sesión para recibir los nuevos valores.\n- **La mascota no aparece en un tenant secundario:**\n  *Causa comprobada:* La disponibilidad está configurada en *\"Piloto: solo Pixy\"*. Para que otras organizaciones la vean, debe cambiarse a *\"Todos los tenants\"*.\n\n## Limitaciones conocidas\n- El seguimiento del puntero se desactiva automáticamente en pantallas táctiles o si el usuario tiene habilitada la preferencia del sistema operativo de reducción de movimiento (`prefers-reduced-motion`).\n- El estado seleccionado en el campo \"Estado de prueba\" es meramente interactivo para la previsualización y no se persiste en base de datos.\n\n## Temas relacionados\n- [Estados visuales, hibernación y activación de la mascota](pet.pet-interaction.md)\n- [Consultar al asistente de ayuda e historial](help.chat-and-history.md)",
+      "required_modules": [],
+      "required_permissions": [],
+      "verticals": [],
+      "link_route": null,
+      "revision": "a2e4141643b47744a8657720313f3b3d2001181358f619d598ba29d55e0b407e"
     }
   ]
 }

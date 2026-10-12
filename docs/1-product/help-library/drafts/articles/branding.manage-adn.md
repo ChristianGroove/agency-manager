@@ -31,6 +31,9 @@ evidence:
   - path: src/modules/core/branding/actions.ts
     symbol: updateOrganizationBranding
     claim: Persiste los cambios en organization_settings, revalida rutas de layout y emite actualización de caché en cliente.
+  - path: src/modules/core/branding/components/operations-tab.tsx
+    symbol: OperationsTab
+    claim: Contiene configuración regional, moneda y zona horaria de la operación.
 ---
 
 # Personalizar el ADN de marca y la identidad del negocio
@@ -58,7 +61,7 @@ El panel se organiza en seis pestañas temáticas:
 - **Tipografía de marca:** Fuente tipográfica preferida para la experiencia del cliente.
 
 ### 2. Contacto
-- Datos institucionales: sitio web oficial, correo electrónico de atención, teléfono principal, dirección física, país de operación, moneda principal (ej: COP, USD) y zona horaria.
+- Datos institucionales: sitio web oficial, correo de atención, teléfono principal, dirección y canales de contacto.
 
 ### 3. Portal
 - Configuración visual del portal público B2C para clientes (comensales, compradores o usuarios externos).
@@ -73,7 +76,7 @@ El panel se organiza en seis pestañas temáticas:
 - Asignación de dominio web personalizado para operar la plataforma bajo una dirección propia. Requiere soporte de dominio en el plan contratado.
 
 ### 6. Operación
-- Enlaces oficiales a perfiles de redes sociales (Instagram, Facebook, LinkedIn, Twitter/X, YouTube).
+- Configuración regional de la operación, como país, moneda base y zona horaria. No debe confundirse con los datos de contacto.
 
 ## Pasos para actualizar la identidad
 1. Navega a **ADN del Negocio** en el menú lateral.
