@@ -44,6 +44,8 @@ export interface RobotHeadProps extends Omit<HTMLAttributes<HTMLSpanElement>, 'c
   speed?: number;
   /** Freeze every animation on its current frame. */
   paused?: boolean;
+  /** Pixy extension: draw only during global pointer movement and a short settling window. */
+  pointerOnly?: boolean;
   /** Follow the pointer with the eyes and head, and hop and spin on a click. Default `true`. */
   interactive?: boolean;
   /**

@@ -12,13 +12,13 @@ export function PetHelpTrigger({ onOpenHelp }: { onOpenHelp: () => void }) {
     if (!pet?.enabled) return null
     const settings = pet.config.settings
     const size = mobile ? settings.mobileSize : settings.desktopSize
-    const animate = settings.animation === 'continuous' || engaged || pet.state !== 'idle'
+    const animate = settings.animation === 'continuous' || (!settings.interactive && engaged) || pet.state !== 'idle'
 
     return <button
         type="button" aria-label="Abrir ayuda" title="Abrir ayuda"
         onClick={onOpenHelp} onMouseEnter={() => setEngaged(true)} onMouseLeave={() => setEngaged(false)}
         onFocus={() => setEngaged(true)} onBlur={() => setEngaged(false)}
-        className="fixed right-6 z-40 rounded-2xl border border-border bg-background/90 p-1 shadow-lg backdrop-blur-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
+        className="fixed right-6 z-40 rounded-2xl bg-transparent p-1 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2"
         style={{ bottom: 'calc(1.5rem + env(safe-area-inset-bottom))' }}
     >
         <PetVisual settings={settings} palette={pet.palette} state={pet.state} size={size}

@@ -69,12 +69,18 @@ describe('dashboard pet and help integration', () => {
         let resolve!: (response: { success: boolean; message: string }) => void
         mocks.ask.mockImplementation(() => new Promise(done => { resolve = done }))
         render(wrapper(<><AIChatPanel /><Probe /></>))
+        expect(screen.getAllByTestId('pet-visual')).toHaveLength(1)
+        expect(screen.queryByRole('heading', { name: 'Pixy IA' })).not.toBeInTheDocument()
+        expect(screen.getByRole('textbox', { name: 'Tu pregunta' })).toBeInTheDocument()
         fireEvent.change(screen.getByPlaceholderText('Escribe tu pregunta...'), { target: { value: '¿Cómo creo una tarea?' } })
         fireEvent.submit(screen.getByPlaceholderText('Escribe tu pregunta...').closest('form')!)
         expect(screen.getByTestId('state')).toHaveTextContent('thinking')
+        expect(screen.getByTestId('pet-visual')).toHaveAttribute('data-state', 'thinking')
         await act(async () => resolve({ success: true, message: 'Abre tareas.' }))
         expect(screen.getByText('Abre tareas.')).toBeInTheDocument()
         expect(screen.getByTestId('state')).toHaveTextContent('happy')
+        expect(screen.getAllByTestId('pet-visual')).toHaveLength(1)
+        expect(screen.getByTestId('pet-visual')).toHaveAttribute('data-state', 'happy')
         // Unmount removes the active context and its expiration timer.
     })
     it('keeps error text and gives critical alerts precedence when enabled', async () => {
@@ -84,6 +90,8 @@ describe('dashboard pet and help integration', () => {
         fireEvent.submit(screen.getByPlaceholderText('Escribe tu pregunta...').closest('form')!)
         await waitFor(() => expect(screen.getByText('Servicio no disponible.')).toBeInTheDocument())
         expect(screen.getByTestId('state')).toHaveTextContent('error')
+        expect(screen.getAllByTestId('pet-visual')).toHaveLength(1)
+        expect(screen.getByTestId('pet-visual')).toHaveAttribute('data-state', 'error')
         fireEvent.click(screen.getByRole('button', { name: 'Aviso crítico' }))
         expect(screen.getByTestId('state')).toHaveTextContent('error')
     })

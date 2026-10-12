@@ -17,12 +17,16 @@ export interface RobotHeadViewProps {
 
 export function RobotHeadView({ settings, palette, state, size, animate = false, onFailure }: RobotHeadViewProps) {
     const reducedMotion = usePetMedia('(prefers-reduced-motion: reduce)')
+    const finePointer = usePetMedia('(any-hover: hover) and (any-pointer: fine)')
     const visible = usePetPageVisible()
     const [failed, setFailed] = useState(false)
     const [inViewport, setInViewport] = useState(true)
     const [settled, setSettled] = useState(false)
     const nodeRef = useRef<HTMLSpanElement>(null)
-    const paused = !animate || settings.animation === 'off' || reducedMotion || !visible || !inViewport || (settings.animation === 'contextual' && settled)
+    const tracking = settings.interactive && state === 'idle' && finePointer
+    const contextualRest = settings.animation === 'contextual' && settled
+    const paused = (!animate && !tracking) || settings.animation === 'off' || reducedMotion || !visible || !inViewport || (contextualRest && !tracking)
+    const pointerOnly = tracking && settings.animation !== 'continuous' && (!animate || contextualRest)
 
     useEffect(() => {
         if (!animate || settings.animation !== 'contextual') return
@@ -43,7 +47,7 @@ export function RobotHeadView({ settings, palette, state, size, animate = false,
     return <span ref={nodeRef} aria-hidden="true" className="block shrink-0" style={{ width: size, height: size }}>
         <RobotHead
             shape={settings.shape} state={state} size={size} {...palette}
-            speed={settings.speed} paused={paused} interactive={settings.interactive && state === 'idle'}
+            speed={settings.speed} paused={paused} pointerOnly={pointerOnly} interactive={tracking}
             antenna={settings.antenna} floorShadow={settings.floorShadow} seed={0.3}
             onRenderError={() => { setFailed(true); onFailure?.() }}
         />

@@ -4,6 +4,18 @@ Fecha: 11 de octubre de 2026, America/Bogota. Rama: `pixyrobotpet`.
 
 Implementadas la base de la mascota, configuración super admin, herencia ADN y acceso al chat; también estados de ayuda y una integración inicial con errores del chat y avisos críticos. La extensión a otros módulos y a todos los toasts continúa como trabajo por fases.
 
+## Ajuste de seguimiento y chat (revisión visual manual)
+
+Después del piloto local se retiró el marco/fondo del acceso flotante. El seguimiento ya no requiere hover ni tiene el corte de distancia de 700 px del renderer original: usa el cursor de toda la página. En animación contextual y estado disponible, un único listener pasivo compartido activa dibujo durante movimiento más 800 ms de asentamiento; no hay renders React por cada evento del cursor. La simulación original conserva límites de giro, por lo que el robot mira hacia el cursor sin desplazarse por el dashboard. Movimiento reducido, animación apagada, pestaña oculta, salida del viewport y dispositivos sin puntero fino siguen evitando seguimiento activo.
+
+El chat no tiene header visible ni avatares por mensaje. Mantiene el título accesible del diálogo, cierre, identificación accesible de quién habla y texto de procesamiento/error. Un solo robot en posición absoluta ocupa el lateral derecho del compositor, con espacio reservado para no interceptar input/envío (`pointer-events:none`); mide 112 px en escritorio y 80 px en móvil, con canvas transparente. Sus estados proceden del mismo ciclo de la petición de ayuda. Al apagar la mascota, desaparece y el formulario recupera el ancho completo.
+
+No se añadió migración, dependencia, petición de IA ni escritura de configuración. El robot más grande aumenta el trabajo por frame; se mantienen 30 FPS y reposo por demanda, pero estas medidas **no equivalen a una medición de rendimiento del nuevo tamaño**. Queda al usuario la revisión visual y de comportamiento en navegador, incluyendo vista móvil y teclado virtual; no se automatizó navegador para esta revisión. Las capturas y pruebas integradas detalladas más abajo documentan el diseño anterior, previo a este ajuste.
+
+Validación de código de este ajuste: 47 pruebas en 6 archivos y TypeScript del código fuente pasaron. ESLint de los archivos modificados no mostró errores; se conservan las advertencias preexistentes del modal. Las pruebas adicionales cubren activación global por movimiento, reposo tras detenerse, convivencia con animaciones continuas, movimiento reducido/dispositivos táctiles y un único robot que cambia con espera/éxito/error.
+
+El nuevo build de producción completó compilación, TypeScript, generación de páginas y trazas. Se reinició únicamente el proceso de prueba de `3005`, con conexión a Supabase local; la revisión de esta interfaz en navegador corresponde al usuario.
+
 ## Resultado funcional
 
 | Flujo | Evidencia |

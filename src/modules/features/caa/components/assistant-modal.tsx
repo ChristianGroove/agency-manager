@@ -80,7 +80,7 @@ export function AssistantModal({ open, onOpenChange }: AssistantModalProps) {
                 />
 
                 <div className="relative h-full flex flex-col overflow-hidden">
-                    {/* Header is handled inside AIChatPanel now for total clean flow */}
+                    {/* One live robot lives in the composer; the dialog keeps its accessible title. */}
                     <div className="flex-1 relative">
                         <AnimatePresence initial={false} mode="popLayout">
                             {showAIChat && (
@@ -93,7 +93,6 @@ export function AssistantModal({ open, onOpenChange }: AssistantModalProps) {
                                 >
                                     <AIChatPanel
                                         className="h-full"
-                                        onBack={() => onOpenChange(false)} // Treat back as close in AI-only mode
                                     />
                                 </motion.div>
                             )}

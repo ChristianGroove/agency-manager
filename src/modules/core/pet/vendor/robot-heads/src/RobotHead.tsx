@@ -62,6 +62,7 @@ export const RobotHead = forwardRef<HTMLCanvasElement, RobotHeadProps>(function 
     screenColor = '#e8f2ff',
     speed = 1,
     paused = false,
+    pointerOnly = false,
     interactive = true,
     floorShadow = true,
     antenna = true,
@@ -130,6 +131,8 @@ export const RobotHead = forwardRef<HTMLCanvasElement, RobotHeadProps>(function 
       try { paint(false); } catch (error) { errorRef.current?.(error); }
       return;
     }
+    // Demand-driven tracking still needs a visible initial pose before the first pointer event.
+    try { paint(false); } catch (error) { errorRef.current?.(error); return; }
     return subscribe((dt) => {
       const s = sim.current!;
       const el = boxRef.current;
@@ -139,13 +142,14 @@ export const RobotHead = forwardRef<HTMLCanvasElement, RobotHeadProps>(function 
         const f = frameRef.current;
         const dx = pointer.x - (box.left + box.width / 2);
         const dy = pointer.y - (box.top + f.cy - f.padTop);
-        s.pointer = Math.hypot(dx, dy) < 700 ? { x: dx, y: dy } : null;
+        // The simulation clamps rotation; tracking covers the entire viewport.
+        s.pointer = { x: dx, y: dy };
       } else s.pointer = null;
       s.update(dt * speedRef.current);
       paint(true);
-    }, (error) => errorRef.current?.(error));
+    }, (error) => errorRef.current?.(error), { pointerOnly });
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [still, size, stateKey, shapeKey, color, trimColor, screenColor, floorShadow, antenna]);
+  }, [still, pointerOnly, size, stateKey, shapeKey, color, trimColor, screenColor, floorShadow, antenna]);
 
   const click = (e: MouseEvent<HTMLSpanElement>) => {
     if (interactive && !still) sim.current?.poke();

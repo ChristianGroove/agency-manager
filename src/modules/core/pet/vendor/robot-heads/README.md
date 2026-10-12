@@ -14,6 +14,8 @@ Pixy changes:
 - ticker isolates subscriber failures and continues healthy subscribers.
 - global event listeners are removed when the last animation unsubscribes.
 - visible animation is capped at 30 FPS while preserving elapsed simulation time.
+- `pointerOnly` draws on document pointer movement plus an 800 ms settling window; continuous subscribers do not wake sleeping pointer-only heads.
+- the original 700 px cursor cutoff is removed; the original simulation still clamps head rotation.
 - texture cache is bounded to 32 entries to cap memory during previews/resizing.
 
 React linting of this external renderer is handled separately from Pixy components.

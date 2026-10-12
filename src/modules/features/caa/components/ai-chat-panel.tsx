@@ -2,24 +2,24 @@
 
 import { useState, useRef, useEffect, useEffectEvent } from "react"
 import { motion } from "framer-motion"
-import { Sparkles, Send, User, Bot, Loader2, ArrowLeft, AlertCircle } from "lucide-react"
+import { Send, Loader2 } from "lucide-react"
 import { cn } from "@/modules/infrastructure/utils/utils"
 import { askHelpAssistant, HelpChatMessage } from "../actions/ask-help-assistant"
 import { usePet } from "@/modules/core/pet/pet-provider"
 import { PetVisual } from "@/modules/core/pet/pet-visual"
-import { PetAlertAvatar } from "@/modules/core/pet/pet-alert-avatar"
+import { usePetMedia } from "@/modules/core/pet/use-pet-motion"
 
 interface AIChatPanelProps {
     initialQuery?: string
-    onBack?: () => void
     className?: string
 }
 
 /**
- * AIChatPanel v2 - Futuristic with Light/Dark Mode Support
+ * Help conversation with one live robot beside the composer.
  */
-export function AIChatPanel({ initialQuery, onBack, className }: AIChatPanelProps) {
+export function AIChatPanel({ initialQuery, className }: AIChatPanelProps) {
     const pet = usePet()
+    const mobile = usePetMedia('(max-width: 639px)')
     const reportHelpState = pet?.reportHelpState
     const mountedRef = useRef(true)
     const [messages, setMessages] = useState<HelpChatMessage[]>([])
@@ -88,60 +88,14 @@ export function AIChatPanel({ initialQuery, onBack, className }: AIChatPanelProp
 
     return (
         <div className={cn(
-            "flex flex-col h-full",
+            "flex flex-col h-full min-h-0",
             "bg-white dark:bg-black",
             className
         )}>
-            {/* Header */}
-            <div className={cn(
-                "flex items-center gap-4 p-4 border-b",
-                "border-zinc-100 dark:border-white/10",
-                "bg-gradient-to-r from-primary/5 to-cyan-400/5"
-            )}>
-                {onBack && (
-                    <button
-                        type="button"
-                        aria-label="Volver al dashboard"
-                        onClick={onBack}
-                        className={cn(
-                            "p-2 rounded-lg transition-colors border",
-                            "bg-zinc-100 dark:bg-white/5 hover:bg-zinc-200 dark:hover:bg-white/10",
-                            "border-zinc-200 dark:border-white/10"
-                        )}
-                    >
-                        <ArrowLeft className="h-4 w-4 text-zinc-600 dark:text-white/70" />
-                    </button>
-                )}
-                <div className="flex items-center gap-3">
-                    <div className="relative">
-                        <div className="absolute inset-0 rounded-xl bg-primary/50 blur-md" />
-                        <div className="relative h-10 w-10 rounded-xl bg-gradient-to-br from-primary via-fuchsia-500 to-primary flex items-center justify-center text-white shadow-lg border border-white/20">
-                            {pet?.enabled ? <PetVisual settings={pet.config.settings} palette={pet.palette} state={pet.state}
-                                size={32} animate={pet.config.settings.animation === 'continuous' || pet.state !== 'idle'}
-                                onFailure={pet.reportRendererFailure} /> : <Sparkles className="h-5 w-5" />}
-                        </div>
-                    </div>
-                    <div>
-                        <h3 className="font-semibold text-zinc-900 dark:text-white text-sm">
-                            Pixy IA
-                        </h3>
-                        <p className="text-[10px] text-zinc-500 dark:text-white/40 uppercase tracking-wider">
-                            Asistente Inteligente
-                        </p>
-                    </div>
-                </div>
-            </div>
-
             {/* Messages */}
-            <div className="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-modern">
+            <div role="log" aria-label="Conversación de ayuda" aria-live="polite" className="flex-1 min-h-0 overflow-y-auto p-4 pt-12 space-y-4 scrollbar-modern">
                 {messages.length === 0 && !isLoading && (
                     <div className="h-full flex flex-col items-center justify-center text-center p-6">
-                        <div className="relative">
-                            <div className="absolute inset-0 rounded-2xl bg-primary/30 blur-xl" />
-                            <div className="relative h-16 w-16 rounded-2xl bg-gradient-to-br from-primary/20 to-fuchsia-500/20 border border-primary/30 flex items-center justify-center mb-4">
-                                <Bot className="h-8 w-8 text-primary" />
-                            </div>
-                        </div>
                         <h4 className="font-medium text-zinc-900 dark:text-white mb-2">
                             ¿En qué puedo ayudarte?
                         </h4>
@@ -161,30 +115,15 @@ export function AIChatPanel({ initialQuery, onBack, className }: AIChatPanelProp
                             message.role === "user" ? "justify-end" : "justify-start"
                         )}
                     >
-                        {message.role === "assistant" && (
-                            <div className="shrink-0 h-8 w-8 rounded-lg bg-gradient-to-br from-primary via-fuchsia-500 to-primary flex items-center justify-center text-white shadow-[0_0_15px_rgba(242,5,226,0.3)]">
-                                <Sparkles className="h-4 w-4" />
-                            </div>
-                        )}
-
                         <div className={cn(
                             "max-w-[80%] rounded-2xl px-4 py-3 text-sm leading-relaxed",
                             message.role === "user"
                                 ? "bg-zinc-100 dark:bg-white/5 text-zinc-700 dark:text-white/90 rounded-bl-md border border-zinc-200 dark:border-white/10 break-words whitespace-pre-wrap"
                                 : "bg-zinc-100 dark:bg-white/5 text-zinc-700 dark:text-white/90 rounded-bl-md border border-zinc-200 dark:border-white/10 break-words whitespace-pre-wrap"
                         )}>
+                            <span className="sr-only">{message.role === 'user' ? 'Tú: ' : 'Pixy: '}</span>
                             {message.content}
                         </div>
-
-                        {message.role === "user" && (
-                            <div className={cn(
-                                "shrink-0 h-8 w-8 rounded-lg flex items-center justify-center border",
-                                "bg-primary/10 dark:bg-gradient-to-br dark:from-cyan-400/20 dark:to-primary/20",
-                                "border-primary/20 dark:border-cyan-400/30"
-                            )}>
-                                <User className="h-4 w-4 text-primary dark:text-cyan-400" />
-                            </div>
-                        )}
                     </motion.div>
                 ))}
 
@@ -194,9 +133,6 @@ export function AIChatPanel({ initialQuery, onBack, className }: AIChatPanelProp
                         animate={{ opacity: 1 }}
                         className="flex gap-3"
                     >
-                        <div className="shrink-0 h-8 w-8 rounded-lg bg-gradient-to-br from-primary via-fuchsia-500 to-primary flex items-center justify-center text-white">
-                            <Sparkles className="h-4 w-4" />
-                        </div>
                         <div className={cn(
                             "rounded-2xl rounded-bl-md px-4 py-3 border",
                             "bg-zinc-100 dark:bg-white/5 border-zinc-200 dark:border-white/10"
@@ -220,10 +156,6 @@ export function AIChatPanel({ initialQuery, onBack, className }: AIChatPanelProp
                         animate={{ opacity: 1, y: 0 }}
                         className="flex gap-3"
                     >
-                        <PetAlertAvatar state="error" />
-                        <div className="shrink-0 h-8 w-8 rounded-lg bg-amber-100 dark:bg-amber-500/20 border border-amber-200 dark:border-amber-500/30 flex items-center justify-center">
-                            <AlertCircle className="h-4 w-4 text-amber-500" />
-                        </div>
                         <div className="bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 rounded-2xl rounded-bl-md px-4 py-3">
                             <p className="text-sm text-amber-700 dark:text-amber-200">{error}</p>
                             <p className="text-xs text-amber-600 dark:text-amber-200/60 mt-1">
@@ -237,28 +169,24 @@ export function AIChatPanel({ initialQuery, onBack, className }: AIChatPanelProp
             </div>
 
             {/* Input */}
-            <div className={cn(
-                "p-4 border-t",
-                "border-zinc-100 dark:border-white/10",
-                "bg-gradient-to-r from-primary/5 to-cyan-400/5"
-            )}>
+            <div className="shrink-0 px-4 pb-4 pt-2">
                 <form
                     onSubmit={(e) => { e.preventDefault(); handleSend(); }}
-                    className="flex gap-2"
+                    className={cn('relative flex items-end', pet?.enabled && 'min-h-24 pr-24 sm:min-h-28 sm:pr-32')}
                 >
+                    <div className="flex w-full min-w-0 items-center gap-2 rounded-2xl border border-zinc-200 bg-zinc-50 p-2 focus-within:ring-2 focus-within:ring-primary/50 dark:border-white/10 dark:bg-white/5">
                     <input
                         ref={inputRef}
                         type="text"
                         value={input}
                         onChange={(e) => setInput(e.target.value)}
                         placeholder="Escribe tu pregunta..."
+                        aria-label="Tu pregunta"
                         disabled={isLoading}
                         className={cn(
-                            "flex-1 px-4 py-3 rounded-xl border",
-                            "bg-zinc-50 dark:bg-white/5 text-zinc-900 dark:text-white",
-                            "border-zinc-200 dark:border-white/10",
+                            "min-w-0 flex-1 px-2 py-3 bg-transparent text-zinc-900 dark:text-white",
                             "placeholder:text-zinc-400 dark:placeholder:text-white/30",
-                            "focus:outline-none focus:ring-2 focus:ring-primary/50 focus:border-primary/50",
+                            "focus:outline-none",
                             "disabled:opacity-50"
                         )}
                     />
@@ -269,15 +197,19 @@ export function AIChatPanel({ initialQuery, onBack, className }: AIChatPanelProp
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
                         className={cn(
-                            "px-4 py-3 rounded-xl font-medium transition-all",
-                            "bg-gradient-to-r from-primary to-fuchsia-500 text-white",
-                            "shadow-[0_0_20px_rgba(242,5,226,0.3)]",
-                            "hover:shadow-[0_0_30px_rgba(242,5,226,0.5)]",
-                            "disabled:opacity-50 disabled:hover:shadow-none"
+                            "shrink-0 p-3 rounded-xl font-medium transition-colors bg-primary text-white",
+                            "hover:opacity-90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2",
+                            "disabled:opacity-50"
                         )}
                     >
                         <Send className="h-5 w-5" />
                     </motion.button>
+                    </div>
+                    {pet?.enabled && <div className="pointer-events-none absolute bottom-0 right-0" aria-hidden="true">
+                        <PetVisual settings={pet.config.settings} palette={pet.palette} state={pet.state}
+                            size={mobile ? 80 : 112} animate={pet.config.settings.animation === 'continuous' || pet.state !== 'idle'}
+                            onFailure={pet.reportRendererFailure} />
+                    </div>}
                 </form>
             </div>
         </div>

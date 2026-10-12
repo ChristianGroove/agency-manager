@@ -22,6 +22,31 @@ beforeEach(() => {
 afterEach(() => { cleanup.splice(0).forEach(stop => stop()); vi.restoreAllMocks(); vi.unstubAllGlobals() })
 
 describe('animation isolation and lifecycle', () => {
+    it('wakes from document pointer movement outside the robot and stops when movement settles', () => {
+        const clock = vi.spyOn(performance, 'now').mockReturnValue(100)
+        const draw = vi.fn()
+        cleanup.push(subscribe(draw, undefined, { pointerOnly: true }))
+        expect(frames.size).toBe(0)
+        document.dispatchEvent(new MouseEvent('pointermove', { clientX: 1500, clientY: 100 }))
+        expect(pointer.x).toBe(1500)
+        tick(100); tick(134)
+        expect(draw).toHaveBeenCalledTimes(2)
+        tick(901)
+        expect(frames.size).toBe(0)
+        expect(draw).toHaveBeenCalledTimes(2)
+        clock.mockReturnValue(1000)
+        document.dispatchEvent(new MouseEvent('pointermove', { clientX: 10, clientY: 20 }))
+        tick(1000)
+        expect(draw).toHaveBeenLastCalledWith(0)
+    })
+    it('does not redraw sleeping pointer subscribers while another head animates continuously', () => {
+        const pointerDraw = vi.fn()
+        const continuousDraw = vi.fn()
+        cleanup.push(subscribe(pointerDraw, undefined, { pointerOnly: true }), subscribe(continuousDraw))
+        tick(100); tick(134)
+        expect(pointerDraw).not.toHaveBeenCalled()
+        expect(continuousDraw).toHaveBeenCalledTimes(2)
+    })
     it('isolates a failed head and continues drawing healthy subscribers', () => {
         const error = new Error('Canvas failed')
         const failed = vi.fn(() => { throw error })

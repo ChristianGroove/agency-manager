@@ -3,19 +3,20 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { RobotHeadView } from './robot-head-view'
 import { DEFAULT_PET_SETTINGS } from './config'
 
-vi.mock('./vendor/robot-heads/src/RobotHead', () => ({ RobotHead: ({ paused, interactive }: { paused: boolean; interactive: boolean }) =>
-    <span data-testid="motion" data-paused={String(paused)} data-interactive={String(interactive)} />,
+vi.mock('./vendor/robot-heads/src/RobotHead', () => ({ RobotHead: ({ paused, interactive, pointerOnly }: { paused: boolean; interactive: boolean; pointerOnly: boolean }) =>
+    <span data-testid="motion" data-paused={String(paused)} data-interactive={String(interactive)} data-pointer-only={String(pointerOnly)} />,
 }))
 
 let reduced: boolean
 let hidden: boolean
+let fine: boolean
 const mediaObservers = new Set<() => void>()
 const props = { settings: { ...DEFAULT_PET_SETTINGS }, palette: { color: '#112233', trimColor: '#445566', screenColor: '#FFFFFF' }, size: 64 }
 beforeEach(() => {
-    vi.useFakeTimers(); reduced = false; hidden = false
+    vi.useFakeTimers(); reduced = false; hidden = false; fine = true
     vi.spyOn(document, 'hidden', 'get').mockImplementation(() => hidden)
-    vi.stubGlobal('matchMedia', () => ({
-        get matches() { return reduced },
+    vi.stubGlobal('matchMedia', (query: string) => ({
+        get matches() { return query === '(prefers-reduced-motion: reduce)' ? reduced : fine },
         addEventListener: (_: string, callback: () => void) => mediaObservers.add(callback),
         removeEventListener: (_: string, callback: () => void) => mediaObservers.delete(callback),
     }))
@@ -25,6 +26,21 @@ afterEach(() => { cleanup(); mediaObservers.clear(); vi.useRealTimers(); vi.rest
 describe('pet motion policy', () => {
     it('keeps idle static without requiring an animation loop', () => {
         render(<RobotHeadView {...props} state="idle" />)
+        expect(screen.getByTestId('motion')).toHaveAttribute('data-paused', 'true')
+    })
+    it('tracks a global fine pointer in contextual idle without hover or continuous animation', () => {
+        render(<RobotHeadView {...props} settings={{ ...props.settings, interactive: true }} state="idle" />)
+        expect(screen.getByTestId('motion')).toHaveAttribute('data-paused', 'false')
+        expect(screen.getByTestId('motion')).toHaveAttribute('data-pointer-only', 'true')
+        act(() => { reduced = true; mediaObservers.forEach(change => change()) })
+        expect(screen.getByTestId('motion')).toHaveAttribute('data-paused', 'true')
+    })
+    it('does not start cursor tracking on touch-only devices or when animation is disabled', () => {
+        fine = false
+        const view = render(<RobotHeadView {...props} settings={{ ...props.settings, interactive: true }} state="idle" />)
+        expect(screen.getByTestId('motion')).toHaveAttribute('data-paused', 'true')
+        act(() => { fine = true; mediaObservers.forEach(change => change()) })
+        view.rerender(<RobotHeadView {...props} settings={{ ...props.settings, interactive: true, animation: 'off' }} state="idle" />)
         expect(screen.getByTestId('motion')).toHaveAttribute('data-paused', 'true')
     })
     it('settles short contextual gestures while leaving the state visible', () => {
