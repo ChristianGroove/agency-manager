@@ -1,6 +1,7 @@
 "use server"
 
 import { AIEngine } from "@/modules/infrastructure/ai-engine/service"
+import { AIAccessError } from '@/modules/infrastructure/ai-engine/access-error'
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 import { getOrgSpaceCategory } from "@/modules/core/organizations/space-helpers"
 import { createClient } from "@/modules/core/database/supabase-server"
@@ -164,7 +165,8 @@ export async function askHelpAssistant(
             payload: {
                 question: sanitizedQuestion,
                 history: limitedHistory,
-                spaceCategory // PASS TO AI ENGINE
+                spaceCategory,
+                interfaceVersion: 'robot-pet-theme-v1' // Invalidate help cache after navigation/UI changes.
             }
         })
 
@@ -185,10 +187,10 @@ export async function askHelpAssistant(
         }
 
     } catch (error) {
-        console.error("Error en askHelpAssistant:", error)
+        console.error("Error en askHelpAssistant:", { name: error instanceof Error ? error.name : 'UnknownError' })
         return {
             success: false,
-            error: "Ocurrió un error inesperado. Por favor, intenta más tarde."
+            error: error instanceof AIAccessError ? error.message : "Ocurrió un error inesperado. Por favor, intenta más tarde."
         }
     }
 }

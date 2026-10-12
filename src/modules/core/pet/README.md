@@ -20,6 +20,7 @@ Only super admins can read the administration options or save configuration. The
 - Help uses one live robot beside the composer (112 px desktop / 80 px mobile), without a header or per-message avatars. Status/error text remains available even with the robot disabled. Alert reactions → optional static avatars in system broadcasts and critical-broadcast priority. Does not instrument every Sonner notification.
 - Pixy is matched by persisted organization ID; other tenants inherit primary/secondary from `BrandingProvider`, independently falling back for each missing or invalid HEX value.
 - Provider resets by organization, not by appearance changes; saving pet settings must not remount the dashboard or discard unrelated form state.
+- First module lifecycle: `BrandCenter` uses optional `usePetOperation` for working/success/error on save. One operation slot, stale completion protection, unmount cleanup, and bounded expiration keep feedback isolated from business logic. Critical broadcasts and active chat take priority. Reactions can be disabled independently.
 - Chat reuses `AssistantModal`, `AIChatPanel` and `askHelpAssistant`. Rendering never initiates an AI request.
 - UI placement is initially bottom right, with a transparent launcher without a tooltip and stacking below dialogs. Theme switching lives in a fixed-size sidebar button. The composer reserves room for its absolutely positioned robot so it cannot obstruct typing/sending. Further placement options are intentionally deferred.
 

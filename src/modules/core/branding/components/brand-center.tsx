@@ -10,6 +10,7 @@ import { Separator } from "@/components/ui/separator"
 import { Globe, LayoutTemplate, Palette, FileText, Lock } from "lucide-react"
 import { updateOrganizationBranding } from "../actions"; import { BrandingConfig } from "@/types/branding"
 import { toast } from "sonner"
+import { usePetOperation } from '@/modules/core/pet/use-pet-operation'
 
 import { IdentityTab } from "./identity-tab"
 import { PortalTab } from "./portal-tab"
@@ -27,15 +28,19 @@ interface BrandCenterProps {
 export function BrandCenter({ initialSettings, tierFeatures, variant = 'page', allowDirectBilling = true }: BrandCenterProps) {
     const [settings, setSettings] = useState<BrandingConfig>(initialSettings)
     const [saving, setSaving] = useState(false)
+    const beginPetOperation = usePetOperation()
 
     // Tier-based permissions
     const canCustomizePortal = tierFeatures.custom_colors === true || tierFeatures.remove_pixy_branding === true
     const canCustomizeDomain = tierFeatures.custom_domain === true
 
     const handleSave = async () => {
+        if (saving) return
+        const finishPetOperation = beginPetOperation()
         setSaving(true)
         try {
             await updateOrganizationBranding(settings)
+            finishPetOperation('happy')
             toast.success("Branding actualizado correctamente")
 
             // Force sidebar update
@@ -43,6 +48,7 @@ export function BrandCenter({ initialSettings, tierFeatures, variant = 'page', a
 
             // Optional: router.refresh() if needed, but actions usually handle it.
         } catch (error) {
+            finishPetOperation('error')
             toast.error("Error al actualizar branding")
         } finally {
             setSaving(false)

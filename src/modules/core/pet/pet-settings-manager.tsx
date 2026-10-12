@@ -131,7 +131,7 @@ export function PetSettingsManager() {
                         </div>
                     </div>
                     {(['antenna', 'floorShadow', 'interactive', 'alertReactions'] as const).map(key => <div key={key} className="flex items-center justify-between gap-4">
-                        <Label htmlFor={`pet-${key}`}>{key === 'antenna' ? 'Antena' : key === 'floorShadow' ? 'Sombra' : key === 'interactive' ? 'Seguir el cursor en toda la página' : 'Reaccionar a avisos críticos'}</Label>
+                        <Label htmlFor={`pet-${key}`}>{key === 'antenna' ? 'Antena' : key === 'floorShadow' ? 'Sombra' : key === 'interactive' ? 'Seguir el cursor en toda la página' : 'Reaccionar a avisos críticos y operaciones'}</Label>
                         <Switch id={`pet-${key}`} checked={settings[key]} onCheckedChange={value => update(key, value)} />
                     </div>)}
                     <p className="text-xs text-muted-foreground">La animación contextual es breve y mantiene reposo estático. La continua consume más recursos. Se respeta el movimiento reducido. El estado de prueba no se guarda.</p>

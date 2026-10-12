@@ -159,7 +159,7 @@ export function AIChatPanel({ initialQuery, className }: AIChatPanelProps) {
                         <div className="bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 rounded-2xl rounded-bl-md px-4 py-3">
                             <p className="text-sm text-amber-700 dark:text-amber-200">{error}</p>
                             <p className="text-xs text-amber-600 dark:text-amber-200/60 mt-1">
-                                Verifica credenciales IA en Ajustes.
+                                Si el problema continúa, revisa la disponibilidad de IA con tu administrador.
                             </p>
                         </div>
                     </motion.div>

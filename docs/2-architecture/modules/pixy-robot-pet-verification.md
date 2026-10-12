@@ -4,6 +4,8 @@ Fecha: 11 de octubre de 2026, America/Bogota. Rama: `pixyrobotpet`.
 
 Implementadas la base de la mascota, configuración super admin, herencia ADN y acceso al chat; también estados de ayuda y una integración inicial con errores del chat y avisos críticos. La extensión a otros módulos y a todos los toasts continúa como trabajo por fases.
 
+La primera fase operativa (guardado del ADN, gobernanza IA y selección de modelos para ayuda) se detalla en [pixy-robot-pet-phase-two.md](./pixy-robot-pet-phase-two.md). Ese registro actualiza la suspensión local descrita en las pruebas históricas de esta página; el usuario autorizó reactivar exclusivamente Pixy en la copia local.
+
 ## Ajuste de seguimiento y chat (revisión visual manual)
 
 Actualización posterior: eliminado `UnifiedFloatingFab` y retiradas del controlador las importaciones/montajes de Meta Control, `useAssistant` y el overlay del asistente antiguo. La ayuda conserva un botón directo si el pet no está disponible. Theme pasa a un toggle fijo en el borde del sidebar, reemplazando el emisor `pixy:open-trash` (sin receptores encontrados en `src`); no usa el componente que expande por hover. El pet no tiene atributo `title` ni tooltip. Los módulos internos viejos y la funcionalidad de papelera, si existe en otras entradas, no se eliminaron: requieren auditoría posterior.

@@ -5,6 +5,7 @@ import { AIEngineResponse } from './types';
 import { getTaskDefinition } from './tasks/registry';
 import { decrypt } from './encryption';
 import { getCachedResponse, setCachedResponse } from './cache';
+import { AIAccessError } from './access-error';
 
 function isDeployedRuntime() {
     return process.env.NODE_ENV === 'production' || !!process.env.VERCEL_ENV;
@@ -38,36 +39,36 @@ export const AIEngine = {
         // 1. Load Task Definition
         const taskDef = getTaskDefinition(taskType);
 
-        // 2. CHECK CACHE FIRST (Cost Optimization & Multi-tenant Isolation)
-        if (!bypassCache && taskType !== 'contract.generate_v1') {
-            const cached = await getCachedResponse(organizationId, taskType, payload);
-            if (cached) {
-                console.log(`[AIEngine] 📦 Cache HIT for ${organizationId}:${taskType}`);
-                return { success: true, data: cached, provider: 'cache' };
-            }
-        }
-
         // 2.5. AI GOVERNANCE & KILL-SWITCH CHECK
         let aiMode: 'saas' | 'byok' | 'disabled' = 'byok';
         let aiStatus: 'active' | 'suspended' = 'active';
 
         try {
-            const { data: orgData } = await supabaseAdmin
+            const { data: orgData, error: governanceError } = await supabaseAdmin
                 .from('organizations')
                 .select('status, rate_limit_config')
                 .eq('id', organizationId)
                 .maybeSingle();
+
+            if (governanceError || !orgData) throw new AIAccessError('unverified');
 
             const config = (orgData?.rate_limit_config as Record<string, any>) || {};
             aiMode = config.ai_mode || 'byok';
             aiStatus = config.ai_status || 'active';
 
             if (orgData?.status === 'suspended' || aiStatus === 'suspended' || aiMode === 'disabled') {
-                throw new Error('Los servicios de Inteligencia Artificial están desactivados para esta organización.');
+                throw new AIAccessError('disabled');
             }
-        } catch (govErr: any) {
-            if (govErr.message?.includes('desactivados')) throw govErr;
-            console.warn('[AIEngine] Governance check warning:', govErr);
+        } catch (govErr) {
+            if (govErr instanceof AIAccessError) throw govErr;
+            logAIEngineError('[AIEngine] Governance check failed:', govErr);
+            throw new AIAccessError('unverified');
+        }
+
+        // Cached content must respect the same organization kill-switch as provider calls.
+        if (!bypassCache && taskType !== 'contract.generate_v1') {
+            const cached = await getCachedResponse(organizationId, taskType, payload);
+            if (cached) return { success: true, data: cached, provider: 'cache' };
         }
 
         // Enforce Usage Limits for SaaS Managed Mode
@@ -209,7 +210,7 @@ export const AIEngine = {
                 if (!apiKey || apiKey.includes('●')) continue;
 
                 // Resolve Best Model for Tier & Provider
-                const model = resolveModelForTier(taskDef.tier, cred.provider_id);
+                const model = taskDef.modelOverrides?.[cred.provider_id] || resolveModelForTier(taskDef.tier, cred.provider_id);
 
                 console.log(`[AIEngine] 🚀 Executing ${taskType} (${taskDef.tier}) via ${cred.provider_id}:${model}`);
 

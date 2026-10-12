@@ -11,6 +11,8 @@ export interface AITaskDefinition {
   schema?: any; // Zod schema for validation (optional for now)
   jsonMode?: boolean;
   useKnowledgeBase?: boolean;
+  /** Task-scoped model selection, independently of legacy routing for other tasks. */
+  modelOverrides?: Record<string, string>;
   getKBQuery?: (payload: any) => string;
 }
 
@@ -304,6 +306,7 @@ Do NOT include quotes in the text value.`,
     id: 'help-assistant',
     description: 'Asistente de ayuda en español para resolver dudas sobre la plataforma Pixy.',
     tier: 'standard',
+    modelOverrides: { google: 'gemini-3.5-flash-lite', groq: 'openai/gpt-oss-20b' },
     temperature: 0.5,
     maxTokens: 500,
     jsonMode: false,
@@ -343,6 +346,12 @@ MÓDULOS GENERALES:
 - Facturación: Control de pagos y suscripciones.
 - Automatizaciones: Procesos automáticos (Workflows).
 - Configuración: Ajustes de perfil y organización.
+
+HECHOS VERIFICADOS DE LA INTERFAZ DEL DASHBOARD:
+- El tema claro/oscuro se alterna con el botón de sol/luna situado en el borde del sidebar (menú lateral). No se expande con hover y no requiere guardar.
+- El robot flotante abre directamente el chat de ayuda; si está desactivado, existe un botón simple de ayuda.
+- El antiguo menú flotante con Meta Control y Pixy Assistant fue retirado. No dirijas al usuario a ese menú.
+- No inventes rutas, botones o pasos como "Configuración > Preferencias" para cambiar el tema. Si un control no aparece en su vista, pide contexto antes de proponer otra ubicación.
 
 Si no conoces una respuesta específica tras revisar la información técnica, sugiere: "Te sugiero consultar la sección de configuración o hablar con soporte técnico."`;
     },
