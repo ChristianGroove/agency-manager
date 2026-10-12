@@ -1,4 +1,5 @@
 import type { HelpAccess, HelpArticle } from './schema'
+import { matchesHelpSurface } from './scope'
 
 const stopWords = new Set(['como', 'para', 'puedo', 'quiero', 'donde', 'tengo', 'esta', 'este', 'hacer', 'desde', 'porque', 'con', 'por', 'una', 'que', 'los', 'las', 'del', 'el', 'la', 'de', 'en', 'un', 'me', 'se', 'y', 'si', 'movil', 'aparece', 'funciona', 'entonces', 'eso', 'esto'])
 export function terms(text: string): string[] {
@@ -6,6 +7,7 @@ export function terms(text: string): string[] {
         .match(/[a-z0-9]+/g)?.filter(word => word.length > 1 && !stopWords.has(word)) ?? [])].slice(0, 32)
 }
 export function canReadArticle(article: HelpArticle, access: HelpAccess): boolean {
+    if (!matchesHelpSurface(article, access)) return false
     if (article.audience === 'platform-admin' && !access.platformAdmin) return false
     if (article.audience === 'tenant-admin' && !access.tenantAdmin && !access.platformAdmin) return false
     if (article.verticals.length && !article.verticals.includes(access.vertical)) return false

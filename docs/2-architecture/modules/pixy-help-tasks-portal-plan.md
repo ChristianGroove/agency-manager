@@ -1,6 +1,6 @@
 # Ayuda del portal Tasks: diseño y siguiente tramo
 
-Estado: preparado, NO implementado ni activado. Fecha: 2026-10-12. Reutiliza el robot/motor de ayuda; añade autorización y biblioteca por superficie. Ver primero [mantenimiento](../../3-development/operations/pixy-help-maintenance.md).
+Estado: contratos iniciales y resolver de acceso implementados; robot, endpoint conversacional, biblioteca e historial del portal todavía NO activados/implementados. Fecha: 2026-10-12. Ver [base técnica entregada](pixy-help-tasks-portal-foundation.md) y primero [mantenimiento](../../3-development/operations/pixy-help-maintenance.md).
 
 ## Objetivo y alcance inicial
 
@@ -21,7 +21,7 @@ Primera fase: procedimientos y orientación. Segunda fase opcional: contexto mí
 
 ## Contrato de aislamiento propuesto
 
-Superficies propuestas: `dashboard` y `portal.tasks`. Deben implementarse como enum/contrato cerrado; no son un campo ya soportado por el esquema actual.
+Superficies iniciales: `dashboard` y `portal.tasks`, implementadas como enum cerrado. Las guías sin superficie explícita pertenecen únicamente al dashboard. Perfiles iniciales del portal: `collaborator`, `qa`, `lead`, `support`; no representan autorización por registro ni reemplazan la matriz funcional pendiente de Gemini.
 
 1. Un adaptador dedicado resuelve identidad, organización y capacidades en servidor para cada llamada. El token sirve para validar acceso, nunca como prompt, ID de thread o campo de logs. Derivar tenant/staff de la consulta verificada; no aceptar esos IDs ni el alcance elegidos por el navegador.
 2. Comprobar colaborador activo, token vigente respecto del registro actual, PIN/cookie cuando aplica, disponibilidad del tenant, módulos y activación específica del asistente del portal. Respetar la gobernanza de IA del motor. Validar las reglas adicionales reales antes de implementarlas; no asumir una fecha de expiración que el portal actual no evalúa.

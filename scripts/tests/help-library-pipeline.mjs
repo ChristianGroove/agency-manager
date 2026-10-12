@@ -46,7 +46,26 @@ try {
     assert.notEqual(run('validate').status, 0, 'Path traversal must fail')
     writeDraft({ ...meta, routes: ['/nonexistent'] })
     assert.notEqual(run('validate').status, 0, 'Invented route must fail')
-    console.log('Publication pipeline: 7 assertions passed; only synthetic fixtures used.')
+    const portalPath = 'src/app/(public)/portal/tasks/[token]/page.tsx'
+    fs.mkdirSync(path.dirname(path.join(fixture, portalPath)), { recursive: true })
+    fs.writeFileSync(path.join(fixture, portalPath), 'export function TaskPortalGate() { return null }')
+    const portalMeta = { ...meta, id: 'tasks-portal.navigation', module: 'tasks', surface: 'portal.tasks', audience: 'portal-collaborator',
+        routes: ['/portal/tasks/[token]'], evidence: [{ path: portalPath, symbol: 'TaskPortalGate', claim: 'Existe el portal' }] }
+    writeDraft(portalMeta)
+    const approval = { ...review.articles[0], id: portalMeta.id, draft_sha256: sha(fs.readFileSync(filename, 'utf8')),
+        evidence_sha256: { [portalPath]: sha(fs.readFileSync(path.join(fixture, portalPath), 'utf8')) }, required_modules: ['module_tasks'], link_route: null }
+    fs.writeFileSync(reviewPath, JSON.stringify({ ...review, articles: [approval] }))
+    assert.notEqual(run('publish', reviewPath).status, 0, 'Portal publication without profiles must fail')
+    assert.equal(fs.readFileSync(output, 'utf8'), artifact, 'Rejected portal article must preserve old corpus')
+    fs.writeFileSync(reviewPath, JSON.stringify({ ...review, articles: [{ ...approval, portal_profiles: ['collaborator'] }] }))
+    const portalResult = run('publish', reviewPath)
+    assert.equal(portalResult.status, 0, portalResult.stderr)
+    const portalArticle = JSON.parse(fs.readFileSync(output, 'utf8')).articles[0]
+    assert.equal(portalArticle.surface, 'portal.tasks')
+    assert.deepEqual(portalArticle.portal_profiles, ['collaborator'])
+    writeDraft({ ...portalMeta, routes: ['/portal/tasks/actual-token'] })
+    assert.notEqual(run('validate').status, 0, 'Concrete token routes must not be published')
+    console.log('Publication pipeline: dashboard and portal assertions passed; only synthetic fixtures used.')
 } finally {
     const resolved = fs.realpathSync(fixture)
     if (!resolved.startsWith(fs.realpathSync(parent) + path.sep)) throw new Error('Fixture cleanup outside workspace')

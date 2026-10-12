@@ -8,6 +8,7 @@ import { knownPermissions, type HelpAccess, type HelpArticle } from './schema'
 import type { PermissionString } from '@/modules/core/iam/actions/permissions'
 
 export async function resolveHelpAccess(org: string, userId: string, articles: HelpArticle[], route?: string): Promise<HelpAccess> {
+    articles = articles.filter(article => !article.surface || article.surface === 'dashboard')
     const client = await createClient()
     const [platformAdmin, modules, vertical, membership] = await Promise.all([
         isSuperAdmin(userId), getActiveModules(org), getOrgSpaceCategory(org),
@@ -21,5 +22,5 @@ export async function resolveHelpAccess(org: string, userId: string, articles: H
         ? (await Promise.all(required.map(async permission => await hasPermission(permission as PermissionString) ? permission : null))).filter((p): p is string => p !== null)
         : []
     const allowedRoutes = new Set(articles.filter(a => a.audience !== 'platform-admin' || platformAdmin).flatMap(a => a.routes))
-    return { platformAdmin, tenantAdmin, modules, permissions, vertical, route: route && allowedRoutes.has(route) ? route : null }
+    return { platformAdmin, tenantAdmin, modules, permissions, vertical, route: route && allowedRoutes.has(route) ? route : null, surface: 'dashboard' }
 }

@@ -6,7 +6,8 @@ Estado vigente: 2026-10-12, rama `pixyrobotpet`. Punto de entrada para cualquier
 
 - Dashboard: robot integrado con branding, hibernación, estados de ayuda y algunas operaciones/alertas; chat con Markdown seguro, historial privado, selector de conversaciones y navegador de preguntas a la derecha.
 - Ayuda V2: 21 guías publicadas. Evaluación offline: 56/56 casos de respuesta recuperan una guía esperada; otros 4 casos de aclaración y 5 de abstención requieren evaluación de comportamiento. No equivale a 100% de exactitud de la IA.
-- Piloto activado únicamente en el tenant Pixy de la base local. Portales: aún sin robot de ayuda ni sesión/historial de ayuda propios. Su diseño está en [el plan de Tasks](../../2-architecture/modules/pixy-help-tasks-portal-plan.md).
+- Piloto activado únicamente en el tenant Pixy de la base local. Portales: aún sin robot/chat ni historial de ayuda activos. Su diseño está en [el plan de Tasks](../../2-architecture/modules/pixy-help-tasks-portal-plan.md).
+- Base Tasks entregada después del cierre: [contratos por superficie y resolver de acceso](../../2-architecture/modules/pixy-help-tasks-portal-foundation.md). La validación interna ya existe, pero no hay endpoint conversacional/UI/historial del portal activo. Sus flags independientes permanecen apagados.
 - No hay consultas a datos vivos de negocio, acciones ejecutables, streaming, embeddings para esta biblioteca, resumen automático ni límites distribuidos. El bot explica procedimientos; no opera el sistema.
 
 ## Separación de responsabilidades
@@ -76,6 +77,7 @@ El publicador valida antes de reemplazar el corpus y preserva el anterior si fal
 |---|---|
 | `PIXY_HELP_V2_ENABLED=true` + `PIXY_HELP_V2_TENANTS=<UUIDs>` | V2 solo en tenants listados. Por defecto apagado; `*` amplía explícitamente a todos y no se usa en este piloto. |
 | `PIXY_HELP_DIAGNOSTICS_ENABLED=true` | Metadatos `[PixyHelp]` en logs del servidor. Independiente del robot/V2. No es un panel de métricas ni una estimación de tokens/coste. |
+| `PIXY_HELP_TASKS_PORTAL_ENABLED=true` + `PIXY_HELP_TASKS_PORTAL_TENANTS=<UUIDs>` | Base de acceso del portal, independiente del dashboard y apagada localmente. Solo targeting explícito; `*` no habilita. No monta un chat por sí misma. |
 | `platform_settings.pet_config` | Apariencia, audiencia y activación de mascota; independiente de ayuda V2. Gestionado en super admin. |
 
 Entorno de este tramo:

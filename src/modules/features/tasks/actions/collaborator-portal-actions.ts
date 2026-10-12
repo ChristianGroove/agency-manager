@@ -7,6 +7,7 @@ import { normalizeTask, parseTaskChecklist, isStaffLeadOrPmRole, inferTaskRole, 
 import { calculateNextRecurrence } from "../utils/recurrence-utils";
 import { generateNextTicketCode } from "./task-actions";
 import { isPortalSessionUnlocked } from "@/modules/features/portal-security/utils/session-cookie";
+import { resolveTaskPortalRoleContext } from '../services/portal-role-context';
 
 /**
  * Safely revalidate platform operations view from portal actions
@@ -440,36 +441,8 @@ export const getCollaboratorPortalData = cache(async (token: string): Promise<Co
   }
 
   // 4. Determine role permissions
-  const roleLower = (staff.role || "").toLowerCase();
-  const hasLeadKeywords = isStaffLeadOrPmRole(staff.role);
-
-  // Also check if this collaborator is designated lead of any workspace or project
-  const { data: leadWorkspaces } = await supabaseAdmin
-    .from("task_workspaces")
-    .select("id")
-    .eq("organization_id", staff.organization_id)
-    .eq("lead_staff_id", staff.id)
-    .limit(1);
-
-  const { data: leadProjects } = await supabaseAdmin
-    .from("task_projects")
-    .select("id")
-    .eq("organization_id", staff.organization_id)
-    .eq("lead_staff_id", staff.id)
-    .limit(1);
-
-  const isLeadOrPm = Boolean(
-    hasLeadKeywords ||
-    (leadWorkspaces && leadWorkspaces.length > 0) ||
-    (leadProjects && leadProjects.length > 0)
-  );
-
-  const isQa =
-    roleLower.includes("qa") ||
-    roleLower.includes("tester") ||
-    roleLower.includes("calidad") ||
-    roleLower.includes("revisor") ||
-    roleLower.includes("pruebas");
+  const roleContext = await resolveTaskPortalRoleContext(staff);
+  const { isLeadOrPm, isQa, leadWorkspaces } = roleContext;
 
   // 4. Resolve Workspace Access Control & Fetch Workspaces
   const hasGlobalAccess = staff.has_global_workspace_access !== false;
@@ -507,9 +480,8 @@ export const getCollaboratorPortalData = cache(async (token: string): Promise<Co
   const allowedWorkspaceIds = new Set(workspaces.map((w) => w.id));
 
   // Determine if this collaborator belongs to the parallel support team
-  const staffTaskRole = staff.task_role || inferTaskRole(staff.role);
-  const isParallelSupport = staffTaskRole === "support" && !isLeadOrPm;
-  const portalMode: 'operations' | 'support' = isParallelSupport ? "support" : "operations";
+  const portalMode = roleContext.portalMode;
+  const isParallelSupport = portalMode === 'support';
 
   // 5. Fetch Projects (scoped to allowed workspaces if not global)
   const { data: projectsData } = await supabaseAdmin
@@ -904,10 +876,7 @@ export const getCollaboratorPortalData = cache(async (token: string): Promise<Co
 
   const activeSprint = sprints.find((s) => s.status === "active") || null;
 
-  const canBulkDeleteTasks =
-    staff.can_bulk_delete_tasks !== null && staff.can_bulk_delete_tasks !== undefined
-      ? Boolean(staff.can_bulk_delete_tasks)
-      : isLeadOrPm;
+  const canBulkDeleteTasks = roleContext.canBulkDeleteTasks;
 
   return {
     isLocked: false,

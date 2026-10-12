@@ -30,7 +30,7 @@ function parseDraft(filename) {
     }
     for (const route of meta.routes) {
         const parts = route.slice(1).split('/').filter(Boolean)
-        let directories = [path.join(root, 'src/app/(dashboard)')]
+        let directories = [path.join(root, meta.surface === 'portal.tasks' ? 'src/app/(public)' : 'src/app/(dashboard)')]
         for (const part of parts) directories = directories.flatMap(dir => fs.existsSync(path.join(dir, part)) ? [path.join(dir, part)] : [])
         if (!directories.some(dir => fs.existsSync(path.join(dir, 'page.tsx')) || fs.existsSync(path.join(dir, 'page.ts')))) throw new Error(`Ruta sin página comprobable: ${route}`)
     }
@@ -88,8 +88,9 @@ try {
                 if (approval.evidence_sha256[evidence.path] !== sha(safeRead(evidence.path))) throw new Error(`Evidencia no revisada o modificada: ${evidence.path}`)
             }
             if (approval.link_route && (!draft.meta.routes.includes(approval.link_route) || approval.link_route.includes('['))) throw new Error('Enlace no revisado o dinámico')
-            const { id, title, module, audience, routes, keywords } = draft.meta
+            const { id, title, module, audience, routes, keywords, surface } = draft.meta
             return { id, title, module, audience, routes, keywords, content: draft.content,
+                ...(surface ? { surface } : {}), ...(approval.portal_profiles ? { portal_profiles: approval.portal_profiles } : {}),
                 required_modules: approval.required_modules, required_permissions: approval.required_permissions,
                 verticals: approval.verticals, link_route: approval.link_route, revision: draft.hash }
         })
