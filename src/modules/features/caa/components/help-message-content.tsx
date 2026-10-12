@@ -1,10 +1,11 @@
 "use client"
 
 import Markdown from 'react-markdown'
+import { publicHelpText } from '../library/public-language'
 
 /** Hide the legacy automatic footer without rewriting stored conversations. */
 export function cleanHelpMessage(text: string): string {
-    return text.replace(/\n{2,}Guías consultadas:[^\n]*(?:\n)?$/u, '').trim()
+    return publicHelpText(text.replace(/\n{2,}Guías consultadas:[^\n]*(?:\n)?$/u, '').trim())
 }
 
 export function HelpMessageContent({ text }: { text: string }) {

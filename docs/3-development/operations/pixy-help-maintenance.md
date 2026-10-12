@@ -12,6 +12,8 @@ Estado vigente: 2026-10-12, rama `pixyrobotpet`. Punto de entrada para cualquier
 
 ## Separación de responsabilidades
 
+Lenguaje público de acceso: los cuerpos destinados al usuario deben decir «autorización para eliminar tareas en grupo», «acceso a costos», etc., sin códigos IAM, `can_*`, claves `module_*` ni capacidades internas. Las claves técnicas se conservan en metadatos de revisión/filtros y notas internas; no se eliminan ni se traducen para autorizar. `library/public-language.ts` traduce los identificadores conocidos al preparar el prompt, responder/persistir y cargar/mostrar mensajes anteriores. Conserva condiciones y negaciones; no declara permisos concedidos. El renderer protege respuestas antiguas sin reescribir la base. Es una barrera de presentación con patrones acotados, no una auditoría de autorización ni un detector universal de secretos. Mantener pruebas cuando se añadan nuevas familias de identificadores.
+
 | Recurso | Responsable y regla |
 |---|---|
 | `docs/1-product/help-library/drafts/` | Gemini: lectura y contraste de fuentes, artículos, inventario, preguntas, gaps, handoff y propuesta de revisión. No modifica runtime ni publica. |
@@ -102,6 +104,6 @@ Apagar V2 restaura el camino legacy, no elimina historial ni configuración del 
 
 ## Cierre y siguiente intervención
 
-Actualización Tasks: ver [integración, activación y mantenimiento del portal](../../2-architecture/modules/pixy-help-tasks-portal-integration.md). Corpus actual: 39 artículos con superficies aisladas. Portal en piloto local de Movilservicios; dashboard V2 en Pixy. El snapshot de aceptación es `reviews/tasks-portal-reviewed-20261012.json`. La siguiente revisión editorial debe ser un snapshot nuevo y completo, conservando los filtros de capacidades; no refrescar hashes con el importador histórico. La recuperación de Tasks tiene casos pendientes identificados en su reporte, independientes de la regresión del dashboard.
+Actualización Tasks: ver [integración, activación y mantenimiento del portal](../../2-architecture/modules/pixy-help-tasks-portal-integration.md). Corpus actual: 39 artículos con superficies aisladas. Portal en piloto local de Movilservicios; dashboard V2 en Pixy y Movilservicios. El snapshot vigente es `reviews/public-language-reviewed-20261012.json`; sucede al snapshot Tasks y mantiene los mismos artículos/filtros con reverificación técnica del diff de historial. La siguiente revisión editorial debe ser un snapshot nuevo y completo, conservando los filtros de capacidades; no refrescar hashes con el importador histórico. La recuperación de Tasks tiene casos pendientes identificados en su reporte, independientes de la regresión del dashboard.
 
 Ver [cierre del tramo](../../1-product/help-library/reviews/dashboard-closeout-20261012.md) y [plan Tasks](../../2-architecture/modules/pixy-help-tasks-portal-plan.md). Siguiente entrega: biblioteca y matriz de capacidades del portal a cargo de Gemini; sesión/acceso, contratos por superficie, UI/historial y pruebas a cargo táctico. El estado «preparado» no implica portal activo ni autorización ya implementada.

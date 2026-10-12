@@ -12,6 +12,7 @@ import { boundedHistory, canReadArticle, retrieveHelp } from '../library/retriev
 import { selectAuthorizedArticles } from '../library/selection'
 import { HelpDiagnostics } from '../library/diagnostics'
 import { casualHelpReply, naturalizeHelpUncertainty } from '../library/response-policy'
+import { publicHelpText } from '../library/public-language'
 
 export interface HelpChatMessage {
     role: "user" | "assistant"
@@ -229,7 +230,7 @@ async function processHelpQuestion(
                 question: sanitizedQuestion,
                 history: limitedHistory,
                 spaceCategory,
-                interfaceVersion: 'robot-pet-theme-v2-natural-help' // Invalidate legacy replies after the tone change.
+                interfaceVersion: 'robot-pet-public-access-language-v3' // Invalidate legacy replies containing internal access identifiers.
             }
         }))
 
@@ -317,6 +318,7 @@ async function askAndPersistHelp(
     }
     trace.historyMessages = boundedHistory(context).length
     const response = await processHelpQuestion(question, context, currentRoute, trace)
+    if (response.success && typeof response.message === 'string') response.message = publicHelpText(response.message)
     // Failed requests remain as an unanswered question; technical errors are not persisted as AI answers.
     if (activeId && response.success && typeof response.message === 'string') {
         trace.phase = 'answer_storage'

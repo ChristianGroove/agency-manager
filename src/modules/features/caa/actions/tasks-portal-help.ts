@@ -14,6 +14,7 @@ import { DEFAULT_PET_SETTINGS, type DashboardPetConfig } from '@/modules/core/pe
 import { readPetSettings } from '@/modules/core/pet/schema'
 import type { HelpChatResponse } from './ask-help-assistant'
 import type { HelpThread, StoredHelpMessage } from './help-history'
+import { publicHelpText } from '../library/public-language'
 
 const inputSchema = z.object({ token: z.string().min(16).max(200), question: z.string().trim().min(3).max(500),
     requestId: z.string().uuid(), threadId: z.string().uuid().optional() }).strict()
@@ -78,7 +79,7 @@ export async function askTasksPortalHelp(input: unknown): Promise<HelpChatRespon
         if (turn.status === 'duplicate' && turn.message && turn.thread_id) {
             const allowed = new Set(authorized.map(article => article.id))
             response = { success: true, threadId: turn.thread_id, message: (turn.article_ids || []).every(id => allowed.has(id))
-                ? turn.message : 'Este mensaje corresponde a una función que ya no está disponible con tu acceso actual.' }
+                ? publicHelpText(turn.message) : 'Este mensaje corresponde a una función que ya no está disponible con tu acceso actual.' }
             return response
         }
         if (turn.status !== 'reserved' || !turn.thread_id) {
@@ -124,6 +125,7 @@ export async function askTasksPortalHelp(input: unknown): Promise<HelpChatRespon
             if (!result.success || typeof result.data !== 'string' || !result.data.trim() || result.data.length > 12000) return response
             answer = naturalizeHelpUncertainty(result.data)
         }
+        answer = publicHelpText(answer)
         trace.articleIds = articles.map(article => article.id)
         // Recheck current token/tenant/capabilities before returning or saving a model answer.
         const current = await resolveTasksPortalHelpSession(data.token)

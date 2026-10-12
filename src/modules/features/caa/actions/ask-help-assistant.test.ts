@@ -62,6 +62,13 @@ function diagnostic() {
 }
 
 describe('help conversations through the server action', () => {
+    it.each([true, false])('does not return or persist internal permission keys with V2 enabled=%s', async enabled => {
+        mocks.enabled = enabled
+        mocks.execute.mockResolvedValue({ success: true, data: 'No tienes el permiso `can_bulk_delete_tasks`.' })
+        const response = await askHelpAssistant('Cambiar tema oscuro')
+        expect(response.message).toBe('No tienes la autorización para eliminar tareas en grupo.')
+        expect(mocks.inserted.at(-1)?.value.content).toBe(response.message)
+    })
     it('answers a first question and persists it without adding diagnostics to the response', async () => {
         const response = await askHelpAssistant('¿Cómo cambio el tema oscuro?')
         expect(response).toMatchObject({ success: true, message: '**Respuesta verificada**', threadId })

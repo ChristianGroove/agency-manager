@@ -36,6 +36,15 @@ it('persists through server RPCs, scopes the generation and excludes portal cred
     expect(JSON.stringify(payload)).not.toMatch(new RegExp(`${token}|${staffId}`))
     expect(mocks.rpc.mock.calls.at(-1)?.[1]).toMatchObject({ p_answer: result.message, p_articles: [article.id] })
 })
+
+it('translates technical access keys before persistence and when returning old duplicate answers', async () => {
+    mocks.execute.mockResolvedValue({ success: true, data: 'Si tienes el permiso `can_bulk_delete_tasks`.' })
+    const result = await askTasksPortalHelp(input)
+    expect(result.message).toBe('Si tienes la autorización para eliminar tareas en grupo.')
+    expect(mocks.rpc.mock.calls.at(-1)?.[1].p_answer).toBe(result.message)
+    mocks.rpc.mockResolvedValue({ error: null, data: { status: 'duplicate', thread_id: threadId, message: 'Requiere can_bulk_delete_tasks.', article_ids: [article.id] } })
+    expect((await askTasksPortalHelp(input)).message).not.toContain('can_bulk_delete_tasks')
+})
 it.each([{ ...input, tenantId }, { ...input, surface: 'dashboard' }, { ...input, history: [] }, { ...input, question: 'x' }])('rejects browser scope/history injection before any access', async value => {
     expect((await askTasksPortalHelp(value)).success).toBe(false)
     expect(mocks.session).not.toHaveBeenCalled(); expect(mocks.rpc).not.toHaveBeenCalled()

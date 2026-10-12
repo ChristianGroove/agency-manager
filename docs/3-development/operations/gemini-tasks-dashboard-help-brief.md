@@ -23,6 +23,8 @@ Audita las funciones expuestas: workspaces/proyectos, tareas/estados/subtareas/d
 
 No equipares `can_bulk_delete_tasks` del colaborador con una clave IAM canónica. Verifica quién puede borrar masivamente desde dashboard y registra discrepancias de backend sin corregir código. Un botón visible no demuestra autorización. Diferencia gestores del dashboard, PM/QA del portal y colaboradores externos.
 
+En el cuerpo público usa requisitos en lenguaje normal («si tienes autorización para eliminar tareas en grupo»). Reserva identificadores de permisos, módulos, flags, capacidades, tablas y campos internos para frontmatter, propuesta de filtros o notas de verificación; no deben aparecer en pasos, mensajes de error ni respuestas de ejemplo. Conserva las restricciones reales y no afirmes que un usuario tiene autorización por poder consultar una guía. Audita también la afirmación de la guía antigua que atribuye el borrado masivo a configuración IAM: no convertir un flag de colaborador en permiso IAM del dashboard.
+
 ## Entregables
 
 1. `inventory.json`: funciones y controles realmente expuestos, fuentes/símbolos, estado y condiciones.

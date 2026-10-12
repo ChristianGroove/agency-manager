@@ -4,7 +4,7 @@ Fecha: 2026-10-12. Rama: `pixyrobotpet`. Esta entrega sucede a la [base técnica
 
 ## Estado y activación
 
-Biblioteca compilada: 39 artículos, 21 del dashboard y 18 exclusivos de `portal.tasks`. Gemini realizó la revisión editorial `source-only`; Codex adaptó formato, acceso y transporte. Los originales permanecen en `docs/1-product/help-library/portal-preparation/tasks/`. Las copias publicables están en `drafts/articles/`; snapshot completo: `reviews/tasks-portal-reviewed-20261012.json`.
+Biblioteca compilada: 39 artículos, 21 del dashboard y 18 exclusivos de `portal.tasks`. Gemini realizó la revisión editorial `source-only`; Codex adaptó formato, acceso y transporte. Los originales permanecen en `docs/1-product/help-library/portal-preparation/tasks/`. Las copias publicables están en `drafts/articles/`; snapshot completo vigente: `reviews/public-language-reviewed-20261012.json`, sucesor del snapshot Tasks con los mismos artículos/filtros y reverificación del pequeño diff de presentación del historial.
 
 Piloto local: Movilservicios (`91aa45c4-a7c4-4af6-96df-5f0fb1a35af7`), activo, con Tasks y 13 colaboradores activos con portal. El piloto V2 del dashboard tiene targeting independiente a Pixy y Movilservicios. Movilservicios dashboard se añadió después de comprobar consultas en modo legacy; no se abren las guías del portal al dashboard. El helper local ignorado `tmp/start-pet-isolated.cjs`, ejecutado desde el checkout raíz, usa:
 

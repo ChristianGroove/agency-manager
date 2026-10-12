@@ -3,6 +3,7 @@
 import { z } from 'zod'
 import { createClient } from '@/modules/core/database/supabase-server'
 import { getCurrentOrganizationId } from '@/modules/core/organizations/organization-actions'
+import { publicHelpHistory } from '../library/public-language'
 
 export interface HelpThread { id: string; title: string; created_at: string }
 export interface StoredHelpMessage { id: string; role: 'user' | 'assistant'; content: string; created_at: string }
@@ -32,5 +33,5 @@ export async function loadHelpThread(id: string): Promise<{ messages: StoredHelp
     if (threadError || !thread) return { messages: [], error: 'No se pudo abrir esta conversación.' }
     const { data, error } = await client.from('help_chat_messages').select('id,role,content,created_at')
         .eq('thread_id', id).order('created_at').order('id').limit(200)
-    return error ? { messages: [], error: 'No se pudieron cargar los mensajes.' } : { messages: (data ?? []) as StoredHelpMessage[] }
+    return error ? { messages: [], error: 'No se pudieron cargar los mensajes.' } : { messages: publicHelpHistory((data ?? []) as StoredHelpMessage[]) }
 }

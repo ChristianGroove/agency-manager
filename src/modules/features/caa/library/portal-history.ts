@@ -3,6 +3,7 @@ import { supabaseAdmin } from '@/modules/core/database/supabase-admin'
 import type { StoredHelpMessage } from '../actions/help-history'
 import type { TasksPortalHelpSession } from './tasks-portal-session'
 import type { HelpArticle } from './schema'
+import { publicHelpHistory } from './public-language'
 
 export const portalHistoryCutoff = () => new Date(Date.now() - 30 * 86400000).toISOString()
 export async function readPortalHelpMessages(session: TasksPortalHelpSession, id: string, recent = false): Promise<StoredHelpMessage[] | null> {
@@ -17,6 +18,6 @@ export async function readPortalHelpMessages(session: TasksPortalHelpSession, id
 
 export function restrictPortalHistory(messages: (StoredHelpMessage & { article_ids?: string[] })[], authorized: HelpArticle[]): StoredHelpMessage[] {
     const allowed = new Set(authorized.map(article => article.id))
-    return messages.map(message => message.role === 'assistant' && (message.article_ids || []).some(id => !allowed.has(id))
-        ? { ...message, content: 'Este mensaje corresponde a una función que ya no está disponible con tu acceso actual.' } : message)
+    return publicHelpHistory(messages.map(message => message.role === 'assistant' && (message.article_ids || []).some(id => !allowed.has(id))
+        ? { ...message, content: 'Este mensaje corresponde a una función que ya no está disponible con tu acceso actual.' } : message))
 }
