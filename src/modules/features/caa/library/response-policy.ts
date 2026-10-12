@@ -2,7 +2,7 @@
 export function casualHelpReply(question: string): string | null {
     const normalized = question.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
         .replace(/[¿?¡!.,]/g, '').replace(/\s+/g, ' ').trim()
-    const jokeRequest = /^(?:sabes|conoces|tienes|cuentame|cuenta|dime|hazme|cuentanos)(?: (?:un|unos|algun|algunos|mas|buenos))? chistes?(?: (?:buenos|cortos))?$/.test(normalized)
+    const jokeRequest = /^(?:sabes|conoces|tienes|cuentame|cuenta|dime|hazme|cuentanos)(?: (?:un|unos|algun|algunos|mas|buenos))? chistes?(?: (?:buenos|cortos|de programadores))?$/.test(normalized)
         || /^(?:puedes|podrias) (?:contar|contarme|decir|decirme)(?: (?:un|algun|algunos|unos))? chistes?$/.test(normalized)
     return jokeRequest ? 'Aquí me enfoco en ayudarte con Pixy; los chistes los dejamos para después.' : null
 }

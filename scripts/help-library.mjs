@@ -91,6 +91,7 @@ try {
             const { id, title, module, audience, routes, keywords, surface } = draft.meta
             return { id, title, module, audience, routes, keywords, content: draft.content,
                 ...(surface ? { surface } : {}), ...(approval.portal_profiles ? { portal_profiles: approval.portal_profiles } : {}),
+                ...(approval.required_portal_capabilities ? { required_portal_capabilities: approval.required_portal_capabilities } : {}),
                 required_modules: approval.required_modules, required_permissions: approval.required_permissions,
                 verticals: approval.verticals, link_route: approval.link_route, revision: draft.hash }
         })

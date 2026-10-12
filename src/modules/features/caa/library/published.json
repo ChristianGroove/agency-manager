@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "revision": "53af2a393ba3be9a251c17fa1961aa0fdfc1ca307f7059f5768b50b767fdb6b7",
+  "revision": "d8087e56463250941608b26de25018aa1d5de1e1270801276650446b2050c65b",
   "articles": [
     {
       "id": "automation.create-workflows",
@@ -600,6 +600,596 @@
       "verticals": [],
       "link_route": null,
       "revision": "fc455db409b9b197bf75688249f3f39d83ec49c64289b45b0f56a09c5abe76c4"
+    },
+    {
+      "id": "tasks-portal.access-and-pin",
+      "title": "Acceder al portal de tareas y configurar protección con código PIN",
+      "module": "tasks",
+      "audience": "portal-collaborator",
+      "routes": [
+        "/portal/tasks/[token]"
+      ],
+      "keywords": [
+        "portal tareas",
+        "enlace de acceso",
+        "codigo pin",
+        "desbloqueo",
+        "seguridad",
+        "sesion",
+        "token"
+      ],
+      "surface": "portal.tasks",
+      "content": "# Acceder al portal de tareas y configurar protección con código PIN\n\n## Propósito\nExplicar el procedimiento para ingresar al portal ágil de tareas de la empresa mediante tu enlace personal seguro y configurar un código PIN de 6 dígitos que proteja la visualización de tus proyectos y requerimientos frente a terceros.\n\n## Requisitos y perfiles\n- **Perfiles aplicables:** Todos los colaboradores con token de acceso activo (Desarrolladores, Diseñadores, Especialistas, QA, PMs y Soporte).\n- **Condición requerida:** Que tu registro en el equipo (`organization_staff`) esté marcado como activo y cuentes con el enlace web asignado.\n\n## Ubicación en pantalla\n- **Ruta web:** `/portal/tasks/[token]` (tu URL privada única).\n- **Menú de seguridad:** Haz clic sobre tu avatar en la esquina superior derecha del portal para desplegar las opciones de seguridad y PIN.\n\n## Procedimiento paso a paso\n\n### 1. Ingreso inicial mediante enlace directo\n1. Abre en tu navegador el enlace web privado entregado por el administrador o líder de proyecto.\n2. Si no tienes configurado un código PIN, el portal cargará de inmediato tu panel de tareas con los colores y logotipo de la empresa.\n3. Si ya tienes un PIN configurado, aparecerá automáticamente la **Pantalla de Bloqueo** solicitando tus 6 dígitos numéricos.\n\n### 2. Desbloquear el portal con tu PIN\n1. En el teclado numérico en pantalla (o utilizando el teclado físico de tu dispositivo), ingresa los 6 dígitos de tu clave.\n2. Si deseas mantener la sesión abierta en ese equipo por 30 días, marca la casilla **Recordar en este dispositivo**.\n3. El sistema verificará la clave y desbloqueará el acceso al tablero operativo.\n\n### 3. Configurar o cambiar tu código PIN por primera vez\n1. Una vez dentro del portal, haz clic sobre tu foto o iniciales en la esquina superior derecha.\n2. En el menú desplegable, selecciona **Seguridad y PIN**.\n3. Se abrirá la ventana modal de configuración:\n   - Si vas a crear un PIN nuevo: ingresa los 6 dígitos deseados y confírmalos en el segundo campo.\n   - Si vas a cambiar un PIN existente: introduce primero tu PIN actual y luego el nuevo PIN de 6 dígitos.\n4. Presiona **Guardar PIN**. La sesión quedará protegida y vinculada a tu navegador.\n\n### 4. Bloquear la sesión manualmente\n- Si te ausentas temporalmente de tu puesto de trabajo, abre el menú de tu avatar y presiona **Bloquear Pantalla**. El portal se sellará al instante requiriendo el PIN para volver a ver los datos.\n\n## Resultado esperado\nAcceso directo, seguro y protegido a tus entregables, impidiendo que personas no autorizadas con acceso a tu pantalla o historial puedan consultar información confidencial del proyecto.\n\n## Errores y límites conocidos\n- **Error \"Enlace Inválido o Expirado\":** Ocurre si el administrador desactivó tu usuario en la plataforma o si se generó un nuevo token de acceso para tu cuenta. Debes solicitar un nuevo enlace a tu líder de proyecto.\n- **PIN olvidado:** El portal no dispone de botón de recuperación por correo para el colaborador externo. Si olvidas tu PIN, debes contactar a tu Project Manager o Administrador para que realice un blanqueo de PIN desde la consola del sistema.\n- **Formato estricto:** El PIN debe contener exactamente 6 dígitos numéricos; no se permiten letras, símbolos ni longitudes distintas.",
+      "required_modules": [
+        "module_tasks"
+      ],
+      "required_permissions": [],
+      "verticals": [],
+      "link_route": null,
+      "revision": "353bfb120f2dccfb069b258b5ffa1dd4a0a463b6f62e133cabf9f9b5fc981a5c",
+      "portal_profiles": [
+        "collaborator",
+        "qa",
+        "lead",
+        "support"
+      ],
+      "required_portal_capabilities": []
+    },
+    {
+      "id": "tasks-portal.attachments-and-files",
+      "title": "Subir y consultar archivos adjuntos y enlaces en una tarea",
+      "module": "tasks",
+      "audience": "portal-collaborator",
+      "routes": [
+        "/portal/tasks/[token]"
+      ],
+      "keywords": [
+        "adjuntos",
+        "archivos",
+        "documentos",
+        "capturas",
+        "enlaces externos",
+        "figma",
+        "storage"
+      ],
+      "surface": "portal.tasks",
+      "content": "# Subir y consultar archivos adjuntos y enlaces en una tarea\n\n## Propósito\nIndicar cómo adjuntar documentación técnica, capturas de pantalla, prototipos de diseño o enlaces externos a un requerimiento técnico, permitiendo que todos los miembros asignados cuenten con los insumos necesarios para ejecutar su trabajo.\n\n## Requisitos y perfiles\n- **Perfiles aplicables:** Todos los colaboradores con acceso a la tarea (Desarrolladores, Diseñadores, QA, PMs y Soporte).\n- **Tipos de contenido admitidos:**\n  - Archivos locales (imágenes PNG/JPG/WebP, documentos PDF, hojas de cálculo, archivos comprimidos ZIP).\n  - Enlaces externos (URLs de Figma, repositorios GitHub, documentos de Google Drive o tableros externos).\n\n## Ubicación en pantalla\n- **Modal de Detalle de Tarea:** Pestaña o sección **Archivos y Enlaces** (icono de clip o documento).\n- **Dentro de la discusión:** También es posible adjuntar archivos individuales como complemento de un comentario específico.\n\n## Procedimiento paso a paso\n\n### 1. Subir un archivo desde tu dispositivo\n1. Abre el modal de detalle de la tarea haciendo clic sobre su tarjeta o fila.\n2. Navega a la sección **Archivos y Enlaces**.\n3. Haz clic en el botón **Subir Archivo** o arrastra el archivo directamente sobre la zona delimitada (*Dropzone*).\n4. El portal procesará la subida hacia el almacenamiento seguro de la plataforma (`task-attachments`).\n5. Una vez cargado, el archivo aparecerá en la galería de adjuntos mostrando su nombre original, tamaño en kilobytes y fecha de carga.\n\n### 2. Vincular un enlace externo\n1. En la misma sección de adjuntos, presiona el botón **Añadir Enlace**.\n2. En la ventana emergente:\n   - Ingresa el título descriptivo del recurso (por ejemplo, `Prototipo de Checkout en Figma`).\n   - Pega la dirección web completa (`URL`).\n3. Presiona **Guardar**. El enlace quedará fijado en la cabecera de la tarea para acceso rápido de todo el equipo.\n\n### 3. Descargar o consultar un adjunto existente\n- Haz clic sobre cualquier tarjeta de archivo para abrir la previsualización directa en una nueva pestaña o descargar el documento a tu equipo.\n- Las imágenes y capturas de pantalla cuentan con previsualización en miniatura directamente en el portal.\n\n## Resultado esperado\nCentralización de todos los activos, especificaciones y evidencias de prueba dentro del propio ticket, evitando pérdidas de información por canales externos de mensajería.\n\n## Errores y límites conocidos\n- **Límite de tamaño:** Los archivos que superen el límite de carga establecido por la organización (habitualmente 10 MB a 25 MB por archivo) serán rechazados con un mensaje de alerta.\n- **Tareas completadas:** Aunque una tarea esté en estado *Completada* (`done`), los colaboradores pueden seguir consultando y descargando los archivos adjuntos que se cargaron durante el desarrollo.",
+      "required_modules": [
+        "module_tasks"
+      ],
+      "required_permissions": [],
+      "verticals": [],
+      "link_route": null,
+      "revision": "d9654483ec004d4734fbebbb9ae7e3dadf6c66dc1c19f7ad3916d484d906941a",
+      "portal_profiles": [
+        "collaborator",
+        "qa",
+        "lead"
+      ],
+      "required_portal_capabilities": []
+    },
+    {
+      "id": "tasks-portal.bulk-actions",
+      "title": "Ejecutar acciones masivas y eliminación en lote de tareas",
+      "module": "tasks",
+      "audience": "portal-collaborator",
+      "routes": [
+        "/portal/tasks/[token]"
+      ],
+      "keywords": [
+        "acciones masivas",
+        "seleccion multiple",
+        "eliminacion en lote",
+        "bulk actions",
+        "barra flotante",
+        "permisos bulk"
+      ],
+      "surface": "portal.tasks",
+      "content": "# Ejecutar acciones masivas y eliminación en lote de tareas\n\n## Propósito\nExplicar el procedimiento para seleccionar múltiples requerimientos de forma simultánea en la vista de lista y ejecutar operaciones masivas de limpieza o depuración mediante la barra flotante de acciones en lote.\n\n## Requisitos y perfiles\n- **Quiénes pueden eliminar en lote:**\n  - Project Managers y Líderes Técnicos (`isLeadOrPm: true`).\n  - Colaboradores a quienes se les haya otorgado explícitamente el permiso `can_bulk_delete_tasks` en la configuración de personal de la empresa.\n- **Restricción:** Colaboradores estándar sin este permiso pueden seleccionar tareas para consulta agrupada, pero el botón de eliminación masiva no estará disponible en la barra flotante o será rechazado por el servidor.\n\n## Ubicación en pantalla\n- **Modo de vista:** Requiere activar la **Vista de Lista (Tabla)** en el extremo superior derecho.\n- **Barra flotante:** Aparece automáticamente en la parte inferior central de la pantalla tan pronto como se marca al menos una casilla de verificación en la tabla.\n\n## Procedimiento paso a paso\n\n### 1. Activar la vista de lista y seleccionar tareas\n1. En la barra de herramientas superior derecha, haz clic en el icono de **Vista de Lista** (icono de lista/tabla).\n2. En la primera columna de la tabla encontrarás casillas de verificación (*Checkboxes*):\n   - Marca la casilla de la cabecera si deseas seleccionar **todas las tareas de la página actual**.\n   - O marca individualmente las casillas correspondientes a las tareas específicas que deseas intervenir.\n3. Observarás que en la parte inferior de la ventana emerge la **Barra flotante de acciones masivas** indicando el número de ítems seleccionados (por ejemplo: `3 tareas seleccionadas`).\n\n### 2. Ejecutar la eliminación masiva\n1. En la barra flotante inferior, presiona el botón rojo **Eliminar Seleccionados** (icono de papelera).\n2. Se desplegará una ventana de advertencia y confirmación:  \n   *«¿Estás seguro de que deseas eliminar permanentemente las tareas seleccionadas? Esta acción no se puede deshacer».*\n3. Si entre las tareas seleccionadas existen actividades de tipo *Reunión*, el sistema advertirá que los eventos vinculados en Google Calendar también serán cancelados y removidos automáticamente.\n4. Presiona **Confirmar Eliminación**.\n5. Las tareas serán purgadas de la base de datos y desaparecerán de los tableros de inmediato.\n\n### 3. Cancelar la selección masiva\n- Para deseleccionar los elementos y ocultar la barra flotante, presiona el botón **Cancelar** en la barra inferior o desmarca la casilla general de la cabecera de la tabla.\n\n## Resultado esperado\nDepuración ágil de requerimientos duplicados, cancelados o pruebas operativas sin necesidad de abrir y eliminar cada ticket uno por uno.\n\n## Errores y límites conocidos\n- **Error \"No tienes permiso para eliminar tareas en masa\":** Aparece si un colaborador intenta invocar la eliminación sin contar con el permiso `can_bulk_delete_tasks` habilitado en su registro de personal.\n- **Discrepancia con eliminación individual:** Si cuentas con el permiso `can_bulk_delete_tasks` pero no eres Project Manager, podrás borrar tareas en lote mediante la barra flotante, pero no verás el botón de papelera individual dentro del modal de detalle de una sola tarea.",
+      "required_modules": [
+        "module_tasks"
+      ],
+      "required_permissions": [],
+      "verticals": [],
+      "link_route": null,
+      "revision": "a0a5db1c6eb106b82b2c57a2f98742ea27f4dc2e2b235b751c97ce9844179a1b",
+      "portal_profiles": [
+        "collaborator",
+        "qa",
+        "lead"
+      ],
+      "required_portal_capabilities": [
+        "bulk_delete"
+      ]
+    },
+    {
+      "id": "tasks-portal.comments-and-mentions",
+      "title": "Participar en discusiones, mencionar colaboradores y recibir notificaciones",
+      "module": "tasks",
+      "audience": "portal-collaborator",
+      "routes": [
+        "/portal/tasks/[token]"
+      ],
+      "keywords": [
+        "comentarios",
+        "discusion",
+        "menciones",
+        "notificaciones",
+        "campana",
+        "bitacora"
+      ],
+      "surface": "portal.tasks",
+      "content": "# Participar en discusiones, mencionar colaboradores y recibir notificaciones\n\n## Propósito\nExplicar cómo colaborar con el equipo mediante el hilo de discusión integrado en cada tarea, utilizar menciones (@) para captar la atención de compañeros específicos y revisar el centro de notificaciones (la campana) en la barra superior del portal.\n\n## Requisitos y perfiles\n- **Perfiles aplicables:** Todos los colaboradores con acceso a la tarea (Desarrolladores, Diseñadores, QA, PMs y Soporte en tickets consultados).\n- **Condición requerida:** Que la tarea pertenezca a la misma organización y workspace autorizado.\n\n## Ubicación en pantalla\n- **Hilo de discusión:** Sección inferior del modal de detalle de cualquier tarea o reunión.\n- **Campana de notificaciones:** Icono de campana situado en la esquina superior derecha del portal, junto al avatar de usuario.\n\n## Procedimiento paso a paso\n\n### 1. Escribir un comentario en una tarea\n1. Abre el modal de detalle de la tarea haciendo clic sobre su tarjeta o fila.\n2. Desplázate hasta la sección **Discusión / Comentarios**.\n3. En el campo de texto inferior, escribe tu mensaje o actualización sobre el entregable.\n4. Presiona el botón **Enviar** o utiliza el atajo de teclado correspondiente. El comentario se publicará al instante con tu nombre, avatar y fecha.\n\n### 2. Mencionar a un compañero de equipo (@)\n1. Mientras escribes en la caja de texto, digita el símbolo arroba (`@`).\n2. Aparecerá un menú contextual flotante con la lista de miembros de tu equipo.\n3. Continúa escribiendo el nombre o apellido del compañero y selecciona el contacto deseado de la lista (por ejemplo, `@Carlos`).\n4. Al publicar el comentario:\n   - El texto de la mención quedará resaltado en color distintivo.\n   - El compañero mencionado recibirá una notificación directa en su campana de avisos la próxima vez que abra su portal.\n\n### 3. Consultar y gestionar notificaciones en la campana\n1. Haz clic sobre el **icono de la campana** en la barra superior.\n2. Se desplegará el panel con las menciones y avisos recientes:\n   - Verás el autor del mensaje, el ticket relacionado (por ejemplo, `#TK-102`) y el fragmento del comentario.\n3. Haz clic sobre cualquier notificación para abrir directamente el ticket correspondiente y leer el contexto completo.\n\n## Tipos de mensajes en el hilo de discusión\nEn el feed cronológico observarás dos tipos de registros:\n1. **Comentarios de usuarios:** Mensajes redactados por ti o tus compañeros de equipo para coordinar especificaciones o resolver dudas.\n2. **Notas de auditoría del sistema:** Registros automáticos generados por la plataforma que dejan trazabilidad de eventos clave, tales como:\n   - Cambios de avance porcentual (`📈 Avance de tarea actualizado del 20% al 50%`).\n   - Imputación de horas de trabajo (`⏱️ Registro de trabajo: +3h`).\n   - Desbloqueo de tareas sucesoras (`Desbloqueo: El ticket predecesor #TK-101 fue completado`).\n\n## Errores y límites conocidos\n- **Aislamiento de soporte:** Los colaboradores del portal de soporte paralelo únicamente reciben notificaciones en la campana correspondientes a tickets de soporte que ellos mismos hayan creado o en los que hayan sido consultados formalmente.\n- **Filtro antispam:** Las notas de sistema generadas durante el pase de lista de reuniones no generan avisos en la campana de notificaciones para evitar saturar a los participantes.",
+      "required_modules": [
+        "module_tasks"
+      ],
+      "required_permissions": [],
+      "verticals": [],
+      "link_route": null,
+      "revision": "24d951e202b34d772c6f6a6089158020edd334c889918250fe592e6a0905f26e",
+      "portal_profiles": [
+        "collaborator",
+        "qa",
+        "lead"
+      ],
+      "required_portal_capabilities": []
+    },
+    {
+      "id": "tasks-portal.create-task-collaborator",
+      "title": "Proponer nuevos requerimientos como colaborador operativo (Política de Backlog)",
+      "module": "tasks",
+      "audience": "portal-collaborator",
+      "routes": [
+        "/portal/tasks/[token]"
+      ],
+      "keywords": [
+        "proponer tarea",
+        "nuevo requerimiento",
+        "crear tarea colaborador",
+        "backlog",
+        "politica de backlog",
+        "alcance"
+      ],
+      "surface": "portal.tasks",
+      "content": "# Proponer nuevos requerimientos como colaborador operativo (Política de Backlog)\n\n## Propósito\nGuiar a los colaboradores operativos (Desarrolladores, Diseñadores, Especialistas) sobre cómo registrar nuevas iniciativas, mejoras técnicas o descubrimientos surgidos durante el trabajo, comprendiendo la Política de Gobernanza de Backlog que evita alteraciones no planificadas en los compromisos del sprint actual.\n\n## Requisitos y perfiles\n- **Perfiles aplicables:** Colaboradores estándar sin atribuciones de liderazgo o Project Management.\n- **Principio de gobernanza:** Todo requerimiento creado por un colaborador operativo nace como una propuesta en el banco de ideas (**Backlog**), esperando la evaluación del Project Manager antes de poder ejecutarse formalmente.\n\n## Ubicación en pantalla\n- **Barra de herramientas superior:** Botón **+ Requerimiento** (icono de suma) situado a la izquierda de la barra de búsqueda y filtros.\n\n## Procedimiento paso a paso\n\n### 1. Abrir el formulario de propuesta\n1. En la parte superior de tu portal, presiona el botón **+ Requerimiento**.\n2. Se desplegará la ventana modal de creación de tareas.\n\n### 2. Diligenciar la información técnica\n1. **Proyecto / Workspace:** Selecciona el proyecto al que corresponde la iniciativa.\n2. **Título del requerimiento:** Escribe un resumen claro y conciso del entregable propuesto (por ejemplo, `Optimizar consultas de base de datos en reporte de ventas`).\n3. **Descripción:** Detalla el contexto técnico, los antecedentes, la justificación de por qué es necesario este cambio y la solución sugerida.\n4. **Prioridad sugerida:** Selecciona el nivel de urgencia estimado (*Baja*, *Media*, *Alta* o *Urgente*).\n5. **Subtareas sugeridas:** Puedes desglosar los pasos preliminares que consideres oportunos. *Nota:* Solo podrás asignártelas a ti mismo o dejarlas sin asignar.\n\n### 3. Guardar y enviar la propuesta\n1. Haz clic en **Crear Requerimiento**.\n2. El sistema generará el código identificador único (por ejemplo, `#TK-215`) y guardará el ticket en la plataforma.\n\n## Reglas automáticas aplicadas por el servidor (Política de Backlog)\nPara proteger el presupuesto y el alcance comprometido con los clientes, el servidor aplica de forma invisible las siguientes salvaguardas:\n1. **Estado forzado a Backlog:** La tarea se registrará obligatoriamente en estado `backlog`. No aparecerá en las columnas de ejecución inmediata hasta que el Project Manager la apruebe.\n2. **Horas estimadas en 0:** Las horas presupuestadas oficiales quedan fijadas en `0 h`. Solo el Project Manager puede autorizar horas contractuales o asignarlas al sprint.\n3. **Sin fecha límite contractual:** La fecha de entrega (`due_date`) se guarda como vacía (`null`) para evitar generar alertas falsas de vencimiento antes de que el requerimiento sea programado.\n4. **Sin imposición a terceros:** No puedes asignar la tarea ni sus subtareas a otros compañeros de equipo; queda asignada a ti o sin asignar.\n5. **Sin asignación de QA:** El revisor de calidad no se asigna en esta fase.\n\n## Resultado esperado\nCanalización ordenada de la innovación y propuestas técnicas del equipo sin desviar la atención ni los recursos del sprint activo.\n\n## Errores y límites conocidos\n- **No puedo iniciar la tarea de inmediato:** Si intentas mover la tarea recién creada a *En progreso* o ajustar su barra de avance, el portal indicará que el requerimiento debe ser evaluado y aprobado por el Project Manager antes de iniciar su desarrollo.",
+      "required_modules": [
+        "module_tasks"
+      ],
+      "required_permissions": [],
+      "verticals": [],
+      "link_route": null,
+      "revision": "dd82249a82e9a364f4b3051b8bf568487fe81419b148316dc489dedae5072080",
+      "portal_profiles": [
+        "collaborator",
+        "qa"
+      ],
+      "required_portal_capabilities": []
+    },
+    {
+      "id": "tasks-portal.create-task-pm",
+      "title": "Crear y planificar tareas avanzadas como Project Manager o Líder",
+      "module": "tasks",
+      "audience": "portal-collaborator",
+      "routes": [
+        "/portal/tasks/[token]"
+      ],
+      "keywords": [
+        "crear tarea pm",
+        "planificacion",
+        "project manager",
+        "lider tecnico",
+        "asignacion",
+        "horas estimadas",
+        "sprint",
+        "fecha limite",
+        "qa asignado"
+      ],
+      "surface": "portal.tasks",
+      "content": "# Crear y planificar tareas avanzadas como Project Manager o Líder\n\n## Propósito\nInstruir a los Project Managers y Líderes Técnicos en la creación integral de requerimientos, tickets de desarrollo y compromisos operativos desde el portal de tareas, configurando asignaciones formales, presupuesto de horas, revisores de calidad y vinculación a sprints activos.\n\n## Requisitos y perfiles\n- **Perfiles aplicables:** Exclusivamente Project Managers, Líderes de Área, Coordinadores y Directores (`isLeadOrPm: true`).\n- **Condición:** Identificada automáticamente por el sistema al detectar palabras clave de liderazgo en tu rol o al ser designado líder de un workspace o proyecto.\n\n## Ubicación en pantalla\n- **Botón principal:** **+ Requerimiento** en la barra superior del portal.\n- **En la vista de Gestión o Dashboard:** Accesible también desde los accesos rápidos de creación por proyecto.\n\n## Procedimiento paso a paso\n\n### 1. Configuración general del requerimiento\n1. Haz clic en **+ Requerimiento**. Se abrirá el modal de creación avanzado de dos columnas.\n2. **Proyecto / Workspace:** Selecciona el proyecto de destino.\n3. **Tipo de actividad:** Elige entre *Entregable / Requerimiento* (`feature` o `task`), *Corrección de Bug* (`bug`), o *Reunión / Actividad Sincrónica* (`meeting`).\n4. **Título y Descripción:** Ingresa el enunciado claro del ticket y detalla los requerimientos de negocio o especificaciones de diseño.\n\n### 2. Planificación operativa y gobernanza\n1. **Responsable Principal (`assigned_staff_id`):** Selecciona el colaborador de tu equipo que liderará el desarrollo. Puedes elegir cualquier miembro activo de los workspaces autorizados.\n2. **Especialista de QA (`qa_staff_id`):** Selecciona al revisor de calidad o tester encargado de certificar el entregable una vez finalizado.\n3. **Horas estimadas (`estimated_hours`):** Define el presupuesto oficial de horas asignado para la tarea. Este valor alimentará el análisis de velocidad del sprint y los reportes de ritmo semanal.\n4. **Fecha límite de entrega (`due_date`):** Fija la fecha perentoria de entrega en el calendario.\n5. **Sprint (`sprint_id`):** Vincula el ticket al sprint activo o déjalo en el backlog de la versión para programación futura.\n6. **Prioridad inicial:** Selecciona entre *Baja*, *Media*, *Alta* o *Urgente*.\n\n### 3. Desglose de subtareas y entregables\n1. En la sección inferior, presiona **+ Añadir Subtarea**.\n2. Redacta el nombre de cada entregable atómico.\n3. Puedes delegar subtareas específicas a diferentes miembros del equipo (por ejemplo: subtarea de diseño para el diseñador y subtarea de frontend para el desarrollador) e indicar horas estimadas por ítem.\n\n### 4. Guardar y publicar el requerimiento\n1. Revisa los parámetros definidos y haz clic en **Crear Tarea**.\n2. La tarea se generará de inmediato con estado inicial *Por hacer* (`todo`) —o el estado que hayas seleccionado—, apareciendo en los tableros del equipo y notificando a los colaboradores asignados.\n\n## Resultado esperado\nUn requerimiento estructurado, presupuestado y formalmente asignado que entra directamente al ciclo de ejecución sin pasar por restricciones de backlog.\n\n## Errores y límites conocidos\n- **Asignación fuera de workspace:** Si un colaborador no forma parte del workspace al que pertenece el proyecto seleccionado, no figurará en la lista desplegable de responsables para garantizar la privacidad y contención entre equipos.\n- **Reuniones en backlog:** Las actividades de tipo *Reunión* no deben crearse en estado de backlog ni vincularse a sprints de desarrollo de software; deben programarse con fecha y hora específicas.",
+      "required_modules": [
+        "module_tasks"
+      ],
+      "required_permissions": [],
+      "verticals": [],
+      "link_route": null,
+      "revision": "aa7d56d84db16ce4b9e3386ed5967cb8729d9b956c40917e9aa6b4b3a19f5cda",
+      "portal_profiles": [
+        "lead"
+      ],
+      "required_portal_capabilities": []
+    },
+    {
+      "id": "tasks-portal.meetings-and-meet",
+      "title": "Gestionar reuniones sincrónicas, pase de lista y Google Meet",
+      "module": "tasks",
+      "audience": "portal-collaborator",
+      "routes": [
+        "/portal/tasks/[token]"
+      ],
+      "keywords": [
+        "reuniones",
+        "google meet",
+        "videollamada",
+        "pase de lista",
+        "asistencia",
+        "minuta",
+        "auto-cierre"
+      ],
+      "surface": "portal.tasks",
+      "content": "# Gestionar reuniones sincrónicas, pase de lista y Google Meet\n\n## Propósito\nExplicar el funcionamiento de las actividades de tipo Reunión en el portal de tareas: cómo unirse a la sala virtual de Google Meet, registrar la asistencia de los participantes y consolidar la minuta o compromisos alcanzados durante la sesión.\n\n## Requisitos y perfiles\n- **Perfiles aplicables:** Todos los colaboradores convocados como asistentes (`meeting_attendees`) o convocantes de la sesión.\n- **Integración:** Enlaces a Google Meet generados automáticamente cuando la organización cuenta con integración activa de Google Calendar.\n\n## Ubicación en pantalla\n- **Alternador de actividades:** En la barra superior de la vista de gestión, presiona el botón **Ver Reuniones**.\n- **En la cuadrícula o lista:** Las reuniones se identifican visualmente con una insignia distintiva de color púrpura y el prefijo `#MTG-`.\n- **En el Calendario:** Bloques de tiempo destacados según la hora de inicio (`meeting_start_at`).\n\n## Procedimiento paso a paso\n\n### 1. Consultar detalles de la reunión y unirse a Google Meet\n1. Haz clic sobre la tarjeta de la reunión para abrir la **Consola de Reunión** (`TaskMeetingDetailModal`).\n2. En la parte superior verás la modalidad (*Virtual*, *Híbrida* o *Presencial*), la fecha y hora de inicio, y la duración programada en minutos.\n3. Si la reunión es virtual y cuenta con enlace, presiona el botón destacado **Unirse a Google Meet**. La sala de videollamada se abrirá en una nueva pestaña del navegador.\n\n### 2. Pase de lista y confirmación de asistencia\n1. Durante la sesión, desplázate a la sección **Asistentes Convocados**.\n2. Verás la lista de colaboradores invitados con su foto y cargo.\n3. El anfitrión o cualquier asistente autorizado puede marcar la casilla junto al nombre de cada compañero presente para confirmar su asistencia formal.\n4. Las personas ausentes permanecerán desmarcadas para efectos de auditoría y métricas de puntualidad.\n\n### 3. Redactar la minuta y cerrar la reunión\n1. En el campo de texto inferior **Minuta / Notas de Cierre**, escribe los acuerdos clave, conclusiones o compromisos definidos en la reunión.\n2. Al finalizar la llamada, presiona el botón **Finalizar Sesión**.\n3. El sistema:\n   - Cambiará el estado de la reunión a **Completada (`done`)**.\n   - Fijará el progreso al **100%**.\n   - Publicará automáticamente la minuta y el listado de asistentes confirmados en el feed de comentarios del ticket para consulta histórica de todo el equipo.\n\n## Auto-cierre inteligente de reuniones expiradas\n- Si los participantes concluyen la reunión pero olvidan presionar el botón de cierre manual:\n  - El servidor evalúa en segundo plano la hora de inicio más la duración programada.\n  - Una vez transcurrido el tiempo límite, el sistema **marca automáticamente la reunión como completada (`done`)** para evitar que sesiones antiguas continúen apareciendo como pendientes en los tableros activos.\n\n## Errores y límites conocidos\n- **No se pueden mover en Kanban:** Las reuniones no forman parte de las columnas de desarrollo técnico (no se pueden arrastrar a *Por hacer* ni *En revisión*).\n- **Cancelación de evento en Google Calendar:** Si un Project Manager elimina una reunión desde el portal, el sistema intentará de forma automática cancelar y eliminar la cita en Google Calendar si la cuenta del convocante está vinculada.",
+      "required_modules": [
+        "module_tasks"
+      ],
+      "required_permissions": [],
+      "verticals": [],
+      "link_route": null,
+      "revision": "8097e7f211551773510b74cd0e74e5ff2ed9d4511fbd761cf8c970d628b93449",
+      "portal_profiles": [
+        "collaborator",
+        "qa",
+        "lead"
+      ],
+      "required_portal_capabilities": []
+    },
+    {
+      "id": "tasks-portal.parallel-support-portal",
+      "title": "Operar el portal de soporte paralelo y dar seguimiento a tickets",
+      "module": "tasks",
+      "audience": "portal-collaborator",
+      "routes": [
+        "/portal/tasks/[token]"
+      ],
+      "keywords": [
+        "soporte paralelo",
+        "portal soporte",
+        "tickets sup",
+        "atencion al cliente",
+        "consultas tecnicas",
+        "resolucion de incidencias"
+      ],
+      "surface": "portal.tasks",
+      "content": "# Operar el portal de soporte paralelo y dar seguimiento a tickets\n\n## Propósito\nGuiar al personal de atención al cliente y soporte técnico en el uso del portal especializado de soporte paralelo, diseñado para registrar incidencias de usuarios finales, hacer seguimiento al avance de los requerimientos y colaborar con los desarrolladores mediante consultas técnicas sin exponer la complejidad de los tableros internos de ingeniería.\n\n## Requisitos y perfiles\n- **Perfiles aplicables:** Personal de Soporte, Mesa de Ayuda y Atención al Cliente (`task_role: 'support'`).\n- **Aislamiento de superficie:** Al iniciar sesión con un enlace de colaborador de soporte, la plataforma detecta el rol y sustituye automáticamente el portal de desarrollo por el **Portal de Soporte Paralelo** (`TaskParallelSupportPortal`).\n\n## Ubicación en pantalla\n- **Ruta web:** `/portal/tasks/[token]` (el mismo enlace privado de colaborador, renderizado en modo soporte).\n- **Indicadores destacados:** Contador odómetro superior con el porcentaje de resolución de tickets, tickets recibidos, en curso y resueltos.\n\n## Procedimiento paso a paso\n\n### 1. Registrar una nueva incidencia o solicitud (Ticket SUP)\n1. En la parte superior de tu portal, presiona el botón destacado **+ Nuevo Ticket de Soporte**.\n2. En la ventana modal de reporte:\n   - **Proyecto / Servicio afectado:** Selecciona la cuenta o sistema donde se presenta el problema.\n   - **Título de la incidencia:** Resume el síntoma observado por el usuario final (por ejemplo: `Error 500 al procesar pagos con tarjeta de crédito`).\n   - **Descripción detallada:** Especifica los pasos para reproducir el fallo, el navegador del usuario y los mensajes de error mostrados.\n   - **Prioridad:** Define el impacto en la operación (*Baja*, *Media*, *Alta* o *Urgente / Crítica*).\n   - **Adjuntos:** Puedes adjuntar capturas de pantalla o comprobantes en el área de archivos.\n3. Presiona **Enviar Ticket**. El sistema generará el código identificador con prefijo `#SUP-` (por ejemplo, `#SUP-042`) y notificará al Project Manager en su bandeja de triaje.\n\n### 2. Consultar el estado de resolución de tus tickets\n- En el panel principal encontrarás la lista de tickets que has reportado:\n  - **Recibido (Backlog / Por hacer):** La solicitud ha sido registrada y está en evaluación por el equipo de operaciones.\n  - **En Gestión (En progreso / Bloqueada):** Un desarrollador o especialista está trabajando activamente en la solución técnica.\n  - **Resuelto (Completada):** La incidencia ha sido subsanada y verificada.\n\n### 3. Participar en consultas técnicas y responder a desarrolladores\n1. Haz clic sobre cualquier ticket de la lista para abrir el modal `TaskSupportTicketDetailModal`.\n2. En el hilo de discusión podrás leer las preguntas o solicitudes de aclaración enviadas por los ingenieros.\n3. Escribe tus respuestas y utiliza menciones (@) si necesitas notificar a un compañero específico.\n4. El sistema mantiene un contador de comentarios no leídos para avisarte cuando haya nuevas respuestas del equipo técnico.\n\n## Resultado esperado\nUn canal ágil, directo y trazable entre la primera línea de atención al cliente y el equipo de desarrollo, reduciendo los tiempos de respuesta y centralizando las incidencias sin fricción.\n\n## Errores y límites conocidos\n- **Sin acceso a tareas de desarrollo:** Los colaboradores de soporte no tienen acceso a los tableros Kanban de sprint, estimaciones de horas internas, ramas de Git ni configuraciones de proyectos; su alcance está estrictamente acotado a la resolución de sus tickets.",
+      "required_modules": [
+        "module_tasks"
+      ],
+      "required_permissions": [],
+      "verticals": [],
+      "link_route": null,
+      "revision": "a870e1a3e8551ddd5f17fd81314d50794a0f5516ea211bdbca25e2021e4f9765",
+      "portal_profiles": [
+        "support"
+      ],
+      "required_portal_capabilities": []
+    },
+    {
+      "id": "tasks-portal.pm-operations-dashboard",
+      "title": "Monitorear la salud operativa y los sprints desde el Dashboard de PM",
+      "module": "tasks",
+      "audience": "portal-collaborator",
+      "routes": [
+        "/portal/tasks/[token]"
+      ],
+      "keywords": [
+        "dashboard pm",
+        "operaciones",
+        "salud de proyectos",
+        "carga de trabajo",
+        "tareas estancadas",
+        "sprint activo",
+        "metricas"
+      ],
+      "surface": "portal.tasks",
+      "content": "# Monitorear la salud operativa y los sprints desde el Dashboard de PM\n\n## Propósito\nInstruir a los Project Managers y Líderes en el uso del panel de control ejecutivo (*Dashboard de Operaciones*), diseñado para brindar visibilidad integral sobre la distribución de la carga de trabajo entre colaboradores, el avance del sprint y la detección temprana de requerimientos estancados.\n\n## Requisitos y perfiles\n- **Perfiles aplicables:** Exclusivamente Project Managers, Líderes Técnicos y Directores de Área (`isLeadOrPm: true`).\n- **Restricción:** Este panel no se despliega para desarrolladores, diseñadores o especialistas operativos estándar.\n\n## Ubicación en pantalla\n- **Interruptor de modos PM:** En la parte superior central del portal, selecciona la opción **Dashboard**.\n\n## Componentes y métricas del Dashboard\n\n### 1. Filtros temporales de rendimiento\n- En la esquina superior derecha del dashboard encontrarás los botones de rango temporal:\n  - **7D:** Últimos 7 días de actividad.\n  - **30D:** Último mes calendario.\n  - **90D:** Trimestre operativo.\n  - **1Y / ALL:** Histórico consolidado.\n- Al alternar el rango, todas las gráficas analíticas recalculan los datos de productividad al instante.\n\n### 2. Tarjetas de métricas principales (KPIs)\n- **Total de Requerimientos:** Conteo consolidado de tareas activas y cerradas.\n- **Tasa de Cumplimiento:** Porcentaje de entregables completados sobre el total planificado.\n- **Horas Presupuestadas vs Ejecutadas:** Comparativa gráfica entre el tiempo estimado oficial y las horas reales imputadas por el equipo.\n- **Requerimientos Estancados (*Stalled*):** Identifica de forma proactiva aquellas tareas en progreso que llevan más de 48 o 72 horas hábiles sin ningún registro de avance o comentario.\n\n### 3. Distribución de carga por colaborador (Workload)\n- Gráfica de barras horizontales que desglosa:\n  - Número de tareas asignadas por miembro del equipo.\n  - Horas comprometidas por persona en el sprint actual.\n  - Permite detectar sobrecargas operativas antes de que afecten la fecha de entrega y balancear el trabajo reasignando tickets.\n\n### 4. Control del Sprint Activo\n- Bloque destacado con el nombre del sprint en curso (por ejemplo: `Sprint 14 - Q4`).\n- Muestra los días restantes antes del cierre, la barra de avance ponderada y el botón de acceso al modal de sprint para planificar la siguiente iteración.\n\n### 5. Botón de transición rápida a Gestión\n- Si necesitas intervenir operativamente un requerimiento identificado en las gráficas, presiona el botón **Ir a Gestión** para saltar directamente al tablero de tareas con los filtros correspondientes.\n\n## Resultado esperado\nToma de decisiones informada, prevención de cuellos de botella y supervisión en tiempo real del cumplimiento de metas operativas sin necesidad de solicitar informes manuales al equipo.\n\n## Errores y límites conocidos\n- **Aislamiento por Workspace:** Si tu usuario no tiene asignado acceso global a todos los workspaces de la empresa, el dashboard mostrará únicamente las métricas de los proyectos y colaboradores pertenecientes a tus workspaces autorizados.",
+      "required_modules": [
+        "module_tasks"
+      ],
+      "required_permissions": [],
+      "verticals": [],
+      "link_route": null,
+      "revision": "d5589c36a58412fa781c6f4a72d2e8f187e806d6c34fe0f621f4e06cf8b7b903",
+      "portal_profiles": [
+        "lead"
+      ],
+      "required_portal_capabilities": []
+    },
+    {
+      "id": "tasks-portal.pm-weekly-pacing",
+      "title": "Supervisar la matriz de ritmo semanal (Pacing) y exportar reportes",
+      "module": "tasks",
+      "audience": "portal-collaborator",
+      "routes": [
+        "/portal/tasks/[token]"
+      ],
+      "keywords": [
+        "ritmo semanal",
+        "pacing",
+        "matriz semanal",
+        "exportar pdf",
+        "avance mensual",
+        "horas reales",
+        "semaforo"
+      ],
+      "surface": "portal.tasks",
+      "content": "# Supervisar la matriz de ritmo semanal (Pacing) y exportar reportes\n\n## Propósito\nInstruir a los directores de proyecto en la utilización de la Matriz de Ritmo Semanal (*Weekly Pacing*), una herramienta analítica que evalúa el progreso de los proyectos semana a semana dentro del mes, detecta desviaciones tempranas de cronograma y genera reportes ejecutivos en formato PDF para clientes o comités de seguimiento.\n\n## Requisitos y perfiles\n- **Perfiles aplicables:** Exclusivamente Project Managers, Líderes Técnicos y Directores (`isLeadOrPm: true`).\n\n## Ubicación en pantalla\n- **Interruptor de modos PM:** En el conmutador superior central del portal, selecciona la opción **Ritmo Semanal / Pacing**.\n\n## Estructura de la Matriz de Pacing\nLa matriz descompone el mes operativo en 4 semanas fijas de seguimiento (Semana 1 a Semana 4):\n- Cada fila representa un requerimiento o proyecto técnico.\n- Cada columna semanal cuenta con un semáforo de salud operativa:\n  - **Al día (`on_track`):** Verde. El ritmo de completado de subtareas e imputación de horas coincide con la planificación esperada.\n  - **En riesgo (`at_risk`):** Amarillo. El avance es inferior al 70% del tiempo transcurrido de la semana.\n  - **Retrasado (`delayed`):** Rojo. La fecha de entrega venció o el requerimiento se encuentra bloqueado sin avance en los últimos días hábiles.\n  - **Completado (`completed`):** Azul / Verde oscuro. Entregables finalizados y certificados.\n  - **Pendiente (`pending`):** Gris. Semanas futuras aún no iniciadas.\n\n## Procedimiento paso a paso\n\n### 1. Consultar el estado del ritmo operativo\n1. Accede al modo **Ritmo Semanal**.\n2. Revisa la tabla consolidada de requerimientos.\n3. Observa las celdas de las semanas transcurridas para comprobar si los entregables comprometidos fueron efectivamente entregados.\n4. Pasa el cursor sobre cualquier celda semanal para desplegar el resumen flotante con el porcentaje exacto y el número de subtareas concluidas.\n\n### 2. Filtrar por proyecto o cliente\n- En la cabecera de la matriz, utiliza el selector de proyectos para aislar los entregables de un cliente en particular, facilitando la rendición de cuentas de una cuenta específica.\n\n### 3. Exportar el reporte en PDF\n1. En la esquina superior derecha de la matriz, presiona el botón **Exportar Reporte PDF** (icono de descarga o documento).\n2. Se abrirá la ventana modal de previsualización `TaskPacingPdfModal`.\n3. Selecciona las opciones deseadas (incluir desglose de horas, incluir resumen ejecutivo).\n4. Presiona **Descargar PDF**. El navegador generará un documento formal membretado con el logotipo de la empresa, ideal para enviar al cliente o presentar en reuniones de seguimiento mensual.\n\n## Resultado esperado\nUn diagnóstico visual anticipado del cumplimiento de metas que evita sorpresas de último momento al cierre del mes y aporta soporte documental profesional para los clientes.\n\n## Errores y límites conocidos\n- **Tareas sin fecha límite:** Aquellos requerimientos que no tengan definida una fecha de entrega (`due_date`) no podrán ser ubicados con precisión en la cuadrícula de 4 semanas y aparecerán marcados como sin programación temporal fija.",
+      "required_modules": [
+        "module_tasks"
+      ],
+      "required_permissions": [],
+      "verticals": [],
+      "link_route": null,
+      "revision": "7ffdc33c0b38a5323795d5c4d42fed2ff9ee11d8268b47a28486fbc4474af3f2",
+      "portal_profiles": [
+        "lead"
+      ],
+      "required_portal_capabilities": []
+    },
+    {
+      "id": "tasks-portal.qa-review-flow",
+      "title": "Ejecutar pruebas y certificar requerimientos en el flujo de QA",
+      "module": "tasks",
+      "audience": "portal-collaborator",
+      "routes": [
+        "/portal/tasks/[token]"
+      ],
+      "keywords": [
+        "qa",
+        "calidad",
+        "tester",
+        "en revision",
+        "certificar tarea",
+        "rechazar tarea",
+        "reporte de bug"
+      ],
+      "surface": "portal.tasks",
+      "content": "# Ejecutar pruebas y certificar requerimientos en el flujo de QA\n\n## Propósito\nInstruir a los especialistas de aseguramiento de la calidad (QA), testers y revisores técnicos sobre cómo auditar requerimientos que han finalizado su etapa de desarrollo, registrar hallazgos de prueba y autorizar el paso a producción o devolver el ticket para corrección.\n\n## Requisitos y perfiles\n- **Perfiles aplicables:** Testers, Analistas de Calidad, QA Leads y Project Managers (`isQa: true` o `isLeadOrPm: true`).\n- **Visibilidad especial:** Los usuarios con perfil QA tienen acceso a la lista completa de tareas del equipo (`allTeamTasks`) dentro de sus workspaces autorizados, facilitando la supervisión de entregables pendientes de certificación.\n\n## Ubicación en pantalla\n- **Pestaña rápida:** Pestaña superior **En Revisión** en el panel de gestión.\n- **En tablero Kanban:** Columna central **En revisión** (`in_review`).\n- **Modal de Detalle:** Insignia de revisor QA asignado (`qa_staff_id`) en la cabecera del requerimiento.\n\n## Procedimiento paso a paso\n\n### 1. Identificar requerimientos listos para prueba\n1. En tu portal, haz clic en la pestaña **En Revisión** o revisa la columna correspondiente en el tablero Kanban.\n2. Abre la tarea que deseas auditar.\n3. Revisa la descripción técnica, los archivos adjuntos y los enlaces a prototipos o entornos de prueba (staging).\n4. Verifica que todas las subtareas de desarrollo hayan sido concluidas por los desarrolladores responsables.\n\n### 2. Certificar y aprobar la tarea (Paso a Completada)\n1. Tras ejecutar tu plan de pruebas y verificar que el requerimiento cumple todos los criterios de aceptación:\n2. Abre el selector de estado en la cabecera del modal y selecciona **Completada (`done`)**.\n3. El sistema:\n   - Fijará el avance al **100%**.\n   - Sellará el requerimiento de forma definitiva.\n   - Desbloqueará automáticamente cualquier tarea sucesora dependiente.\n   - Notificará al desarrollador y al Project Manager que el entregable ha sido formalmente certificado.\n\n### 3. Rechazar la tarea y reportar hallazgos (Devolución a En Progreso)\n1. Si durante las pruebas identificas errores, discrepancias de diseño o fallos de lógica:\n2. En la sección de **Discusión / Comentarios**, redacta detalladamente el reporte del hallazgo:\n   - Pasos para reproducir el problema.\n   - Comportamiento esperado vs comportamiento obtenido.\n   - Adjunta capturas de pantalla o logs si aplica.\n3. Menciona directamente al desarrollador responsable (por ejemplo: `@Juan detecté este error en el formulario`).\n4. Cambia el estado de la tarea de *En revisión* a **En progreso (`in_progress`)**.\n5. Opcionalmente, ajusta el control de avance hacia abajo (por ejemplo, del 90% al 70%) para alertar al Project Manager de que el requerimiento requerirá tiempo adicional de resolución.\n\n## Resultado esperado\nUn filtro de calidad riguroso y transparente que garantiza que ningún entregable llegue a manos del cliente o a producción sin validación previa documentada.\n\n## Errores y límites conocidos\n- **No se puede aprobar si hay subtareas sin marcar:** Si intentas seleccionar *Completada* pero el checklist aún tiene un ítem pendiente, el portal impedirá el cierre y mantendrá la tarea en *En revisión* al 95%.",
+      "required_modules": [
+        "module_tasks"
+      ],
+      "required_permissions": [],
+      "verticals": [],
+      "link_route": null,
+      "revision": "9607ba1a29eb3ae60a973583133011282a2f2b38ae10fe5280ed40581c56e130",
+      "portal_profiles": [
+        "qa",
+        "lead"
+      ],
+      "required_portal_capabilities": []
+    },
+    {
+      "id": "tasks-portal.quick-notes",
+      "title": "Guardar notas rápidas privadas por colaborador sobre una tarea",
+      "module": "tasks",
+      "audience": "portal-collaborator",
+      "routes": [
+        "/portal/tasks/[token]"
+      ],
+      "keywords": [
+        "notas rapidas",
+        "notas privadas",
+        "apuntes personales",
+        "privacidad",
+        "recordatorio"
+      ],
+      "surface": "portal.tasks",
+      "content": "# Guardar notas rápidas privadas por colaborador sobre una tarea\n\n## Propósito\nExplicar el uso de la función de Notas Rápidas Privadas, diseñada para que cada desarrollador o especialista pueda registrar recordatorios personales, fragmentos de código, comandos de terminal o ideas pendientes sobre un requerimiento sin que sean visibles para los demás compañeros ni para los clientes.\n\n## Requisitos y perfiles\n- **Perfiles aplicables:** Todos los colaboradores con acceso operativo al portal de tareas.\n- **Aislamiento estricto de privacidad (Zero-Leak):** Cada nota rápida queda asociada exclusivamente a tu identificador de colaborador (`staff.id`). Ningún otro miembro del equipo (ni siquiera otros desarrolladores asignados a la misma tarea) puede leer tus notas privadas.\n\n## Ubicación en pantalla\n- **En tarjetas de Cuadrícula:** Icono de lápiz / nota rápida situado en la esquina inferior derecha de la tarjeta.\n- **En filas de la Lista:** Botón de acción rápida en la penúltima columna de la tabla.\n- **En el Modal de Detalle:** Bloque de **Mi Nota Privada** en la barra lateral de la tarea.\n\n## Procedimiento paso a paso\n\n### 1. Crear o consultar tu nota privada\n1. En tu tarjeta de tarea o en la fila de la lista, haz clic sobre el **icono del lápiz** (botón de Nota Rápida).\n2. Se desplegará una pequeña ventana flotante (*Popover*) con un área de texto.\n3. Si ya habías guardado una nota previa, verás el texto que escribiste anteriormente.\n\n### 2. Editar y guardar el apunte\n1. Escribe tu recordatorio personal (por ejemplo: `Revisar migración en servidor de staging antes de hacer merge; credenciales temporales en keepass`).\n2. Haz clic en el botón **Guardar Nota** (o presiona fuera de la ventana flotante).\n3. El icono cambiará de color o mostrará un indicador activo, señalando que tienes un apunte privado guardado en ese requerimiento.\n\n### 3. Eliminar una nota privada\n1. Vuelve a abrir el panel de nota rápida haciendo clic en el lápiz.\n2. Borra todo el contenido del campo de texto dejando la caja completamente vacía.\n3. Presiona **Guardar**. El sistema limpiará el registro de tu nota privada en la base de datos.\n\n## Resultado esperado\nUn espacio personal, confidencial y de acceso inmediato para organizar tus pensamientos técnicos sin saturar el feed público de comentarios de la tarea.\n\n## Errores y límites conocidos\n- **No es un canal de comunicación:** Recuerda que las notas rápidas son estrictamente individuales. Si necesitas que el Project Manager, el tester o un compañero conozca una decisión técnica o impedimento, debes publicarlo en la sección de **Comentarios**, no en tu nota privada.\n- **Límite de caracteres:** La nota rápida está diseñada para apuntes breves y concisos; para documentación extensa se recomienda adjuntar un archivo o enlace externo.",
+      "required_modules": [
+        "module_tasks"
+      ],
+      "required_permissions": [],
+      "verticals": [],
+      "link_route": null,
+      "revision": "0713b9b662727251d99cb6de6afd0da9add58c72b8804492a78199568357d069",
+      "portal_profiles": [
+        "collaborator",
+        "qa",
+        "lead"
+      ],
+      "required_portal_capabilities": []
+    },
+    {
+      "id": "tasks-portal.subtasks-checklist",
+      "title": "Gestionar y completar subtareas y entregables en el checklist",
+      "module": "tasks",
+      "audience": "portal-collaborator",
+      "routes": [
+        "/portal/tasks/[token]"
+      ],
+      "keywords": [
+        "subtareas",
+        "checklist",
+        "entregables",
+        "lista de chequeo",
+        "asignacion de subtareas",
+        "avance automatico"
+      ],
+      "surface": "portal.tasks",
+      "content": "# Gestionar y completar subtareas y entregables en el checklist\n\n## Propósito\nDetallar el funcionamiento de la lista de chequeo (`checklist`) o entregables técnicos, cómo se reparte el trabajo entre varios colaboradores dentro de una misma tarea y el impacto automático que tiene el completado de subtareas sobre el avance general del requerimiento.\n\n## Requisitos y perfiles\n- **Quién puede marcar subtareas:**\n  - El colaborador asignado específicamente a esa subtarea (`assigned_staff_id` del ítem).\n  - El responsable general de la tarea principal.\n  - Un Líder Técnico o Project Manager de la organización.\n- **Protección de asignación cruzada:** Un colaborador secundario no puede marcar ni desmarcar subtareas asignadas a otros compañeros de equipo.\n\n## Ubicación en pantalla\n- **Modal de Detalle de Tarea:** Pestaña o sección central **Subtareas / Entregables** (icono de lista de chequeo).\n- **En tarjetas de la cuadrícula:** Icono con contador de subtareas (ejemplo: `3/5`) que despliega un menú flotante con el estado de cada ítem.\n\n## Procedimiento paso a paso\n\n### 1. Consultar tus subtareas asignadas\n1. Abre el modal de detalle de cualquier tarea donde participes.\n2. En la sección **Subtareas / Entregables**, revisa los ítems listados.\n3. Aquellas subtareas que tengan tu nombre o foto asignada son de tu exclusiva responsabilidad.\n\n### 2. Marcar una subtarea como completada\n1. Una vez que hayas terminado el entregable correspondiente, haz clic sobre la casilla de verificación situada a la izquierda de la subtarea.\n2. El sistema registrará la fecha y hora exacta del completado y tu nombre de usuario.\n3. El progreso general de la tarea se recalculará automáticamente de forma proporcional al número total de subtareas.\n\n### 3. Transición automática a revisión\n- Cuando marques la **última subtarea pendiente** de la lista (alcanzando el 100% de los entregables):\n  - El sistema cambiará automáticamente el estado de la tarea de *En progreso* a **En revisión (`in_review`)**.\n  - Se notificará de inmediato al líder técnico o especialista QA para que realice las pruebas pertinentes antes de sellar el requerimiento como completado.\n\n### 4. Desmarcar una subtarea\n- Si necesitas reabrir un entregable marcado por error, vuelve a hacer clic sobre la casilla de verificación.\n- El avance general se recalculará hacia abajo y, si la tarea estaba en revisión, regresará a *En progreso*.\n\n## Resultado esperado\nDivisión clara de responsabilidades en tareas colaborativas y sincronización automática entre los entregables individuales y el progreso global del proyecto.\n\n## Errores y límites conocidos\n- **Error \"No tienes autorización...\":** Aparece si intentas hacer clic en la casilla de verificación de una subtarea que tiene asignado a otro compañero de equipo. Solo el responsable de esa subtarea, el dueño de la tarea o un PM pueden marcarla.\n- **Tareas selladas:** En requerimientos que ya se encuentran en estado *Completada* (`done`), ninguna subtarea puede ser marcada ni desmarcada por colaboradores regulares.\n- **Creación de nuevas subtareas:** Los colaboradores ordinarios pueden añadir subtareas a sus tareas en curso, pero solo pueden asignárselas a sí mismos o dejarlas sin asignar; no pueden imponer subtareas a otros compañeros sin rol de PM.",
+      "required_modules": [
+        "module_tasks"
+      ],
+      "required_permissions": [],
+      "verticals": [],
+      "link_route": null,
+      "revision": "04b310671aedc379159d141fe0e244b0dd81cb57adb5b8819c6465cb83327f2e",
+      "portal_profiles": [
+        "collaborator",
+        "qa",
+        "lead"
+      ],
+      "required_portal_capabilities": []
+    },
+    {
+      "id": "tasks-portal.task-lifecycle-and-status",
+      "title": "Gestionar el ciclo de vida y cambiar el estado de las tareas",
+      "module": "tasks",
+      "audience": "portal-collaborator",
+      "routes": [
+        "/portal/tasks/[token]"
+      ],
+      "keywords": [
+        "estados",
+        "ciclo de vida",
+        "backlog",
+        "por hacer",
+        "en progreso",
+        "en revision",
+        "bloqueada",
+        "completada",
+        "dependencias"
+      ],
+      "surface": "portal.tasks",
+      "content": "# Gestionar el ciclo de vida y cambiar el estado de las tareas\n\n## Propósito\nExplicar las etapas formales por las que transita un requerimiento técnico en el portal de tareas, los permisos necesarios para realizar cada cambio de estado y las salvaguardas que previenen cierres prematuros o violaciones de dependencias.\n\n## Requisitos y perfiles\n- **Responsables de tarea:** Pueden mover sus tickets entre *Por hacer* (`todo`), *En progreso* (`in_progress`), *Bloqueada* (`blocked`) y *En revisión* (`in_review`).\n- **Especialistas QA:** Tienen facultad para auditar requerimientos en revisión y autorizar el paso a *Completada* (`done`) o devolver a *En progreso*.\n- **Project Managers / Líderes:** Control total sobre todas las etapas, incluyendo promover requerimientos desde el *Backlog* y reabrir tareas selladas.\n\n## Ubicación en pantalla\n- **En tarjetas y tabla:** Insignia interactiva de estado con selector desplegable.\n- **En tablero Kanban:** Columnas organizadas; arrastra la tarjeta a la columna correspondiente.\n- **En el Modal de Detalle:** Menú desplegable de estado en la cabecera superior.\n\n## Flujo de estados y reglas operativas\n\n### 1. Backlog (`backlog`)\n- Requerimientos en espera de evaluación y aprobación por parte de la gerencia de proyectos.\n- *Regla estricta:* Un colaborador ordinario no puede iniciar ni mover una tarea en Backlog hacia estados activos. Únicamente un Project Manager puede aprobar su incorporación al sprint.\n\n### 2. Por hacer (`todo`)\n- La tarea ha sido aprobada y asignada, pero el colaborador aún no ha comenzado su ejecución técnica.\n\n### 3. En progreso (`in_progress`)\n- El colaborador se encuentra trabajando activamente en el entregable.\n- Al mover la tarea a este estado, se recomienda registrar un avance porcentual inicial o imputar las primeras horas dedicadas.\n\n### 4. Bloqueada (`blocked`)\n- Utiliza este estado cuando un impedimento externo (falta de accesos, caída de un servidor, insumos pendientes del cliente) te impida continuar.\n- Al seleccionar *Bloqueada*, el portal te solicitará describir el motivo del bloqueo. Esta nota se notificará de inmediato al Project Manager para su gestión.\n\n### 5. En revisión / QA (`in_review`)\n- El desarrollo técnico ha finalizado y el entregable está listo para ser probado o revisado por el líder o especialista de control de calidad.\n- El sistema ajusta automáticamente el avance porcentual a un mínimo del **90%**.\n\n### 6. Completada (`done`)\n- La tarea cumple todos los criterios de aceptación y ha sido validada.\n- Al pasar a *Completada*, el sistema:\n  - Fija el progreso al **100%**.\n  - Sella el requerimiento, impidiendo que colaboradores estándar modifiquen subtareas o sigan imputando horas.\n  - Desbloquea de forma automática cualquier tarea sucesora que estuviera esperando por este ticket.\n\n## Salvaguardas de dependencias y entregables\n1. **Predecesora pendiente:** Si tu tarea depende formalmente de otro ticket (`blocked_by_task_id`) y esa tarea predecesora aún no está completada, el sistema **rechazará cualquier intento de enviar tu tarea a revisión o completarla**.\n2. **Entregables incompletos:** Si intentas marcar como *Completada* una tarea que aún tiene subtareas pendientes en su lista de verificación, el portal no la marcará como completada; la enviará a *En revisión* fijando su avance en **95%** hasta que se completen todas las subtareas.\n\n## Errores y límites conocidos\n- **Error \"Requerimiento sellado\":** Los colaboradores ordinarios no pueden reabrir una tarea finalizada ni cambiarla de estado una vez que está en *Completada*. Si se requiere una corrección, debes solicitar al Project Manager que reabra el ticket.\n- **Reuniones sincrónicas:** Las actividades de tipo *Reunión* no admiten cambios de estado manuales a través de este menú; se gestionan exclusivamente desde la consola de reunión o se auto-cierran al finalizar su tiempo programado.",
+      "required_modules": [
+        "module_tasks"
+      ],
+      "required_permissions": [],
+      "verticals": [],
+      "link_route": null,
+      "revision": "6993ef642e3916bac53acbd478015560e5264430dac181df92ba8f9b97e88671",
+      "portal_profiles": [
+        "collaborator",
+        "qa",
+        "lead"
+      ],
+      "required_portal_capabilities": []
+    },
+    {
+      "id": "tasks-portal.task-progress-and-slider",
+      "title": "Actualizar el progreso porcentual y registrar avances en el portal",
+      "module": "tasks",
+      "audience": "portal-collaborator",
+      "routes": [
+        "/portal/tasks/[token]"
+      ],
+      "keywords": [
+        "progreso",
+        "slider",
+        "porcentaje de avance",
+        "subtareas",
+        "auditoria",
+        "regresion"
+      ],
+      "surface": "portal.tasks",
+      "content": "# Actualizar el progreso porcentual y registrar avances en el portal\n\n## Propósito\nInstruir al colaborador sobre cómo reportar el avance cuantitativo de sus requerimientos técnicos mediante el control deslizante de porcentaje (0% a 100%), comprendiendo las reglas automáticas de gobernanza que protegen la exactitud del progreso del proyecto.\n\n## Requisitos y perfiles\n- **Quién puede mover el avance general:**\n  - El colaborador asignado directamente como responsable principal de la tarea (`assigned_staff_id`).\n  - Un Líder Técnico o Project Manager de la organización (`isLeadOrPm`).\n- **Restricción:** Colaboradores secundarios o asignados únicamente a subtareas específicas no pueden mover el control de avance global de la tarea padre.\n\n## Ubicación en pantalla\n- **En vista de Cuadrícula (Tarjetas):** Barra de progreso interactiva situada en el cuerpo inferior de cada tarjeta de tarea.\n- **En vista de Lista:** Columna de progreso con porcentaje interactivo.\n- **En el Modal de Detalle:** Control deslizable amplio ubicado en la barra lateral derecha de la tarea.\n\n## Procedimiento paso a paso\n\n### 1. Desplazar el control de avance\n1. Ubica la tarea que estás ejecutando en el portal.\n2. Haz clic y arrastra el círculo del control deslizante hacia la derecha para incrementar el porcentaje, o hacia la izquierda si necesitas corregir una estimación previa.\n3. Al soltar el control, el sistema guardará el nuevo valor en la base de datos de forma automática.\n\n### 2. Gobernanza de subtareas pendientes (Regla del 95%)\n- Si tu tarea tiene una lista de entregables o subtareas (`checklist`) y al menos una de ellas no ha sido completada:\n  - Puedes avanzar libremente hasta el **95%**.\n  - Si intentas arrastrar el medidor al **100%**, el sistema ajustará automáticamente el avance al **95%** y mantendrá la tarea en curso.\n  - *Motivo:* No es posible declarar un requerimiento al 100% de cumplimiento si aún existen entregables parciales sin marcar.\n\n### 3. Registro de auditoría automática\n- Cada vez que el progreso cambia sustancialmente:\n  - El sistema publica una nota interna en la discusión del ticket (por ejemplo: `📈 Avance de tarea actualizado del 40% al 80%`).\n  - Si el avance sufre una disminución (por ejemplo, al detectar un retrabajo o bloqueo), se registra una alerta visual de regresión (`📉`) visible para el Project Manager.\n\n## Resultado esperado\nReflejo fidedigno del porcentaje de cumplimiento en los tableros del equipo y cálculo preciso de la velocidad del sprint en tiempo real.\n\n## Errores y límites conocidos\n- **Control deshabilitado (bloqueado):**\n  - Si la tarea está en estado **Completada (`done`)**, el control de avance queda sellado y bloqueado para colaboradores estándar. Solo un Project Manager tiene facultad para reabrirla o alterar su porcentaje.\n  - Si la tarea está en el **Backlog**, el control no permitirá avances hasta que el Project Manager priorice y apruebe el inicio formal del ticket.\n- **Error \"Solo el responsable directo...\":** Aparece si intentas arrastrar el medidor de una tarea en la que solo participas como observador o en la que tienes una subtarea asignada, pero cuyo responsable principal es otro compañero.",
+      "required_modules": [
+        "module_tasks"
+      ],
+      "required_permissions": [],
+      "verticals": [],
+      "link_route": null,
+      "revision": "1fc0704ef306b2ff9e16a17ed9d0c97cbf7a9bdcf5784861c83fa13553ac1873",
+      "portal_profiles": [
+        "collaborator",
+        "qa",
+        "lead"
+      ],
+      "required_portal_capabilities": []
+    },
+    {
+      "id": "tasks-portal.technical-capabilities",
+      "title": "Utilizar capacidades técnicas especializadas (Código VCS, Diseño, Monitoreo y Costos)",
+      "module": "tasks",
+      "audience": "portal-collaborator",
+      "routes": [
+        "/portal/tasks/[token]"
+      ],
+      "keywords": [
+        "capacidades tecnicas",
+        "vcs",
+        "git",
+        "figma",
+        "monitoreo",
+        "costos",
+        "tarifas",
+        "figma preview"
+      ],
+      "surface": "portal.tasks",
+      "content": "# Utilizar capacidades técnicas especializadas (Código VCS, Diseño, Monitoreo y Costos)\n\n## Propósito\nInstruir a los especialistas sobre el uso de las 4 pestañas y herramientas técnicas avanzadas integradas en el modal de detalle de cada requerimiento: control de versiones Git/VCS, previsualización de prototipos de diseño, telemetría de monitoreo y análisis de costos financieros.\n\n## Matriz de capacidades por rol\nEl portal resuelve dinámicamente qué pestañas mostrar a cada usuario según su especialidad:\n\n| Capacidad | Función en el portal | Habilitada por defecto para |\n|---|---|---|\n| **Código y Ramas (`vcs_code`)** | Generación de nombres de rama Git (`feature/TK-101`), inspección de commits y enlaces a Pull Requests / merge. | Desarrolladores, QA Leads y Project Managers |\n| **Prototipos de Diseño (`design_preview`)** | Previsualización embebida de lienzos de Figma y pantallas de interfaz sin salir del portal. | Diseñadores, QA Leads y Project Managers |\n| **Telemetría de Errores (`monitoring`)** | Seguimiento de eventos en Sentry / APM asociados al ticket y alertas de estabilidad técnica. | Desarrolladores, QA Leads y Project Managers |\n| **Costos y Finanzas (`finance_costs`)** | Tarifa horaria del colaborador, costo presupuestado vs costo real acumulado del requerimiento. | Exclusivamente Project Managers |\n\n## Ubicación en pantalla\n- **Modal de Detalle de Tarea:** Barra de pestañas secundarias ubicada debajo de la descripción general del ticket.\n\n## Procedimiento paso a paso\n\n### 1. Trabajar con la pestaña de Código / VCS (Desarrolladores y QA)\n1. Abre el modal de detalle de la tarea en la que vas a programar.\n2. Haz clic en la pestaña **Código / VCS** (icono de rama Git).\n3. Verás la sugerencia de nomenclatura estándar generada por la plataforma (por ejemplo: `git checkout -b feature/TK-102-autenticacion-oauth`).\n4. Presiona el botón de copiar para llevarte el comando a tu terminal de desarrollo.\n5. Si tu equipo tiene habilitada la integración con GitHub/GitLab, en esta pestaña verás los commits vinculados con el código del ticket y el estado del Pull Request (abierto, en revisión o fusionado).\n\n### 2. Utilizar la Previsualización de Diseño (Diseñadores y QA)\n1. En tareas vinculadas a interfaces de usuario, haz clic en la pestaña **Diseño / Prototipo** (icono de paleta).\n2. Si el requerimiento cuenta con una URL de Figma válida, el portal cargará el marco de diseño interactivo directamente dentro del modal.\n3. Permite al desarrollador y al tester contrastar los entregables contra el diseño aprobado sin necesidad de abrir herramientas externas.\n\n### 3. Consultar la Telemetría de Monitoreo\n1. En requerimientos de corrección de bugs o incidentes de producción, accede a la pestaña **Monitoreo**.\n2. Observarás los eventos de error registrados en la plataforma de observabilidad vinculada, la traza de excepciones y la frecuencia de ocurrencia del fallo.\n\n### 4. Consultar Costos Financieros (Solo Project Managers)\n1. Los directores de proyecto verán la pestaña adicional **Costos y Presupuesto**.\n2. Desglosa el costo financiero total del ticket multiplicando las horas reales imputadas por la tarifa horaria confidencial de cada colaborador involucrado.\n3. Permite auditar la rentabilidad del proyecto en tiempo real.\n\n## Resultado esperado\nUn entorno de ingeniería unificado que conecta las especificaciones de negocio con las herramientas reales de código, diseño, calidad y finanzas del equipo.\n\n## Errores y límites conocidos\n- **Pestañas no visibles:** Si perteneces a un rol operativo general (por ejemplo, redactor o consultor comercial) y necesitas acceder a la pestaña de diseño o código, el administrador de la empresa debe habilitarte el permiso específico mediante un ajuste de capacidades personalizadas en tu ficha de colaborador (`staff.settings.capabilities`).",
+      "required_modules": [
+        "module_tasks"
+      ],
+      "required_permissions": [],
+      "verticals": [],
+      "link_route": null,
+      "revision": "109162ff170fb44d607d9e03225ab836f73e5f33963c69ccfcab0e22cd980a7f",
+      "portal_profiles": [
+        "collaborator",
+        "qa",
+        "lead"
+      ],
+      "required_portal_capabilities": [
+        "vcs_code",
+        "design_preview",
+        "monitoring",
+        "finance_costs"
+      ]
+    },
+    {
+      "id": "tasks-portal.view-modes-and-filters",
+      "title": "Navegar entre modos de visualización y filtrar tareas en el portal",
+      "module": "tasks",
+      "audience": "portal-collaborator",
+      "routes": [
+        "/portal/tasks/[token]"
+      ],
+      "keywords": [
+        "modos de vista",
+        "tarjetas",
+        "lista",
+        "kanban",
+        "calendario",
+        "filtros",
+        "reuniones",
+        "buscador"
+      ],
+      "surface": "portal.tasks",
+      "content": "# Navegar entre modos de visualización y filtrar tareas en el portal\n\n## Propósito\nGuiar al colaborador en el uso de los diferentes modos de presentación visual (Tarjetas, Lista tabular, Tablero Kanban y Calendario de entregas) y en la aplicación de filtros para localizar requerimientos y compromisos rápidamente.\n\n## Requisitos y perfiles\n- **Perfiles aplicables:** Desarrolladores, Diseñadores, Especialistas, QA y Project Managers.\n- **Ámbito:** Portal operativo general de tareas (no aplica para el portal exclusivo de soporte paralelo).\n\n## Ubicación en pantalla\n- **Barra de control de vistas:** Ubicada en la parte superior derecha del área de trabajo, junto a la barra de búsqueda.\n- **Alternador de actividades:** Botón central para conmutar entre **Ver Tickets** y **Ver Reuniones**.\n- **Barra de filtros:** Controles de búsqueda textual, selector de Proyecto/Workspace y pestañas de estado (*Todos*, *Por hacer*, *En progreso*, *En revisión*, *Bloqueadas*, *Completadas*).\n\n## Procedimiento paso a paso\n\n### 1. Cambiar el modo de visualización\nEn el grupo de iconos de vista en la esquina superior derecha, selecciona la modalidad que mejor se adapte a tu dinámica de trabajo:\n1. **Modo Cuadrícula (Tarjetas / Grid):** Presenta cada tarea como una tarjeta gráfica con medidor de avance deslizable, fecha de entrega, prioridad con código de color y conteo de subtareas. Ideal para el trabajo diario individual.\n2. **Modo Lista (Tabla / Rows):** Formato tabular estructurado con columnas alineadas (Código de ticket, Título, Proyecto, Prioridad, Estado y Horas). Permite seleccionar múltiples casillas a la izquierda para ejecutar acciones masivas.\n3. **Modo Tablero (Kanban):** Muestra columnas verticales por etapa del flujo de trabajo (*Backlog*, *Por hacer*, *En progreso*, *En revisión*, *Bloqueadas* y *Completadas*). Permite visualizar la carga global y arrastrar tarjetas entre estados.\n4. **Modo Calendario:** Proyecta las tareas y reuniones en un calendario mensual o semanal con base en su fecha límite (`due_date`) o fecha programada de sesión.\n\n### 2. Alternar entre Entregables y Reuniones\n- El portal separa de forma estricta los requerimientos técnicos de las sesiones sincrónicas:\n  - Haz clic en **Ver Tickets** para ocultar las reuniones y enfocarte exclusivamente en tus entregables y código.\n  - Haz clic en **Ver Reuniones** para listar únicamente tus videollamadas, pases de lista y sesiones agendadas con enlaces a Google Meet.\n\n### 3. Aplicar filtros combinados\n1. **Búsqueda por texto:** Escribe en la caja de búsqueda cualquier palabra clave, nombre de entregable o código de ticket (por ejemplo, `TK-104`). La lista se actualizará en tiempo real.\n2. **Filtrar por Proyecto o Workspace:** Abre el menú desplegable de proyectos para acotar la visualización únicamente al cliente o módulo en el que estás trabajando.\n3. **Pestañas de estado rápido:** Utiliza la barra superior de pestañas para saltar de inmediato a requerimientos *En Progreso* o *En Revisión*.\n\n## Resultado esperado\nUna interfaz personalizada y ordenada que reduce el ruido visual y permite al colaborador enfocarse en sus entregas inmediatas según su preferencia operativa.\n\n## Errores y límites conocidos\n- **Kanban deshabilitado en modo Reuniones:** Las reuniones sincronizadas no poseen columnas técnicas de desarrollo; si estás en modo Reuniones, el botón Kanban permanecerá deshabilitado con un aviso explicativo.\n- **Vista Compacta no disponible:** Aunque en versiones anteriores existía una vista ultracompacta, actualmente está retirada y el selector redirige automáticamente a la vista de Lista estructurada.",
+      "required_modules": [
+        "module_tasks"
+      ],
+      "required_permissions": [],
+      "verticals": [],
+      "link_route": null,
+      "revision": "530ecceec6a49d5703f0f5f5e6295a21ae24ac3e0e2d141a62daec06a553ec9c",
+      "portal_profiles": [
+        "collaborator",
+        "qa",
+        "lead"
+      ],
+      "required_portal_capabilities": []
+    },
+    {
+      "id": "tasks-portal.worklog-and-hours",
+      "title": "Imputar horas de trabajo y registrar notas de actividad (Worklog)",
+      "module": "tasks",
+      "audience": "portal-collaborator",
+      "routes": [
+        "/portal/tasks/[token]"
+      ],
+      "keywords": [
+        "horas trabajadas",
+        "imputar horas",
+        "worklog",
+        "registro de tiempo",
+        "tiempo real",
+        "tiempo estimado",
+        "actividad"
+      ],
+      "surface": "portal.tasks",
+      "content": "# Imputar horas de trabajo y registrar notas de actividad (Worklog)\n\n## Propósito\nInstruir a los miembros del equipo sobre cómo reportar el tiempo real dedicado a la ejecución técnica de una tarea o subtarea, manteniendo la trazabilidad del esfuerzo invertido frente a las horas presupuestadas por la gerencia de proyectos.\n\n## Requisitos y perfiles\n- **Quiénes pueden registrar tiempo:**\n  - El responsable principal de la tarea.\n  - Cualquier colaborador que tenga una subtarea asignada dentro del requerimiento.\n  - Project Managers y Líderes Técnicos.\n- **Condición excluyente:** La tarea debe encontrarse activa (*Por hacer*, *En progreso*, *En revisión* o *Bloqueada*). No se permite imputar tiempo en tareas finalizadas sin autorización de un PM.\n\n## Ubicación en pantalla\n- **Modal de Detalle de Tarea:** Botón **Registrar Tiempo / Imputar Horas** (icono de cronómetro o reloj) ubicado en la barra lateral derecha, junto a los contadores de horas.\n- **En la barra rápida:** Al cambiar el estado de la tarea hacia *En progreso* o *En revisión*, el sistema ofrece la opción de registrar horas de forma complementaria.\n\n## Procedimiento paso a paso\n\n### 1. Abrir la ventana de registro de tiempo\n1. Abre el modal de detalle de la tarea en la que estuviste trabajando.\n2. En la sección de métricas horarias, haz clic en el botón **Registrar Horas** (o presiona el icono de reloj).\n3. Se desplegará la ventana modal `TaskLogWorkModal`.\n\n### 2. Ingresar las horas y la descripción\n1. **Horas a imputar:** Ingresa el número de horas trabajadas. El campo admite valores decimales para representar fracciones de tiempo (por ejemplo, `1.5` para una hora y media, o `0.25` para 15 minutos).\n2. **Nota de actividad (Opcional pero recomendada):** Redacta un breve resumen de lo que realizaste durante ese lapso (por ejemplo: `Implementación de endpoints de autenticación y pruebas unitarias`).\n3. Haz clic en **Guardar Horas**.\n\n### 3. Distribución automática hacia tus subtareas\n- Si tienes una o más subtareas asignadas a tu nombre en esa tarea:\n  - El sistema imputará automáticamente las horas registradas a tu primera subtarea pendiente.\n  - Esto actualiza tanto el contador general de la tarea (`actual_hours`) como el contador individual de tu subtarea, permitiendo medir la productividad específica de cada componente.\n\n### 4. Trazabilidad en la discusión\n- Tras guardar, el sistema generará automáticamente una nota de auditoría en el feed de comentarios del ticket con el formato:  \n  `⏱️ Registro de trabajo: +1.5h (Total: 4.5h) — \"Implementación de endpoints...\"`\n- Esta nota queda firmada con tu nombre y fecha para conocimiento de los supervisores y clientes.\n\n## Resultado esperado\nActualización inmediata de las horas reales ejecutadas, ajuste de los indicadores de esfuerzo del sprint y visibilidad del costo operativo del proyecto.\n\n## Errores y límites conocidos\n- **Error \"No se pueden imputar horas en requerimientos finalizados\":** Ocurre si intentas registrar tiempo en una tarea que ya está marcada como *Completada* (`done`). Solo un Project Manager puede reabrir el ticket si se requiere asentar un ajuste de horas posterior al cierre.\n- **Formato numérico:** El valor debe ser mayor a 0 y no puede contener signos negativos ni caracteres alfanuméricos.",
+      "required_modules": [
+        "module_tasks"
+      ],
+      "required_permissions": [],
+      "verticals": [],
+      "link_route": null,
+      "revision": "6a82052c98284ea5651ccffdeee116a78a7e9aa1f4bef44187afea00959de90b",
+      "portal_profiles": [
+        "collaborator",
+        "qa",
+        "lead"
+      ],
+      "required_portal_capabilities": []
     }
   ]
 }

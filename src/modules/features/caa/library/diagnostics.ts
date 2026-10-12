@@ -13,6 +13,7 @@ export class HelpDiagnostics {
     phase: Phase = 'validation'
     failedPhase?: Phase
     mode: 'unselected' | 'legacy' | 'v2' | 'casual' = 'unselected'
+    surface: 'dashboard' | 'portal.tasks' = 'dashboard'
     organizationId?: string
     corpusRevision?: string
     authorizedCount = 0
@@ -41,7 +42,7 @@ export class HelpDiagnostics {
             console.info('[PixyHelp]', JSON.stringify({
                 event: 'help.request.completed', schema_version: 1, request_id: this.requestId,
                 organization_id: /^[a-f0-9-]{36}$/i.test(this.organizationId || '') ? this.organizationId : null,
-                mode: this.mode, outcome, failure_stage: outcome === 'failed' ? this.failedPhase || this.phase : null,
+                mode: this.mode, surface: this.surface, outcome, failure_stage: outcome === 'failed' ? this.failedPhase || this.phase : null,
                 corpus_revision: /^[a-f0-9]{64}$/.test(this.corpusRevision || '') ? this.corpusRevision : null,
                 authorized_articles: this.authorizedCount,
                 article_ids: this.articleIds.filter(id => /^[a-z0-9][a-z0-9.-]{1,99}$/.test(id)).slice(0, 5),

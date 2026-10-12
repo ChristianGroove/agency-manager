@@ -13,16 +13,20 @@ import { HelpHistoryMenu } from './help-history-menu'
 import { usePathname } from 'next/navigation'
 import { HelpMessageContent } from './help-message-content'
 import { HelpTurnNavigator } from './help-turn-navigator'
+import type { HelpChatTransport } from './help-chat-transport'
+const dashboardTransport: HelpChatTransport = { listThreads: listHelpThreads, loadThread: loadHelpThread, ask: askHelpAssistant }
 
 interface AIChatPanelProps {
     initialQuery?: string
     className?: string
+    transport?: HelpChatTransport
+    welcomeText?: string
 }
 
 /**
  * Help conversation with one live robot beside the composer.
  */
-export function AIChatPanel({ initialQuery, className }: AIChatPanelProps) {
+export function AIChatPanel({ initialQuery, className, transport = dashboardTransport, welcomeText = 'Pregúntame sobre cualquier función de Pixy.' }: AIChatPanelProps) {
     const currentRoute = usePathname()
     const pet = usePet()
     const mobile = usePetMedia('(max-width: 639px)')
@@ -52,13 +56,13 @@ export function AIChatPanel({ initialQuery, className }: AIChatPanelProps) {
         let cancelled = false
         void (async () => {
             try {
-                const result = await listHelpThreads()
+                const result = await transport.listThreads()
                 if (cancelled) return
                 setThreads(result.threads)
                 setHasMoreThreads(result.hasMore)
                 setHistoryWarning(result.error)
                 if (!initialQuery && result.threads[0]) {
-                    const loaded = await loadHelpThread(result.threads[0].id)
+                    const loaded = await transport.loadThread(result.threads[0].id)
                     if (cancelled) return
                     if (loaded.error) setHistoryWarning(loaded.error)
                     else { setThreadId(result.threads[0].id); setMessages(loaded.messages) }
@@ -67,13 +71,13 @@ export function AIChatPanel({ initialQuery, className }: AIChatPanelProps) {
             finally { if (!cancelled) setHistoryLoading(false) }
         })()
         return () => { cancelled = true }
-    }, [initialQuery])
+    }, [initialQuery, transport])
 
     const selectThread = async (id: string) => {
         const request = ++historyRequestRef.current
         setHistoryLoading(true)
         try {
-            const result = await loadHelpThread(id)
+            const result = await transport.loadThread(id)
             if (!mountedRef.current || request !== historyRequestRef.current) return
             if (result.error) setHistoryWarning(result.error)
             else {
@@ -88,7 +92,7 @@ export function AIChatPanel({ initialQuery, className }: AIChatPanelProps) {
     const moreThreads = async () => {
         setHistoryLoading(true)
         try {
-            const result = await listHelpThreads(threads.length)
+            const result = await transport.listThreads(threads.length)
             if (!mountedRef.current) return
             if (result.error) setHistoryWarning(result.error)
             else { setThreads(prev => [...prev, ...result.threads.filter(t => !prev.some(p => p.id === t.id))]); setHasMoreThreads(result.hasMore) }
@@ -144,7 +148,7 @@ export function AIChatPanel({ initialQuery, className }: AIChatPanelProps) {
         reportHelpState?.('thinking')
 
         try {
-            const response = await askHelpAssistant(question, messages, threadId, currentRoute || undefined)
+            const response = await transport.ask(question, messages, threadId, currentRoute || undefined)
             if (!mountedRef.current) return
             setHistoryWarning(response.storageError)
             if (response.threadId) {
@@ -195,7 +199,7 @@ export function AIChatPanel({ initialQuery, className }: AIChatPanelProps) {
                             ¿En qué puedo ayudarte?
                         </h4>
                         <p className="text-sm text-zinc-500 dark:text-white/40 max-w-xs">
-                            Pregúntame sobre cualquier función de Pixy.
+                            {welcomeText}
                         </p>
                     </div>
                 )}

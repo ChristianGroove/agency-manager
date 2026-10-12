@@ -613,6 +613,11 @@ Cliente: ${input.client?.name || 'Cliente de la Agencia'}`
   }
 };
 
+AI_TASK_REGISTRY['help-tasks-portal-v1'] = {
+  ...AI_TASK_REGISTRY['help-assistant-v2'], id: 'help-tasks-portal-v1', description: 'Ayuda acotada al portal Tasks.',
+  systemPrompt: input => AI_TASK_REGISTRY['help-assistant-v2'].systemPrompt(input) + `\nÁmbito cerrado: únicamente Tasks y uso de su portal de colaboradores. Nunca expliques procedimientos de CRM, facturación, Cartera, super admin u otros módulos, aunque aparezcan en mensajes previos. La sesión no concede privilegios del dashboard. Describe únicamente controles disponibles para sus perfiles/capacidades; si faltan, explica el límite brevemente. No consultes ni inventes datos reales de proyectos, tareas, personas, horas o costos; puedes explicar cómo usar sus controles cuando la guía y el acceso lo permiten.`,
+}
+
 export function getTaskDefinition(taskId: string): AITaskDefinition {
   const task = AI_TASK_REGISTRY[taskId];
   if (!task) throw new Error(`AI Task '${taskId}' not found in registry.`);

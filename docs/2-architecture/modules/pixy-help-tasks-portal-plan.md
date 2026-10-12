@@ -70,4 +70,6 @@ Nuevo portal = adaptador de identidad y capacidades + biblioteca revisada + conf
 
 ## Pendientes que no bloquean el diseño
 
+Actualización 2026-10-12: identidad, contratos, biblioteca inicial, cuotas PostgreSQL, historial y UI ya implementados. Ver [integración y pendientes del piloto](pixy-help-tasks-portal-integration.md). Este plan conserva las decisiones originales; la biblioteca aún tiene ajustes de cobertura pendientes.
+
 Elección de backend del límite compartido, política de retención, UI exacta del robot en móvil, formato final del contrato V2 de artículos/superficies y configuración de portal en super admin. Resolverlos en la implementación mediante evidencia y alcance autorizado; no están activos por existir este plan.

@@ -8,9 +8,17 @@ const dashboard: HelpAccess = { platformAdmin: true, tenantAdmin: true, modules:
 const portal: HelpAccess = { ...dashboard, platformAdmin: false, tenantAdmin: false, surface: 'portal.tasks', portalProfiles: ['collaborator'], permissions: [], modules: ['module_tasks'], route: '/portal/tasks/[token]' }
 const base: HelpArticle = { id: 'tasks-portal.navigation', title: 'Navegar tareas portal', module: 'tasks', audience: 'portal-collaborator', surface: 'portal.tasks', routes: ['/portal/tasks/[token]'], keywords: ['tareas', 'portal'], content: 'Guía de navegación del portal de tareas. '.repeat(4), required_modules: ['module_tasks'], required_permissions: [], verticals: [], link_route: null, revision: 'a'.repeat(64), portal_profiles: ['collaborator'] }
 
-it('keeps the existing corpus compatible and entirely outside portal access', () => {
+it('keeps dashboard guides outside portal access and portal guides outside dashboard access', () => {
     expect(published.articles.every(article => articleSchema.safeParse(article).success)).toBe(true)
-    expect(published.articles.some(article => canReadArticle(article as HelpArticle, portal))).toBe(false)
+    expect(published.articles.filter(article => !('surface' in article) || article.surface !== 'portal.tasks').some(article => canReadArticle(article as HelpArticle, portal))).toBe(false)
+    expect(published.articles.filter(article => 'surface' in article && article.surface === 'portal.tasks').some(article => canReadArticle(article as HelpArticle, dashboard))).toBe(false)
+})
+
+it('requires every technical capability even for leads and honors explicit removal', () => {
+    const restricted: HelpArticle = { ...base, portal_profiles: ['lead'], required_portal_capabilities: ['vcs_code', 'finance_costs'] }
+    expect(canReadArticle(restricted, { ...portal, portalProfiles: ['lead'], portalCapabilities: ['vcs_code'] })).toBe(false)
+    expect(canReadArticle(restricted, { ...portal, portalProfiles: ['lead'], portalCapabilities: ['vcs_code', 'finance_costs'] })).toBe(true)
+    expect(canReadArticle(restricted, { ...portal, portalProfiles: ['lead'], platformAdmin: true })).toBe(false)
 })
 
 it('does not grant a dashboard admin access to a portal guide', () => {

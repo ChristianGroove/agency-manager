@@ -102,4 +102,6 @@ Apagar V2 restaura el camino legacy, no elimina historial ni configuración del 
 
 ## Cierre y siguiente intervención
 
+Actualización Tasks: ver [integración, activación y mantenimiento del portal](../../2-architecture/modules/pixy-help-tasks-portal-integration.md). Corpus actual: 39 artículos con superficies aisladas. Portal en piloto local de Movilservicios; dashboard V2 en Pixy. El snapshot de aceptación es `reviews/tasks-portal-reviewed-20261012.json`. La siguiente revisión editorial debe ser un snapshot nuevo y completo, conservando los filtros de capacidades; no refrescar hashes con el importador histórico. La recuperación de Tasks tiene casos pendientes identificados en su reporte, independientes de la regresión del dashboard.
+
 Ver [cierre del tramo](../../1-product/help-library/reviews/dashboard-closeout-20261012.md) y [plan Tasks](../../2-architecture/modules/pixy-help-tasks-portal-plan.md). Siguiente entrega: biblioteca y matriz de capacidades del portal a cargo de Gemini; sesión/acceso, contratos por superficie, UI/historial y pruebas a cargo táctico. El estado «preparado» no implica portal activo ni autorización ya implementada.

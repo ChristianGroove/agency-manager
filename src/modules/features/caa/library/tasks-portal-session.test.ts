@@ -44,6 +44,16 @@ it('is disabled by default without querying collaborators', async () => {
     expect(mocks.from).not.toHaveBeenCalled()
 })
 
+it('accepts existing text application identifiers and derives explicit capability overrides', async () => {
+    mocks.org.active_app_id = 'app_saas_platform'
+    mocks.staff.settings = { capabilities: { vcs_code: false, finance_costs: true } }
+    const session = await resolveTasksPortalHelpSession(token)
+    expect(session).not.toBeNull()
+    expect(session?.access.portalCapabilities).toContain('finance_costs')
+    expect(session?.access.portalCapabilities).not.toContain('vcs_code')
+    expect(session?.access.portalCapabilities).not.toContain('bulk_delete')
+})
+
 it('requires explicit tenant targeting, never wildcard or caller-selected tenant', async () => {
     vi.stubEnv('PIXY_HELP_TASKS_PORTAL_TENANTS', '*')
     expect(await resolveTasksPortalHelpSession(token)).toBeNull()

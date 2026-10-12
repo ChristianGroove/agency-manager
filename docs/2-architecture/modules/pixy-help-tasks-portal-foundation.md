@@ -1,5 +1,7 @@
 # Base técnica del portal Tasks — primera entrega
 
+Documento histórico de la primera entrega. El estado actual, piloto local, historial y cuotas están en [integración de Tasks](pixy-help-tasks-portal-integration.md).
+
 Fecha: 2026-10-12. Implementada en `pixyrobotpet`. El robot/chat todavía NO está montado ni activado en el portal. No hay endpoint de generación, migración de historial ni cuotas compartidas en esta entrega.
 
 ## Entregado

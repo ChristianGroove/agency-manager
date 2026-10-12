@@ -10,7 +10,4 @@ export function helpV2Enabled(org: string): boolean {
     return process.env.PIXY_HELP_V2_ENABLED === 'true' && (tenants.includes(org) || tenants.includes('*'))
 }
 
-export function tasksPortalHelpEnabled(org: string): boolean {
-    const tenants = (process.env.PIXY_HELP_TASKS_PORTAL_TENANTS || '').split(',').map(value => value.trim())
-    return process.env.PIXY_HELP_TASKS_PORTAL_ENABLED === 'true' && tenants.includes(org)
-}
+export { tasksPortalHelpEnabled } from './activation'

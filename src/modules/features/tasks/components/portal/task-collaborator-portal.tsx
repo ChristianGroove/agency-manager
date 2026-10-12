@@ -133,6 +133,7 @@ import {
   lockPortalSessionAction,
 } from "@/modules/features/portal-security"
 import dynamic from "next/dynamic"
+const TasksPortalHelp = dynamic(() => import('@/modules/features/caa/components/tasks-portal-help').then(module => module.TasksPortalHelp), { ssr: false })
 import { formatDistanceToNow } from "date-fns"
 import { es } from "date-fns/locale"
 import { cn } from "@/modules/infrastructure/utils/utils"
@@ -559,11 +560,13 @@ function canJoinMeeting(task: TaskItem): boolean {
 interface TaskCollaboratorPortalProps {
   portalData: CollaboratorPortalData
   token: string
+  helpEnabled?: boolean
 }
 
 export function TaskCollaboratorPortal({
   portalData,
   token,
+  helpEnabled = false,
 }: TaskCollaboratorPortalProps) {
   const { staff, organization, projects: initialProjects = [], workspaces: initialWorkspaces = [], isLeadOrPm, isQa } = portalData
   const brandColor = organization?.primary_color || "#8ec045"
@@ -2564,6 +2567,7 @@ export function TaskCollaboratorPortal({
           onSuccess={handleSecuritySuccess}
           brandColor={brandColor}
         />
+        {helpEnabled && !isLocked && <TasksPortalHelp key={token} token={token} theme={portalTheme} />}
       </div>
     )
   }
@@ -5490,6 +5494,7 @@ export function TaskCollaboratorPortal({
         onSuccess={handleSecuritySuccess}
         brandColor={brandColor}
       />
+      {helpEnabled && !isLocked && <TasksPortalHelp key={token} token={token} theme={portalTheme} />}
     </div>
   )
 }

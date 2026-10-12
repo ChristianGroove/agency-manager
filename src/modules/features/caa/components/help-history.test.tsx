@@ -23,6 +23,16 @@ beforeEach(() => {
 afterEach(cleanup)
 
 describe('private help history UI', () => {
+    it('uses an injected portal transport without touching dashboard history or actions', async () => {
+        const transport = { listThreads: vi.fn().mockResolvedValue({ threads: [], hasMore: false }), loadThread: vi.fn(), ask: vi.fn().mockResolvedValue({ success: true, message: 'Respuesta del portal.', threadId: thread.id }) }
+        render(<AIChatPanel transport={transport} welcomeText="Ayuda de Tasks" />)
+        await waitFor(() => expect(screen.getByRole('textbox')).toBeEnabled())
+        fireEvent.change(screen.getByRole('textbox'), { target: { value: 'Cómo uso Tasks' } })
+        fireEvent.submit(screen.getByRole('textbox').closest('form')!)
+        await screen.findByText('Respuesta del portal.')
+        expect(transport.ask).toHaveBeenCalled()
+        expect(mocks.list).not.toHaveBeenCalled(); expect(mocks.load).not.toHaveBeenCalled(); expect(mocks.ask).not.toHaveBeenCalled()
+    })
     it('restores saved conversation after closing and reopening without asking AI', async () => {
         const view = render(<AIChatPanel />)
         await screen.findByText('Usa el botón del sidebar.')

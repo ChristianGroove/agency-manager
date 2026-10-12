@@ -1,0 +1,1258 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "name": "pixy-tasks-portal-questions",
+  "version": "1.0.0",
+  "generated_at": "2026-10-12",
+  "source_revision": "5aaeec98767f13ec9b495eed33486fcdba65ab86",
+  "surface": "portal.tasks",
+  "summary": {
+    "total_cases": 70,
+    "answer_cases": 47,
+    "clarify_cases": 12,
+    "abstain_cases": 11
+  },
+  "cases": [
+    {
+      "id": "q.portal.001",
+      "query": "¿Cómo ingreso a mi portal de tareas si me pide un código PIN?",
+      "profile": "all_collaborators",
+      "view": "portal.tasks.lockscreen",
+      "expected_behavior": "answer",
+      "expected_guides": ["tasks-portal.access-and-pin"],
+      "required_points": [
+        "Ingresar los 6 dígitos numéricos en la pantalla de bloqueo",
+        "Opción de marcar Recordar en este dispositivo por 30 días",
+        "Si olvidaste el PIN debes pedir a un PM o administrador que lo blanquee"
+      ],
+      "forbidden_claims": [
+        "Existe un botón para recuperar PIN por correo electrónico",
+        "El PIN tiene 4 dígitos"
+      ],
+      "category": "security"
+    },
+    {
+      "id": "q.portal.002",
+      "query": "¿Dónde configuro o cambio mi PIN de acceso?",
+      "profile": "all_collaborators",
+      "view": "portal.tasks.general",
+      "expected_behavior": "answer",
+      "expected_guides": ["tasks-portal.access-and-pin"],
+      "required_points": [
+        "Hacer clic en el avatar en la esquina superior derecha",
+        "Seleccionar la opción Seguridad y PIN",
+        "Ingresar PIN actual y el nuevo PIN de 6 dígitos"
+      ],
+      "forbidden_claims": [
+        "Se configura en los ajustes generales de la organización",
+        "Cualquier compañero puede ver tu PIN"
+      ],
+      "category": "security"
+    },
+    {
+      "id": "q.portal.003",
+      "query": "¿Cómo bloqueo mi pantalla cuando me levanto de mi puesto?",
+      "profile": "all_collaborators",
+      "view": "portal.tasks.general",
+      "expected_behavior": "answer",
+      "expected_guides": ["tasks-portal.access-and-pin"],
+      "required_points": [
+        "Hacer clic en el avatar superior derecho",
+        "Presionar Bloquear Pantalla",
+        "La sesión exigirá nuevamente el PIN para mostrar las tareas"
+      ],
+      "forbidden_claims": [
+        "El enlace se invalida permanentemente",
+        "Debes cerrar la pestaña del navegador para bloquear"
+      ],
+      "category": "security"
+    },
+    {
+      "id": "q.portal.004",
+      "query": "¿Cómo veo mis tareas en formato de tablero Kanban?",
+      "profile": "developer",
+      "view": "portal.tasks.general",
+      "expected_behavior": "answer",
+      "expected_guides": ["tasks-portal.view-modes-and-filters"],
+      "required_points": [
+        "Ir a la barra de controles de vista en la esquina superior derecha",
+        "Hacer clic en el icono de Tablero Kanban",
+        "Las tareas se organizan en columnas por estado y se pueden arrastrar"
+      ],
+      "forbidden_claims": [
+        "El Kanban está disponible en la vista de reuniones",
+        "La vista compacta sigue activa en el menú"
+      ],
+      "category": "procedural"
+    },
+    {
+      "id": "q.portal.005",
+      "query": "¿Cómo puedo ver solamente mis reuniones y no los tickets técnicos?",
+      "profile": "specialist",
+      "view": "portal.tasks.general",
+      "expected_behavior": "answer",
+      "expected_guides": ["tasks-portal.view-modes-and-filters", "tasks-portal.meetings-and-meet"],
+      "required_points": [
+        "Utilizar el alternador central superior y hacer clic en Ver Reuniones",
+        "El portal filtrará exclusivamente las sesiones sincronizadas MTG",
+        "Ocultará los tickets de desarrollo"
+      ],
+      "forbidden_claims": [
+        "Las reuniones se crean en el backlog",
+        "Debes buscar la palabra meeting en la caja de texto"
+      ],
+      "category": "procedural"
+    },
+    {
+      "id": "q.portal.006",
+      "query": "¿Cómo filtro las tareas de un proyecto específico?",
+      "profile": "designer",
+      "view": "portal.tasks.general",
+      "expected_behavior": "answer",
+      "expected_guides": ["tasks-portal.view-modes-and-filters"],
+      "required_points": [
+        "Abrir el selector desplegable de Proyecto/Workspace en la barra de filtros",
+        "Seleccionar el proyecto deseado",
+        "El tablero mostrará únicamente los tickets pertenecientes a ese proyecto"
+      ],
+      "forbidden_claims": [
+        "Debes cambiar de URL para ver otro proyecto",
+        "Los colaboradores ven proyectos a los que no tienen acceso"
+      ],
+      "category": "procedural"
+    },
+    {
+      "id": "q.portal.007",
+      "query": "¿Por qué no puedo mover mi barra de progreso al 100%?",
+      "profile": "developer",
+      "view": "portal.tasks.detail_modal",
+      "expected_behavior": "answer",
+      "expected_guides": ["tasks-portal.task-progress-and-slider", "tasks-portal.subtasks-checklist"],
+      "required_points": [
+        "Existen subtareas pendientes sin marcar en el checklist",
+        "La regla de gobernanza clampa el avance al 95% hasta que se completen todos los entregables",
+        "Al marcar la última subtarea se alcanzará el 100%"
+      ],
+      "forbidden_claims": [
+        "Es un error del sistema que requiere recargar",
+        "Solo el administrador de Pixy puede poner 100%"
+      ],
+      "category": "governance"
+    },
+    {
+      "id": "q.portal.008",
+      "query": "¿Quién puede modificar el slider de avance de una tarea?",
+      "profile": "specialist",
+      "view": "portal.tasks.grid",
+      "expected_behavior": "answer",
+      "expected_guides": ["tasks-portal.task-progress-and-slider"],
+      "required_points": [
+        "El colaborador asignado como responsable directo de la tarea",
+        "Un Project Manager o Líder Técnico de la organización",
+        "Colaboradores asignados solo a subtareas no pueden mover el slider principal"
+      ],
+      "forbidden_claims": [
+        "Cualquier miembro del workspace puede mover el slider de cualquier tarea",
+        "El cliente final ajusta el slider"
+      ],
+      "category": "permissions"
+    },
+    {
+      "id": "q.portal.009",
+      "query": "¿Cómo cambio el estado de una tarea a En Progreso?",
+      "profile": "developer",
+      "view": "portal.tasks.grid",
+      "expected_behavior": "answer",
+      "expected_guides": ["tasks-portal.task-lifecycle-and-status"],
+      "required_points": [
+        "Hacer clic en la insignia interactiva de estado o arrastrar la tarjeta en Kanban",
+        "Seleccionar En progreso",
+        "Se recomienda registrar un avance inicial o imputar horas"
+      ],
+      "forbidden_claims": [
+        "Debes pedir permiso al PM para iniciar una tarea que ya está en Por hacer",
+        "Las tareas en Backlog pueden pasarse directamente a En progreso por el desarrollador"
+      ],
+      "category": "procedural"
+    },
+    {
+      "id": "q.portal.010",
+      "query": "¿Qué hago si mi tarea está detenida porque me faltan credenciales o insumos?",
+      "profile": "developer",
+      "view": "portal.tasks.detail_modal",
+      "expected_behavior": "answer",
+      "expected_guides": ["tasks-portal.task-lifecycle-and-status"],
+      "required_points": [
+        "Cambiar el estado de la tarea a Bloqueada",
+        "Escribir el motivo detallado del impedimento en la ventana emergente",
+        "El sistema notificará de inmediato al Project Manager"
+      ],
+      "forbidden_claims": [
+        "Eliminar la tarea",
+        "Marcar la tarea como completada para quitarla del tablero"
+      ],
+      "category": "procedural"
+    },
+    {
+      "id": "q.portal.011",
+      "query": "¿Por qué el sistema no me deja enviar mi tarea a revisión?",
+      "profile": "developer",
+      "view": "portal.tasks.detail_modal",
+      "expected_behavior": "answer",
+      "expected_guides": ["tasks-portal.task-lifecycle-and-status"],
+      "required_points": [
+        "La tarea tiene una dependencia de predecesora bloqueada",
+        "El ticket del cual depende aún no ha sido marcado como Completado",
+        "Debes esperar a que se finalice la tarea predecesora o coordinar con su responsable"
+      ],
+      "forbidden_claims": [
+        "Debes recargar la página para forzar el estado",
+        "Cualquier tarea puede completarse ignorando dependencias"
+      ],
+      "category": "governance"
+    },
+    {
+      "id": "q.portal.012",
+      "query": "¿Cómo marco una subtarea que ya terminé?",
+      "profile": "designer",
+      "view": "portal.tasks.detail_modal",
+      "expected_behavior": "answer",
+      "expected_guides": ["tasks-portal.subtasks-checklist"],
+      "required_points": [
+        "Abrir el modal de detalle de la tarea",
+        "Ir a la sección Subtareas / Entregables",
+        "Hacer clic en la casilla de verificación junto a tu subtarea asignada"
+      ],
+      "forbidden_claims": [
+        "Debes eliminar la subtarea cuando la termines",
+        "Cualquier colaborador puede marcar las subtareas de otros compañeros"
+      ],
+      "category": "procedural"
+    },
+    {
+      "id": "q.portal.013",
+      "query": "¿Por qué me sale error al intentar marcar una subtarea del checklist?",
+      "profile": "developer",
+      "view": "portal.tasks.detail_modal",
+      "expected_behavior": "answer",
+      "expected_guides": ["tasks-portal.subtasks-checklist"],
+      "required_points": [
+        "La subtarea está asignada a otro colaborador específico",
+        "Solo el responsable de esa subtarea, el dueño de la tarea o un PM pueden marcarla",
+        "Si la tarea principal está Completada, las subtareas quedan selladas"
+      ],
+      "forbidden_claims": [
+        "Es un fallo de base de datos",
+        "El portal no admite subtareas para varios colaboradores"
+      ],
+      "category": "permissions"
+    },
+    {
+      "id": "q.portal.014",
+      "query": "¿Qué pasa cuando marco la última subtarea de un requerimiento?",
+      "profile": "developer",
+      "view": "portal.tasks.detail_modal",
+      "expected_behavior": "answer",
+      "expected_guides": ["tasks-portal.subtasks-checklist", "tasks-portal.qa-review-flow"],
+      "required_points": [
+        "El progreso alcanza el 100%",
+        "La tarea pasa automáticamente a estado En revisión (in_review)",
+        "Se notifica al revisor de QA o líder técnico para su certificación"
+      ],
+      "forbidden_claims": [
+        "Pasa de inmediato a Completada sin pasar por revisión",
+        "Se borra la tarea del portal"
+      ],
+      "category": "governance"
+    },
+    {
+      "id": "q.portal.015",
+      "query": "¿Cómo menciono a un compañero en un comentario para que le llegue aviso?",
+      "profile": "specialist",
+      "view": "portal.tasks.detail_modal",
+      "expected_behavior": "answer",
+      "expected_guides": ["tasks-portal.comments-and-mentions"],
+      "required_points": [
+        "Escribir el símbolo arroba (@) en el campo de comentarios",
+        "Seleccionar el compañero de la lista desplegable",
+        "El usuario recibirá una notificación en el icono de la campana"
+      ],
+      "forbidden_claims": [
+        "Le envía un mensaje SMS a su teléfono personal",
+        "Las menciones solo funcionan en el dashboard general de Pixy"
+      ],
+      "category": "procedural"
+    },
+    {
+      "id": "q.portal.016",
+      "query": "¿Dónde veo las notificaciones cuando alguien me menciona?",
+      "profile": "developer",
+      "view": "portal.tasks.general",
+      "expected_behavior": "answer",
+      "expected_guides": ["tasks-portal.comments-and-mentions"],
+      "required_points": [
+        "Hacer clic en el icono de la campana en la barra superior derecha",
+        "Consultar la lista de menciones recientes y el ticket asociado",
+        "Hacer clic sobre la notificación para abrir la tarea directamente"
+      ],
+      "forbidden_claims": [
+        "Se envían correos electrónicos automáticos para cada mención",
+        "La campana muestra notificaciones de facturación de la empresa"
+      ],
+      "category": "procedural"
+    },
+    {
+      "id": "q.portal.017",
+      "query": "¿Cómo adjunto una captura de pantalla o PDF a un ticket?",
+      "profile": "designer",
+      "view": "portal.tasks.detail_modal",
+      "expected_behavior": "answer",
+      "expected_guides": ["tasks-portal.attachments-and-files"],
+      "required_points": [
+        "Abrir el modal de detalle y acceder a Archivos y Enlaces",
+        "Arrastrar el archivo a la zona de carga o presionar Subir Archivo",
+        "El archivo se guardará en la galería de adjuntos del requerimiento"
+      ],
+      "forbidden_claims": [
+        "Los archivos se guardan en el almacenamiento local del navegador",
+        "Solo se pueden subir archivos en formato ZIP"
+      ],
+      "category": "procedural"
+    },
+    {
+      "id": "q.portal.018",
+      "query": "¿Cómo agrego un enlace a un tablero de Figma en una tarea?",
+      "profile": "designer",
+      "view": "portal.tasks.detail_modal",
+      "expected_behavior": "answer",
+      "expected_guides": ["tasks-portal.attachments-and-files", "tasks-portal.technical-capabilities"],
+      "required_points": [
+        "Ir a la sección Archivos y Enlaces en el modal de detalle",
+        "Presionar Añadir Enlace y pegar la URL de Figma con un título descriptivo",
+        "Si tienes habilitada la capacidad de diseño, podrás previsualizarlo en la pestaña Diseño"
+      ],
+      "forbidden_claims": [
+        "Figma reemplaza el sistema de tareas de Pixy",
+        "Debes descargar el archivo .fig para subirlo"
+      ],
+      "category": "procedural"
+    },
+    {
+      "id": "q.portal.019",
+      "query": "¿Cómo imputo las horas que trabajé hoy en un requerimiento?",
+      "profile": "developer",
+      "view": "portal.tasks.detail_modal",
+      "expected_behavior": "answer",
+      "expected_guides": ["tasks-portal.worklog-and-hours"],
+      "required_points": [
+        "Presionar el botón Registrar Horas (icono de reloj)",
+        "Ingresar el tiempo en horas con decimales si aplica (ej. 2.5)",
+        "Redactar una nota descriptiva de la actividad y guardar"
+      ],
+      "forbidden_claims": [
+        "Se pueden imputar horas en tareas ya completadas",
+        "Las horas no se pueden registrar con decimales"
+      ],
+      "category": "procedural"
+    },
+    {
+      "id": "q.portal.020",
+      "query": "¿Por qué no puedo registrar horas en una tarea que ya está en Completada?",
+      "profile": "specialist",
+      "view": "portal.tasks.detail_modal",
+      "expected_behavior": "answer",
+      "expected_guides": ["tasks-portal.worklog-and-hours"],
+      "required_points": [
+        "Las tareas completadas están selladas por gobernanza operativa",
+        "Se previene la alteración retroactiva de costos de sprint",
+        "Debes solicitar al Project Manager que autorice o reabra el requerimiento"
+      ],
+      "forbidden_claims": [
+        "Es un error que se arregla cambiando la fecha del computador",
+        "Los colaboradores pueden editar libremente tareas cerradas"
+      ],
+      "category": "governance"
+    },
+    {
+      "id": "q.portal.021",
+      "query": "¿Cómo guardo un recordatorio personal que solo yo pueda ver en una tarea?",
+      "profile": "developer",
+      "view": "portal.tasks.grid",
+      "expected_behavior": "answer",
+      "expected_guides": ["tasks-portal.quick-notes"],
+      "required_points": [
+        "Hacer clic en el icono del lápiz (Nota Rápida) en la tarjeta o lista",
+        "Escribir el apunte en la ventana emergente y presionar Guardar",
+        "La nota es estrictamente confidencial para tu usuario (aislamiento zero-leak)"
+      ],
+      "forbidden_claims": [
+        "El Project Manager puede leer tus notas privadas",
+        "La nota se publica en el feed general de comentarios"
+      ],
+      "category": "procedural"
+    },
+    {
+      "id": "q.portal.022",
+      "query": "Como desarrollador, ¿cómo creo una nueva tarea de mejora técnica?",
+      "profile": "developer",
+      "view": "portal.tasks.general",
+      "expected_behavior": "answer",
+      "expected_guides": ["tasks-portal.create-task-collaborator"],
+      "required_points": [
+        "Hacer clic en el botón + Requerimiento en la barra superior",
+        "Seleccionar proyecto, título, descripción y prioridad",
+        "El ticket se creará en el Backlog con 0 horas para revisión del PM"
+      ],
+      "forbidden_claims": [
+        "El desarrollador puede fijar fecha límite contractual y asignarla a otros",
+        "La tarea entra de inmediato al sprint activo"
+      ],
+      "category": "governance"
+    },
+    {
+      "id": "q.portal.023",
+      "query": "Soy Project Manager, ¿cómo creo una tarea con fecha límite y horas estimadas oficiales?",
+      "profile": "pm_lead",
+      "view": "portal.tasks.general",
+      "expected_behavior": "answer",
+      "expected_guides": ["tasks-portal.create-task-pm"],
+      "required_points": [
+        "Presionar + Requerimiento",
+        "Completar título, horas estimadas, fecha de entrega y prioridad",
+        "Asignar el responsable principal, el revisor QA y el sprint de destino"
+      ],
+      "forbidden_claims": [
+        "La tarea se va forzosamente al backlog",
+        "Los PM no pueden asignar revisores de calidad"
+      ],
+      "category": "permissions"
+    },
+    {
+      "id": "q.portal.024",
+      "query": "¿Cómo me uno a una reunión virtual y cómo paso lista?",
+      "profile": "specialist",
+      "view": "portal.tasks.detail_modal",
+      "expected_behavior": "answer",
+      "expected_guides": ["tasks-portal.meetings-and-meet"],
+      "required_points": [
+        "Abrir la reunión en el portal y presionar Unirse a Google Meet",
+        "Marcar las casillas de verificación junto a los asistentes presentes",
+        "Redactar las conclusiones en la minuta y presionar Finalizar Sesión"
+      ],
+      "forbidden_claims": [
+        "El pase de lista se borra al cerrar el navegador",
+        "Las reuniones se arrastran en el tablero Kanban"
+      ],
+      "category": "procedural"
+    },
+    {
+      "id": "q.portal.025",
+      "query": "¿Qué pasa si una reunión finaliza y nadie presiona el botón de cierre?",
+      "profile": "pm_lead",
+      "view": "portal.tasks.general",
+      "expected_behavior": "answer",
+      "expected_guides": ["tasks-portal.meetings-and-meet"],
+      "required_points": [
+        "El servidor cuenta con auto-cierre en segundo plano",
+        "Compara la hora de inicio más la duración programada",
+        "Al expirar el tiempo la marca automáticamente como completada al 100%"
+      ],
+      "forbidden_claims": [
+        "La reunión queda abierta para siempre y bloquea el sprint",
+        "El sistema cancela la reunión"
+      ],
+      "category": "governance"
+    },
+    {
+      "id": "q.portal.026",
+      "query": "Soy tester de QA, ¿cómo apruebo un requerimiento listo para producción?",
+      "profile": "qa_lead",
+      "view": "portal.tasks.detail_modal",
+      "expected_behavior": "answer",
+      "expected_guides": ["tasks-portal.qa-review-flow"],
+      "required_points": [
+        "Abrir la tarea en estado En revisión",
+        "Verificar que se cumplan las pruebas y subtareas",
+        "Cambiar el estado a Completada (done) en el menú de la cabecera"
+      ],
+      "forbidden_claims": [
+        "El tester debe borrar el ticket tras probarlo",
+        "No se puede aprobar si no se adjunta un video obligatoriamente"
+      ],
+      "category": "procedural"
+    },
+    {
+      "id": "q.portal.027",
+      "query": "Si encuentro un error durante la prueba de QA, ¿cómo devuelvo la tarea?",
+      "profile": "qa_lead",
+      "view": "portal.tasks.detail_modal",
+      "expected_behavior": "answer",
+      "expected_guides": ["tasks-portal.qa-review-flow", "tasks-portal.comments-and-mentions"],
+      "required_points": [
+        "Escribir los detalles del error en los comentarios mencionando al desarrollador (@)",
+        "Cambiar el estado de la tarea de En revisión a En progreso",
+        "Opcionalmente reducir el porcentaje de avance para alertar de la regresión"
+      ],
+      "forbidden_claims": [
+        "La tarea debe eliminarse y crearse de cero",
+        "Solo el desarrollador puede cambiar de En revisión a En progreso"
+      ],
+      "category": "procedural"
+    },
+    {
+      "id": "q.portal.028",
+      "query": "¿Dónde veo el Dashboard de operaciones con la carga de trabajo del equipo?",
+      "profile": "pm_lead",
+      "view": "portal.tasks.pm_dashboard",
+      "expected_behavior": "answer",
+      "expected_guides": ["tasks-portal.pm-operations-dashboard"],
+      "required_points": [
+        "Seleccionar Dashboard en el conmutador superior central de PM",
+        "Consultar la gráfica de distribución de horas y tareas por colaborador",
+        "Revisar el semáforo de requerimientos estancados y estado del sprint"
+      ],
+      "forbidden_claims": [
+        "Los desarrolladores estándar tienen acceso a este panel",
+        "El dashboard muestra la nómina y sueldos del personal"
+      ],
+      "category": "permissions"
+    },
+    {
+      "id": "q.portal.029",
+      "query": "¿Qué significa que una tarea aparezca como 'Estancada' (Stalled) en el Dashboard de PM?",
+      "profile": "pm_lead",
+      "view": "portal.tasks.pm_dashboard",
+      "expected_behavior": "answer",
+      "expected_guides": ["tasks-portal.pm-operations-dashboard"],
+      "required_points": [
+        "La tarea está En progreso pero lleva más de 48 o 72 horas hábiles sin actividad",
+        "No se han registrado comentarios, cambios de progreso ni imputación de horas",
+        "Señala un posible cuello de botella o falta de seguimiento del colaborador"
+      ],
+      "forbidden_claims": [
+        "La tarea se cancela automáticamente al estancarse",
+        "Significa que el cliente no ha pagado la factura"
+      ],
+      "category": "governance"
+    },
+    {
+      "id": "q.portal.030",
+      "query": "¿Cómo consulto la matriz de ritmo semanal (Pacing) y cómo descargo el PDF?",
+      "profile": "pm_lead",
+      "view": "portal.tasks.pacing",
+      "expected_behavior": "answer",
+      "expected_guides": ["tasks-portal.pm-weekly-pacing"],
+      "required_points": [
+        "Seleccionar Ritmo Semanal / Pacing en el conmutador superior de PM",
+        "Revisar el semáforo de 4 semanas por proyecto (on_track, at_risk, delayed)",
+        "Hacer clic en Exportar Reporte PDF para descargar el informe membretado"
+      ],
+      "forbidden_claims": [
+        "El PDF de pacing se genera desde el módulo de facturación",
+        "Cualquier colaborador puede exportar la matriz de pacing"
+      ],
+      "category": "procedural"
+    },
+    {
+      "id": "q.portal.031",
+      "query": "Trabajo en soporte, ¿cómo reporto un ticket de incidencia de un cliente?",
+      "profile": "parallel_support",
+      "view": "portal.tasks.support_portal",
+      "expected_behavior": "answer",
+      "expected_guides": ["tasks-portal.parallel-support-portal"],
+      "required_points": [
+        "Presionar el botón + Nuevo Ticket de Soporte",
+        "Seleccionar servicio, título de la incidencia, descripción y prioridad",
+        "El ticket se registrará con código #SUP- y se enviará al equipo técnico"
+      ],
+      "forbidden_claims": [
+        "El ticket entra directo al código fuente de producción",
+        "El personal de soporte debe asignar al desarrollador manualmente"
+      ],
+      "category": "procedural"
+    },
+    {
+      "id": "q.portal.032",
+      "query": "¿Cómo sé si un desarrollador respondió a mi consulta técnica en un ticket de soporte?",
+      "profile": "parallel_support",
+      "view": "portal.tasks.support_portal",
+      "expected_behavior": "answer",
+      "expected_guides": ["tasks-portal.parallel-support-portal", "tasks-portal.comments-and-mentions"],
+      "required_points": [
+        "El ticket mostrará un distintivo con el contador de mensajes no leídos",
+        "Recibirás una notificación en la campana si te mencionaron con @",
+        "Al abrir el ticket podrás leer la respuesta en el hilo de discusión"
+      ],
+      "forbidden_claims": [
+        "Debes llamar por teléfono al desarrollador",
+        "Los tickets de soporte se responden por WhatsApp exclusivamente"
+      ],
+      "category": "procedural"
+    },
+    {
+      "id": "q.portal.033",
+      "query": "¿Cómo elimino varias tareas a la vez en la vista de lista?",
+      "profile": "pm_lead",
+      "view": "portal.tasks.list",
+      "expected_behavior": "answer",
+      "expected_guides": ["tasks-portal.bulk-actions"],
+      "required_points": [
+        "Activar la vista de lista y marcar las casillas de verificación de las tareas",
+        "En la barra flotante inferior, hacer clic en Eliminar Seleccionados",
+        "Confirmar la advertencia de eliminación permanente"
+      ],
+      "forbidden_claims": [
+        "Las tareas eliminadas se pueden restaurar desde una papelera de reciclaje en el portal",
+        "Cualquier colaborador sin permisos puede borrar en lote"
+      ],
+      "category": "permissions"
+    },
+    {
+      "id": "q.portal.034",
+      "query": "¿Dónde veo la rama de Git que debo crear para mi tarea?",
+      "profile": "developer",
+      "view": "portal.tasks.detail_modal",
+      "expected_behavior": "answer",
+      "expected_guides": ["tasks-portal.technical-capabilities"],
+      "required_points": [
+        "Abrir el modal de detalle y hacer clic en la pestaña Código / VCS",
+        "Consultar el nombre de rama sugerido (ej. feature/TK-101-slug)",
+        "Copiar el comando git checkout -b para la terminal"
+      ],
+      "forbidden_claims": [
+        "El portal hace commit y push automáticamente desde el navegador",
+        "Los diseñadores ven esta pestaña por defecto sin permisos"
+      ],
+      "category": "capabilities"
+    },
+    {
+      "id": "q.portal.035",
+      "query": "¿Cómo previsualizo la pantalla de Figma directamente dentro de una tarea?",
+      "profile": "designer",
+      "view": "portal.tasks.detail_modal",
+      "expected_behavior": "answer",
+      "expected_guides": ["tasks-portal.technical-capabilities", "tasks-portal.attachments-and-files"],
+      "required_points": [
+        "Verificar que la tarea tenga un enlace válido de Figma en sus adjuntos",
+        "Hacer clic en la pestaña Diseño / Prototipo dentro del modal",
+        "El marco interactivo cargará el diseño embebido de Figma"
+      ],
+      "forbidden_claims": [
+        "Se requiere instalar un plugin de Figma en el navegador",
+        "Cualquier colaborador sin la capacidad design_preview ve la pestaña"
+      ],
+      "category": "capabilities"
+    },
+    {
+      "id": "q.portal.036",
+      "query": "¿Cómo puedo ver los errores de Sentry asociados a un ticket de bug?",
+      "profile": "developer",
+      "view": "portal.tasks.detail_modal",
+      "expected_behavior": "answer",
+      "expected_guides": ["tasks-portal.technical-capabilities"],
+      "required_points": [
+        "Acceder a la pestaña Monitoreo en el modal de detalle",
+        "Revisar los eventos de excepción técnica y trazas reportadas",
+        "Disponible para perfiles técnicos con capacidad de monitoreo activa"
+      ],
+      "forbidden_claims": [
+        "Sentry envía alertas a los clientes en el portal",
+        "La pestaña de monitoreo permite modificar el código en el servidor"
+      ],
+      "category": "capabilities"
+    },
+    {
+      "id": "q.portal.037",
+      "query": "¿Dónde veo cuánto ha costado una tarea según las horas trabajadas?",
+      "profile": "pm_lead",
+      "view": "portal.tasks.detail_modal",
+      "expected_behavior": "answer",
+      "expected_guides": ["tasks-portal.technical-capabilities"],
+      "required_points": [
+        "Disponible exclusivamente para Project Managers en la pestaña Costos y Finanzas",
+        "Multiplica las horas reales de cada colaborador por su tarifa horaria configurada",
+        "La información es confidencial y no se expone a desarrolladores ni clientes"
+      ],
+      "forbidden_claims": [
+        "Los desarrolladores pueden consultar los costos de sus compañeros",
+        "Los costos se descuentan de la cuenta bancaria de la empresa automáticamente"
+      ],
+      "category": "permissions"
+    },
+    {
+      "id": "q.portal.038",
+      "query": "¿Cómo cambio entre tema claro y tema oscuro en el portal?",
+      "profile": "all_collaborators",
+      "view": "portal.tasks.general",
+      "expected_behavior": "answer",
+      "expected_guides": ["tasks-portal.access-and-pin", "tasks-portal.view-modes-and-filters"],
+      "required_points": [
+        "Hacer clic en el icono de sol/luna en la barra superior del portal",
+        "El tema cambia al instante y se almacena en tu navegador",
+        "La carga inicial siempre respeta el modo claro del tenant para evitar destellos"
+      ],
+      "forbidden_claims": [
+        "El tema oscuro borra los datos guardados",
+        "Cambiar de tema altera los colores para todos los demás colaboradores"
+      ],
+      "category": "procedural"
+    },
+    {
+      "id": "q.portal.039",
+      "query": "¿Cómo sé si una tarea depende de otra antes de empezar a trabajar?",
+      "profile": "developer",
+      "view": "portal.tasks.detail_modal",
+      "expected_behavior": "answer",
+      "expected_guides": ["tasks-portal.task-lifecycle-and-status"],
+      "required_points": [
+        "En la tarjeta o en el modal de detalle observarás la insignia 'Bloqueada por #TK-XXX'",
+        "El badge indica el ticket predecesor y su estado actual",
+        "No podrás enviar tu tarea a revisión ni cerrarla hasta que la predecesora esté terminada"
+      ],
+      "forbidden_claims": [
+        "Las dependencias son solo sugerencias visuales sin efecto",
+        "Debes borrar la relación de dependencia manualmente para poder trabajar"
+      ],
+      "category": "governance"
+    },
+    {
+      "id": "q.portal.040",
+      "query": "Si ya terminé la tarea que bloqueaba a otras, ¿debo avisarle a mis compañeros?",
+      "profile": "developer",
+      "view": "portal.tasks.detail_modal",
+      "expected_behavior": "answer",
+      "expected_guides": ["tasks-portal.task-lifecycle-and-status", "tasks-portal.comments-and-mentions"],
+      "required_points": [
+        "El sistema ejecuta un desbloqueador automático al marcar tu tarea como Completada",
+        "Publica una nota en los tickets sucesores y cambia su estado si estaban bloqueados",
+        "Menciona al colaborador asignado informando que su entregable ya está listo para avanzar"
+      ],
+      "forbidden_claims": [
+        "Debes abrir cada tarea dependiente una a una para desbloquearla a mano",
+        "El sistema no avisa a los compañeros afectados"
+      ],
+      "category": "governance"
+    },
+    {
+      "id": "q.portal.041",
+      "query": "¿Cómo busco una tarea por su código de ticket como TK-105?",
+      "profile": "all_collaborators",
+      "view": "portal.tasks.general",
+      "expected_behavior": "answer",
+      "expected_guides": ["tasks-portal.view-modes-and-filters"],
+      "required_points": [
+        "Escribir 'TK-105' o el número '105' en la barra de búsqueda superior",
+        "El listado filtrará dinámicamente coincidiendo por código o título"
+      ],
+      "forbidden_claims": [
+        "Solo se puede buscar por el nombre de la persona",
+        "El buscador requiere presionar Enter para enviar al servidor"
+      ],
+      "category": "procedural"
+    },
+    {
+      "id": "q.portal.042",
+      "query": "¿Puedo cambiar el nombre de una tarea si soy el desarrollador asignado?",
+      "profile": "developer",
+      "view": "portal.tasks.detail_modal",
+      "expected_behavior": "answer",
+      "expected_guides": ["tasks-portal.create-task-collaborator", "tasks-portal.create-task-pm"],
+      "required_points": [
+        "El título y alcance principal son definidos por el Project Manager",
+        "Los colaboradores operativos pueden editar subtareas, descripción y comentarios",
+        "Para renombrar el ticket formal se sugiere coordinar con el líder de proyecto"
+      ],
+      "forbidden_claims": [
+        "Cualquier colaborador puede cambiar el título y cliente del proyecto a su antojo",
+        "El título de una tarea nunca se puede corregir"
+      ],
+      "category": "permissions"
+    },
+    {
+      "id": "q.portal.043",
+      "query": "¿Dónde veo cuántas horas me quedan presupuestadas en mi tarea?",
+      "profile": "developer",
+      "view": "portal.tasks.detail_modal",
+      "expected_behavior": "answer",
+      "expected_guides": ["tasks-portal.worklog-and-hours"],
+      "required_points": [
+        "En la tira compacta de tiempo del modal de detalle",
+        "Muestra horas estimadas oficiales frente a horas reales ejecutadas",
+        "Calcula la diferencia de horas restantes o sobrepasadas"
+      ],
+      "forbidden_claims": [
+        "Las horas restantes solo se ven en la factura de cobro",
+        "Si te pasas de horas el portal borra la tarea"
+      ],
+      "category": "procedural"
+    },
+    {
+      "id": "q.portal.044",
+      "query": "¿Qué significa la etiqueta MTG en una tarjeta?",
+      "profile": "all_collaborators",
+      "view": "portal.tasks.general",
+      "expected_behavior": "answer",
+      "expected_guides": ["tasks-portal.meetings-and-meet"],
+      "required_points": [
+        "Identifica una actividad de tipo Reunión sincrónica o sesión de trabajo",
+        "Cuenta con enlace a videollamada y control de asistencia",
+        "Se distingue de los tickets de código o entregables de desarrollo"
+      ],
+      "forbidden_claims": [
+        "Significa que la tarea está mal calificada",
+        "Es un entregable que requiere enviar un archivo ZIP"
+      ],
+      "category": "procedural"
+    },
+    {
+      "id": "q.portal.045",
+      "query": "¿Qué significa el prefijo SUP en un ticket?",
+      "profile": "all_collaborators",
+      "view": "portal.tasks.general",
+      "expected_behavior": "answer",
+      "expected_guides": ["tasks-portal.parallel-support-portal"],
+      "required_points": [
+        "Indica que el requerimiento fue originado en el canal de soporte paralelo",
+        "Proviene de una incidencia de atención al cliente o reporte de usuario",
+        "Mantiene comunicación con el agente de soporte asignado"
+      ],
+      "forbidden_claims": [
+        "Significa tarea de superadministrador",
+        "Es una tarea sin proyecto asignado"
+      ],
+      "category": "procedural"
+    },
+    {
+      "id": "q.portal.046",
+      "query": "¿Cómo salgo de mi portal de forma segura si estoy en un computador compartido?",
+      "profile": "all_collaborators",
+      "view": "portal.tasks.general",
+      "expected_behavior": "answer",
+      "expected_guides": ["tasks-portal.access-and-pin"],
+      "required_points": [
+        "Hacer clic en tu avatar en la esquina superior derecha",
+        "Seleccionar Bloquear Pantalla",
+        "Cerrar la ventana del navegador para limpiar la memoria de sesión"
+      ],
+      "forbidden_claims": [
+        "El enlace se autodestruye al cerrar la pestaña",
+        "No es necesario bloquear si la computadora tiene clave"
+      ],
+      "category": "security"
+    },
+
+    {
+      "id": "q.portal.047",
+      "query": "¿Cómo elimino una tarea?",
+      "profile": "standard_collaborator",
+      "view": "portal.tasks.general",
+      "expected_behavior": "clarify",
+      "expected_guides": ["tasks-portal.bulk-actions", "tasks-portal.create-task-pm"],
+      "required_points": [
+        "Aclarar que los colaboradores estándar no tienen permiso para eliminar tareas individuales",
+        "Preguntar si es un Project Manager o si cuenta con el permiso especial de eliminación en lote",
+        "Indicar que si es PM puede usar el botón de papelera en el modal o la barra flotante de lista"
+      ],
+      "forbidden_claims": [
+        "Cualquier colaborador puede borrar cualquier tarea haciendo clic derecho",
+        "Las tareas nunca se pueden eliminar en Pixy"
+      ],
+      "category": "disambiguation"
+    },
+    {
+      "id": "q.portal.048",
+      "query": "¿Por qué no veo el botón de crear tarea?",
+      "profile": "parallel_support",
+      "view": "portal.tasks.support_portal",
+      "expected_behavior": "clarify",
+      "expected_guides": ["tasks-portal.parallel-support-portal", "tasks-portal.create-task-collaborator"],
+      "required_points": [
+        "Aclarar en qué tipo de portal te encuentras (operaciones vs soporte)",
+        "En el portal de soporte el botón se denomina '+ Nuevo Ticket de Soporte'",
+        "En el portal de desarrollo de operaciones se llama '+ Requerimiento'",
+        "Verificar que tu sesión no esté bloqueada por PIN"
+      ],
+      "forbidden_claims": [
+        "La creación de tareas fue dada de baja en el sistema",
+        "Debes pedir una licencia adicional a Pixy"
+      ],
+      "category": "disambiguation"
+    },
+    {
+      "id": "q.portal.049",
+      "query": "¿Cómo asigno una persona a un requerimiento?",
+      "profile": "developer",
+      "view": "portal.tasks.detail_modal",
+      "expected_behavior": "clarify",
+      "expected_guides": ["tasks-portal.create-task-pm", "tasks-portal.subtasks-checklist"],
+      "required_points": [
+        "Distinguir si deseas asignar la tarea principal completa o una subtarea individual",
+        "La reasignación de la tarea principal es facultad de Project Managers",
+        "En subtareas, los colaboradores ordinarios solo pueden asignarse trabajo a sí mismos"
+      ],
+      "forbidden_claims": [
+        "Los desarrolladores pueden delegar tareas principales a sus compañeros libremente",
+        "No se pueden asignar personas en el portal"
+      ],
+      "category": "disambiguation"
+    },
+    {
+      "id": "q.portal.050",
+      "query": "¿Cómo paso mi tarea a completada?",
+      "profile": "developer",
+      "view": "portal.tasks.detail_modal",
+      "expected_behavior": "clarify",
+      "expected_guides": ["tasks-portal.task-lifecycle-and-status", "tasks-portal.qa-review-flow"],
+      "required_points": [
+        "Depende del flujo de calidad de tu proyecto",
+        "Si el proyecto tiene revisión de QA, debes enviarla primero a En revisión para certificación",
+        "Si no tiene QA y no hay subtareas pendientes, puedes marcar Completada directamente",
+        "Si hay subtareas pendientes, se desviará a En revisión al 95%"
+      ],
+      "forbidden_claims": [
+        "Basta con arrastrarla sin importar las subtareas",
+        "Solo el cliente puede marcar completada una tarea"
+      ],
+      "category": "disambiguation"
+    },
+    {
+      "id": "q.portal.051",
+      "query": "No me aparece la pestaña de código Git en mi tarea.",
+      "profile": "designer",
+      "view": "portal.tasks.detail_modal",
+      "expected_behavior": "clarify",
+      "expected_guides": ["tasks-portal.technical-capabilities"],
+      "required_points": [
+        "Aclarar cuál es tu rol en la organización",
+        "La pestaña Código/VCS se habilita por defecto para Desarrolladores, QA y PMs",
+        "Diseñadores y especialistas tienen deshabilitada esta pestaña salvo permiso personalizado en configuración"
+      ],
+      "forbidden_claims": [
+        "Es un error del repositorio de GitHub",
+        "Git fue retirado del portal de Pixy"
+      ],
+      "category": "disambiguation"
+    },
+    {
+      "id": "q.portal.052",
+      "query": "¿Cómo creo una reunión con Google Meet?",
+      "profile": "specialist",
+      "view": "portal.tasks.general",
+      "expected_behavior": "clarify",
+      "expected_guides": ["tasks-portal.meetings-and-meet", "tasks-portal.create-task-pm"],
+      "required_points": [
+        "Verificar si tu organización tiene vinculada la integración de Google Calendar",
+        "Al presionar + Requerimiento, seleccionar tipo 'Reunión' y modalidad virtual",
+        "Si el usuario no tiene cuenta vinculada a Google, puede pegar el enlace de Meet manualmente"
+      ],
+      "forbidden_claims": [
+        "Google Meet solo funciona descargando una app de escritorio",
+        "Todas las reuniones se crean en Zoom"
+      ],
+      "category": "disambiguation"
+    },
+    {
+      "id": "q.portal.053",
+      "query": "¿Dónde veo los sprints?",
+      "profile": "developer",
+      "view": "portal.tasks.general",
+      "expected_behavior": "clarify",
+      "expected_guides": ["tasks-portal.pm-operations-dashboard", "tasks-portal.view-modes-and-filters"],
+      "required_points": [
+        "Distinguir el perfil del usuario",
+        "Los PMs ven el panel completo del sprint activo en la pestaña Dashboard",
+        "Los desarrolladores ven el nombre del sprint vinculado dentro del modal de cada tarea"
+      ],
+      "forbidden_claims": [
+        "Los desarrolladores pueden iniciar o cerrar sprints",
+        "No existen sprints en el portal de tareas"
+      ],
+      "category": "disambiguation"
+    },
+    {
+      "id": "q.portal.054",
+      "query": "No me deja escribir horas en el ticket.",
+      "profile": "developer",
+      "view": "portal.tasks.detail_modal",
+      "expected_behavior": "clarify",
+      "expected_guides": ["tasks-portal.worklog-and-hours"],
+      "required_points": [
+        "Verificar el estado actual del ticket",
+        "Si el ticket está en estado Completada (done), está sellado y no admite horas sin permiso de PM",
+        "Verificar que estés ingresando números mayores a 0 con punto o coma decimal válida"
+      ],
+      "forbidden_claims": [
+        "El módulo de horas fue desactivado",
+        "Debes esperar a final de mes para ingresar horas"
+      ],
+      "category": "disambiguation"
+    },
+    {
+      "id": "q.portal.055",
+      "query": "¿Por qué veo menos tareas que mi compañero?",
+      "profile": "developer",
+      "view": "portal.tasks.general",
+      "expected_behavior": "clarify",
+      "expected_guides": ["tasks-portal.view-modes-and-filters", "tasks-portal.access-and-pin"],
+      "required_points": [
+        "En el portal de colaborador se muestran principalmente tus tareas asignadas o donde eres QA/subtarea",
+        "El acceso depende también de los workspaces en los que eres miembro si no tienes acceso global",
+        "Los Project Managers y Testers QA tienen acceso a todas las tareas del equipo"
+      ],
+      "forbidden_claims": [
+        "Tu cuenta tiene un error de base de datos",
+        "Las tareas se borran automáticamente para ahorrar espacio"
+      ],
+      "category": "disambiguation"
+    },
+    {
+      "id": "q.portal.056",
+      "query": "¿Cómo cancelo una reunión agendada?",
+      "profile": "developer",
+      "view": "portal.tasks.detail_modal",
+      "expected_behavior": "clarify",
+      "expected_guides": ["tasks-portal.meetings-and-meet", "tasks-portal.create-task-pm"],
+      "required_points": [
+        "Si eres el organizador o PM, puedes eliminar la reunión para cancelar la convocatoria",
+        "Si eres asistente, puedes registrar tu ausencia en las notas de la reunión",
+        "La eliminación cancela el evento en Google Calendar si estaba sincronizado"
+      ],
+      "forbidden_claims": [
+        "Cualquier asistente puede borrar la reunión de los calendarios de los demás",
+        "No se pueden cancelar reuniones"
+      ],
+      "category": "disambiguation"
+    },
+    {
+      "id": "q.portal.057",
+      "query": "¿Dónde veo mis tickets resueltos?",
+      "profile": "parallel_support",
+      "view": "portal.tasks.support_portal",
+      "expected_behavior": "clarify",
+      "expected_guides": ["tasks-portal.parallel-support-portal", "tasks-portal.view-modes-and-filters"],
+      "required_points": [
+        "En el portal de soporte, revisar la sección 'Resueltos' en el listado de tickets SUP",
+        "En el portal de operaciones de desarrollo, hacer clic en la pestaña superior 'Completadas'"
+      ],
+      "forbidden_claims": [
+        "Los tickets resueltos desaparecen de forma irreversible",
+        "Se envían a un buzón de spam"
+      ],
+      "category": "disambiguation"
+    },
+    {
+      "id": "q.portal.058",
+      "query": "Se me cerró la sesión y no me acepta el PIN.",
+      "profile": "all_collaborators",
+      "view": "portal.tasks.lockscreen",
+      "expected_behavior": "clarify",
+      "expected_guides": ["tasks-portal.access-and-pin"],
+      "required_points": [
+        "Verificar que estés ingresando exactamente 6 dígitos numéricos sin espacios",
+        "Comprobar si el bloqueo temporal de intentos está activo",
+        "Si olvidaste la clave, solicitar a tu Project Manager o Administrador que reinicie tu PIN desde la gestión de personal"
+      ],
+      "forbidden_claims": [
+        "Puedes adivinar el PIN infinitas veces sin consecuencia",
+        "El PIN se reinicia automáticamente cada 24 horas"
+      ],
+      "category": "disambiguation"
+    },
+
+    {
+      "id": "q.portal.059",
+      "query": "¿Cómo creo una factura para cobrarle a un cliente?",
+      "profile": "all_collaborators",
+      "view": "portal.tasks.general",
+      "expected_behavior": "abstain",
+      "expected_guides": [],
+      "required_points": [
+        "Aclarar que el portal de tareas es exclusivamente para ejecución operativa de requerimientos técnicos",
+        "Indicar que la facturación comercial se gestiona en el módulo de Facturación del Dashboard principal por personal administrativo",
+        "Abstenerse de dar procedimientos de cobro o pasarelas en este portal"
+      ],
+      "forbidden_claims": [
+        "Explicar pasos para emitir facturas en el portal de tareas",
+        "Decir que las tareas generan facturas automáticas con IVA"
+      ],
+      "category": "out_of_scope"
+    },
+    {
+      "id": "q.portal.060",
+      "query": "¿Cómo registro un nuevo contacto o empresa en el CRM?",
+      "profile": "all_collaborators",
+      "view": "portal.tasks.general",
+      "expected_behavior": "abstain",
+      "expected_guides": [],
+      "required_points": [
+        "Explicar que la gestión de contactos y prospectos corresponde al módulo de CRM",
+        "El portal de tareas solo permite asociar proyectos preexistentes, no administrar la base del CRM"
+      ],
+      "forbidden_claims": [
+        "Dar instrucciones para crear clientes desde el portal de tareas",
+        "Confundir un ticket de tarea con un contacto comercial"
+      ],
+      "category": "out_of_scope"
+    },
+    {
+      "id": "q.portal.061",
+      "query": "¿Cómo configuro las campañas de WhatsApp en el Inbox?",
+      "profile": "all_collaborators",
+      "view": "portal.tasks.general",
+      "expected_behavior": "abstain",
+      "expected_guides": [],
+      "required_points": [
+        "Indicar que las campañas de mensajería y canales de WhatsApp se configuran en el módulo Inbox del dashboard de la agencia",
+        "El portal de tareas no administra líneas de Meta ni plantillas de WhatsApp masivas"
+      ],
+      "forbidden_claims": [
+        "Explicar cómo conectar códigos QR de WhatsApp en el portal de tareas"
+      ],
+      "category": "out_of_scope"
+    },
+    {
+      "id": "q.portal.062",
+      "query": "¿Cómo cambio los datos bancarios para el pago de nómina de la empresa?",
+      "profile": "all_collaborators",
+      "view": "portal.tasks.general",
+      "expected_behavior": "abstain",
+      "expected_guides": [],
+      "required_points": [
+        "Aclarar que los aspectos salariales y bancarios son de gestión administrativa interna y ajenos al portal de tareas",
+        "Contactar al área de recursos humanos o contabilidad"
+      ],
+      "forbidden_claims": [
+        "Decir que se configuran en la pestaña de Costos y Finanzas",
+        "Pedir números de cuenta bancaria en el chat"
+      ],
+      "category": "out_of_scope"
+    },
+    {
+      "id": "q.portal.063",
+      "query": "¿Cómo cambio el plan de suscripción de Pixy de la agencia a Enterprise?",
+      "profile": "pm_lead",
+      "view": "portal.tasks.pm_dashboard",
+      "expected_behavior": "abstain",
+      "expected_guides": [],
+      "required_points": [
+        "La suscripción y planes de la plataforma Pixy son gestionados por el dueño del tenant en la sección de Suscripción del dashboard",
+        "No se administran contratos SaaS desde el portal de colaboradores"
+      ],
+      "forbidden_claims": [
+        "Dar opciones de pago o botones de actualización dentro del portal"
+      ],
+      "category": "out_of_scope"
+    },
+    {
+      "id": "q.portal.064",
+      "query": "¿Cómo configuro las políticas de cobranza y mora en el módulo de Cartera?",
+      "profile": "pm_lead",
+      "view": "portal.tasks.general",
+      "expected_behavior": "abstain",
+      "expected_guides": [],
+      "required_points": [
+        "Cartera y cobranzas es un módulo financiero separado (module_cartera)",
+        "El portal de tareas no gestiona créditos, pagarés ni amortizaciones"
+      ],
+      "forbidden_claims": [
+        "Explicar fórmulas de cuotas cicladas o Ley 2300 en este portal"
+      ],
+      "category": "out_of_scope"
+    },
+    {
+      "id": "q.portal.065",
+      "query": "¿Cómo invito a un nuevo empleado a la organización con permisos de Super Admin?",
+      "profile": "all_collaborators",
+      "view": "portal.tasks.general",
+      "expected_behavior": "abstain",
+      "expected_guides": [],
+      "required_points": [
+        "La gestión de roles y miembros de la organización se realiza en el panel de IAM del dashboard de Pixy",
+        "El portal de tareas no emite invitaciones de sistema ni gestiona credenciales de superadmin"
+      ],
+      "forbidden_claims": [
+        "Dar instrucciones para crear usuarios con acceso total desde el portal de tareas"
+      ],
+      "category": "out_of_scope"
+    },
+    {
+      "id": "q.portal.066",
+      "query": "¿Cómo modifico el menú de platos y pedidos de restaurante?",
+      "profile": "specialist",
+      "view": "portal.tasks.general",
+      "expected_behavior": "abstain",
+      "expected_guides": [],
+      "required_points": [
+        "La carta y pedidos corresponden al módulo de Restaurante (Resto)",
+        "No guarda relación con la gestión ágil de proyectos y tareas"
+      ],
+      "forbidden_claims": [
+        "Intentar crear tareas para cada plato del restaurante"
+      ],
+      "category": "out_of_scope"
+    },
+    {
+      "id": "q.portal.067",
+      "query": "Cuéntame un chiste de programadores.",
+      "profile": "developer",
+      "view": "portal.tasks.general",
+      "expected_behavior": "answer",
+      "expected_guides": [],
+      "required_points": [
+        "Respuesta informal breve y cordial de una sola frase amigable",
+        "Retorno inmediato a la disposición para orientar en el uso del portal"
+      ],
+      "forbidden_claims": [
+        "Discursos extensos o inventar comandos de sistema inexistentes"
+      ],
+      "category": "chitchat"
+    },
+    {
+      "id": "q.portal.068",
+      "query": "¿Puedes hacer commit y push de mi código a GitHub?",
+      "profile": "developer",
+      "view": "portal.tasks.detail_modal",
+      "expected_behavior": "abstain",
+      "expected_guides": ["tasks-portal.technical-capabilities"],
+      "required_points": [
+        "El asistente de ayuda es puramente explicativo y no opera la terminal ni ejecuta acciones sobre repositorios",
+        "El colaborador debe realizar el commit y push desde su entorno local Git"
+      ],
+      "forbidden_claims": [
+        "Afirmar que la IA de ayuda va a ejecutar comandos Git en el servidor"
+      ],
+      "category": "out_of_scope"
+    },
+    {
+      "id": "q.portal.069",
+      "query": "¿Cómo borro la base de datos de producción de la empresa?",
+      "profile": "developer",
+      "view": "portal.tasks.general",
+      "expected_behavior": "abstain",
+      "expected_guides": [],
+      "required_points": [
+        "Rechazo tajante por motivos de seguridad y alcance",
+        "La base de datos de producción no es accesible desde el portal y no se admiten operaciones destructivas"
+      ],
+      "forbidden_claims": [
+        "Dar comandos DROP DATABASE o instrucciones de destrucción de datos"
+      ],
+      "category": "out_of_scope"
+    },
+    {
+      "id": "q.portal.070",
+      "query": "¿Cómo cambio el logo y colores de la marca en toda la plataforma Pixy?",
+      "profile": "designer",
+      "view": "portal.tasks.general",
+      "expected_behavior": "abstain",
+      "expected_guides": [],
+      "required_points": [
+        "El ADN de Marca y colores globales se configuran en el módulo de Branding del dashboard de la agencia",
+        "El portal de tareas hereda los colores del tenant automáticamente en modo lectura"
+      ],
+      "forbidden_claims": [
+        "Indicar que se puede subir el logo de la empresa desde el portal de colaboradores"
+      ],
+      "category": "out_of_scope"
+    }
+  ]
+}

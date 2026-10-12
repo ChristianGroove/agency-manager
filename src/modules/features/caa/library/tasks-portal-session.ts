@@ -4,18 +4,20 @@ import { supabaseAdmin } from '@/modules/core/database/supabase-admin'
 import { isPortalSessionUnlocked } from '@/modules/features/portal-security/utils/session-cookie'
 import { getActiveModules } from '@/modules/core/saas/saas-actions'
 import { resolveTaskPortalRoleContext } from '@/modules/features/tasks/services/portal-role-context'
-import { tasksPortalHelpEnabled } from './runtime'
+import { resolveCollaboratorCapabilities, type CollaboratorRole } from '@/modules/features/tasks/types'
+import { tasksPortalHelpEnabled } from './activation'
 import type { HelpAccess } from './schema'
-import type { TaskPortalProfile } from './scope'
+import { TASK_PORTAL_CAPABILITIES, type TaskPortalProfile } from './scope'
 
 const tokenSchema = z.string().min(16).max(200).regex(/^[a-zA-Z0-9_-]+$/)
 const staffSchema = z.object({
     id: z.string().uuid(), organization_id: z.string().uuid(), is_active: z.literal(true),
     pin_code: z.string().nullable(), role: z.string().nullable(), task_role: z.string().nullable().optional(),
     can_bulk_delete_tasks: z.boolean().nullable().optional(),
+    settings: z.unknown().optional(),
 })
 const organizationSchema = z.object({
-    id: z.string().uuid(), status: z.literal('active'), active_app_id: z.string().uuid().nullable(),
+    id: z.string().uuid(), status: z.literal('active'), active_app_id: z.string().min(1).max(100).nullable(),
     rate_limit_config: z.object({ ai_mode: z.enum(['byok', 'saas', 'disabled']).optional(), ai_status: z.enum(['active', 'suspended']).optional() }).nullable(),
 })
 const verticalSchema = z.enum(['agency', 'resto', 'cleaning', 'platform', 'retail', 'saas', 'real_estate'])
@@ -34,7 +36,7 @@ export async function resolveTasksPortalHelpSession(token: unknown): Promise<Tas
     if (!input.success) return null
     try {
         const staffResult = await supabaseAdmin.from('organization_staff')
-            .select('id, organization_id, is_active, pin_code, role, task_role, can_bulk_delete_tasks')
+            .select('id, organization_id, is_active, pin_code, role, task_role, can_bulk_delete_tasks, settings')
             .eq('access_token', input.data).eq('is_active', true).maybeSingle()
         if (staffResult.error) return null
         const parsed = staffSchema.safeParse(staffResult.data)
@@ -56,6 +58,9 @@ export async function resolveTasksPortalHelpSession(token: unknown): Promise<Tas
         if (!context.verified) return null
         const profiles: TaskPortalProfile[] = context.portalMode === 'support' ? ['support']
             : context.isLeadOrPm ? context.isQa ? ['lead', 'qa'] : ['lead'] : context.isQa ? ['qa'] : ['collaborator']
+        const technical = resolveCollaboratorCapabilities({ role: staff.role || '', task_role: (staff.task_role || undefined) as CollaboratorRole | undefined, settings: staff.settings })
+        const portalCapabilities = TASK_PORTAL_CAPABILITIES.filter(capability => capability === 'bulk_delete'
+            ? context.canBulkDeleteTasks : technical[capability] === true)
 
         let vertical = 'unknown'
         if (org.data.active_app_id) {
@@ -66,7 +71,7 @@ export async function resolveTasksPortalHelpSession(token: unknown): Promise<Tas
         return {
             tenantId: staff.organization_id, staffId: staff.id,
             capabilities: { isLeadOrPm: context.isLeadOrPm, isQa: context.isQa, canBulkDeleteTasks: context.canBulkDeleteTasks, portalMode: context.portalMode },
-            access: { surface: 'portal.tasks', portalProfiles: profiles, platformAdmin: false, tenantAdmin: false,
+            access: { surface: 'portal.tasks', portalProfiles: profiles, portalCapabilities, platformAdmin: false, tenantAdmin: false,
                 modules: ['module_tasks'], permissions: [], vertical, route: '/portal/tasks/[token]' },
         }
     } catch {

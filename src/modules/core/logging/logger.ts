@@ -70,7 +70,7 @@ export function createSupabaseFetchInterceptor(clientName: string): typeof fetch
 
         // Extract table or RPC name
         let target = 'unknown'
-        const privateQuery = /access_token|pin_code/i.test(urlStr)
+        const privateQuery = /access_token|pin_code|help_portal|portal_help/i.test(urlStr)
         let logUrl = privateQuery ? '[private portal query]' : urlStr
         try {
             const urlObj = new URL(urlStr)
