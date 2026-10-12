@@ -12,6 +12,8 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Audited MIT renderer pinned to its upstream commit; typechecked and covered by pet tests.
+    "src/modules/core/pet/vendor/robot-heads/**",
   ]),
 ]);
 

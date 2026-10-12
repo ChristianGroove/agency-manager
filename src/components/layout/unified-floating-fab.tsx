@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { motion, AnimatePresence, Variants } from "framer-motion"
-import { Rocket, Moon, Sun, MessageSquare, Sparkles } from "lucide-react"
+import { Rocket, Moon, Sun, MessageSquare, Sparkles, Settings2 } from "lucide-react"
 import { useTheme } from "next-themes"
 import Image from "next/image"
 import { cn } from "@/modules/infrastructure/utils/utils"
@@ -13,9 +13,10 @@ interface UnifiedFloatingFabProps {
     onOpenHelp: () => void
     onOpenAssistant: () => void
     orgSlug?: string
+    petMode?: boolean
 }
 
-export function UnifiedFloatingFab({ onOpenMeta, onOpenHelp, onOpenAssistant, orgSlug }: UnifiedFloatingFabProps) {
+export function UnifiedFloatingFab({ onOpenMeta, onOpenHelp, onOpenAssistant, orgSlug, petMode = false }: UnifiedFloatingFabProps) {
     const isInternalOrg = orgSlug === 'pixy-agency'
 
     const [isExpanded, setIsExpanded] = useState(false)
@@ -68,12 +69,12 @@ export function UnifiedFloatingFab({ onOpenMeta, onOpenHelp, onOpenAssistant, or
             {/* Backdrop for Click Outside (Only when expanded) */}
             {isExpanded && (
                 <div
-                    className="fixed inset-0 z-[9998]"
+                    className="fixed inset-0 z-[39]"
                     onClick={() => setIsExpanded(false)}
                 />
             )}
 
-            <div className="fixed bottom-6 right-6 z-[9999] flex flex-col items-center gap-3">
+            <div className={cn("fixed z-40 flex flex-col items-center gap-3", petMode ? "right-32" : "right-6")} style={{ bottom: "calc(1.5rem + env(safe-area-inset-bottom))" }}>
                 {/* Expanded Menu Actions */}
                 <AnimatePresence>
                     {isExpanded && (
@@ -108,7 +109,7 @@ export function UnifiedFloatingFab({ onOpenMeta, onOpenHelp, onOpenAssistant, or
                             )}
 
                             {/* 3. HELP */}
-                            <motion.button
+                            {!petMode && <motion.button
                                 variants={itemVariants}
                                 onClick={() => {
                                     onOpenHelp()
@@ -125,7 +126,7 @@ export function UnifiedFloatingFab({ onOpenMeta, onOpenHelp, onOpenAssistant, or
                                 <span className="absolute right-12 px-3 py-1.5 bg-background/80 backdrop-blur-md text-foreground text-xs font-medium rounded-lg opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none custom-shadow border border-border/50">
                                     Centro de Ayuda
                                 </span>
-                            </motion.button>
+                            </motion.button>}
 
                             {/* 2. META */}
                             {isInternalOrg && (
@@ -172,9 +173,12 @@ export function UnifiedFloatingFab({ onOpenMeta, onOpenHelp, onOpenAssistant, or
 
                 {/* Main Trigger (Droid) */}
                 <motion.button
+                    type="button"
+                    aria-label={petMode ? "Herramientas del dashboard" : "Abrir herramientas y ayuda"}
+                    aria-expanded={isExpanded}
                     onClick={() => setIsExpanded(!isExpanded)}
                     variants={triggerVariants}
-                    animate={isExpanded ? "expanded" : "floating"}
+                    animate={isExpanded || petMode ? "expanded" : "floating"}
                     // Removed width/height animation to prevent jitter. Using Scale and Classes.
                     className={cn(
                         "relative w-10 h-10 rounded-full flex items-center justify-center", // Base size w-10 (40px)
@@ -195,7 +199,7 @@ export function UnifiedFloatingFab({ onOpenMeta, onOpenHelp, onOpenAssistant, or
                     whileTap={{ scale: 0.9 }}
                 >
                     {/* Droid Image - Flipped to look Left, Rotates on Expand */}
-                    <motion.div
+                    {petMode ? <Settings2 className="h-5 w-5" /> : <motion.div
                         className="relative w-full h-full p-1 opacity-90 group-hover:opacity-100"
                         animate={{
                             rotate: isExpanded ? -90 : 0,
@@ -214,7 +218,7 @@ export function UnifiedFloatingFab({ onOpenMeta, onOpenHelp, onOpenAssistant, or
                             className="object-contain"
                             sizes="56px"
                         />
-                    </motion.div>
+                    </motion.div>}
 
                     {/* Holographic Ring effect on hover */}
                     <div className={cn(

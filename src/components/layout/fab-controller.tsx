@@ -5,6 +5,8 @@ import { UnifiedFloatingFab } from "./unified-floating-fab"
 import MetaControlSheet from "@/modules/infrastructure/meta/components/MetaControlSheet"
 import { useAssistant } from "@/hooks/use-assistant"
 import dynamic from "next/dynamic"
+import { usePet } from "@/modules/core/pet/pet-provider"
+import { PetHelpTrigger } from "@/modules/core/pet/pet-help-trigger"
 
 // LAZY LOAD: The massive Assistant UI (animations, chat history) won't parse in JS 
 // until requested explicitly to save memory footprint.
@@ -25,6 +27,7 @@ const LazyAssistantModal = dynamic(
 )
 
 export function FabController({ orgSlug }: { orgSlug?: string }) {
+    const pet = usePet()
     const isInternalOrg = orgSlug === 'pixy-agency'
 
     const [isMetaOpen, setIsMetaOpen] = useState(false)
@@ -33,12 +36,14 @@ export function FabController({ orgSlug }: { orgSlug?: string }) {
 
     return (
         <>
-            <UnifiedFloatingFab
+            {!isHelpOpen && <UnifiedFloatingFab
                 onOpenMeta={() => setIsMetaOpen(true)}
                 onOpenHelp={() => setIsHelpOpen(true)}
                 onOpenAssistant={() => setHasAttemptedAssistant(true)}
                 orgSlug={orgSlug}
-            />
+                petMode={pet?.enabled ?? false}
+            />}
+            {pet?.enabled && !isHelpOpen && <PetHelpTrigger onOpenHelp={() => setIsHelpOpen(true)} />}
 
             {/* Controlled Components */}
             {isInternalOrg && <MetaControlSheet open={isMetaOpen} onOpenChange={setIsMetaOpen} />}
@@ -61,7 +66,7 @@ function AssistantWrapper() {
     // Automatically open on first mount when wrapper is triggered
     useEffect(() => {
         setIsOpen(true)
-    }, [])
+    }, [setIsOpen])
 
     return (
         <LazyAssistantOverlay

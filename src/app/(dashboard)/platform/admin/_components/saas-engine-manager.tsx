@@ -1,11 +1,13 @@
 "use client"
 
+import type { ComponentProps } from "react"
+
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { AppsList } from "../apps/_components/apps-list"
-import { FeatureFlagsManager } from "@/modules/core/admin/components/feature-flags-manager"
-import { Boxes, Settings2, Palette, Crown, DollarSign, CreditCard, LayoutGrid, Package } from "lucide-react"
+import { Settings2, Palette, Crown, DollarSign, CreditCard, LayoutGrid, Package } from "lucide-react"
 import { GlobalBrandingManager } from "./global-branding-manager"
+import { PetSettingsManager } from "@/modules/core/pet/pet-settings-manager"
 import { BrandingPlansManager } from "./branding-plans-manager"
 import { SettlementsManager } from "./settlements-manager"
 import { PaymentSettingsManager } from "./payment-settings-manager"
@@ -13,14 +15,14 @@ import { ModulesAddonsManager } from "./modules-addons-manager"
 import type { Module360Data } from "@/modules/core/admin/actions"
 
 interface SaasEngineManagerProps {
-    allModules: any[]
-    apps: any[]
-    dict: any
+    allModules: unknown[]
+    apps: ComponentProps<typeof AppsList>['initialApps']
+    dict: ComponentProps<typeof AppsList>['dict']
     modules360: Module360Data[]
-    intelligenceData?: any
+    intelligenceData?: unknown
 }
 
-export function SaasEngineManager({ allModules, apps, dict, modules360 }: SaasEngineManagerProps) {
+export function SaasEngineManager({ apps, dict, modules360 }: SaasEngineManagerProps) {
     return (
         <Card className="border-none shadow-none bg-transparent">
             {/* Header section removed as it's redundant with tabs */}
@@ -62,7 +64,7 @@ export function SaasEngineManager({ allModules, apps, dict, modules360 }: SaasEn
                         <CardHeader>
                             <CardTitle>Gestión de Spaces</CardTitle>
                             <CardDescription>
-                                Diferentes configuraciones y "sabores" del SaaS disponibles para las organizaciones (Agency, Clinic, Real Estate, etc.).
+                                Diferentes configuraciones y &quot;sabores&quot; del SaaS disponibles para las organizaciones (Agency, Clinic, Real Estate, etc.).
                             </CardDescription>
                         </CardHeader>
                         <CardContent>
@@ -83,6 +85,7 @@ export function SaasEngineManager({ allModules, apps, dict, modules360 }: SaasEn
 
                 <TabsContent value="branding" className="focus-visible:outline-none">
                     <GlobalBrandingManager />
+                    <PetSettingsManager />
                 </TabsContent>
 
                 <TabsContent value="plans" className="focus-visible:outline-none">

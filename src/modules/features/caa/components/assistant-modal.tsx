@@ -63,7 +63,7 @@ export function AssistantModal({ open, onOpenChange }: AssistantModalProps) {
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className={cn(
-                "p-0 overflow-hidden backdrop-blur-2xl sm:max-w-[700px] h-[650px] top-[50%] translate-y-[-50%] rounded-2xl outline-none block",
+                "p-0 overflow-hidden backdrop-blur-2xl max-w-[calc(100vw-2rem)] sm:max-w-[700px] h-[min(650px,calc(100dvh-2rem))] top-[50%] translate-y-[-50%] rounded-2xl outline-none block",
                 // Light mode
                 "bg-white/95 border border-zinc-200 shadow-[0_0_60px_rgba(242,5,226,0.1)]",
                 // Dark mode
@@ -103,6 +103,8 @@ export function AssistantModal({ open, onOpenChange }: AssistantModalProps) {
                 
                 {/* Close Button UI override if needed */}
                 <button
+                    type="button"
+                    aria-label="Cerrar ayuda"
                     onClick={() => onOpenChange(false)}
                     className="absolute top-4 right-4 z-[40] p-2 rounded-lg hover:bg-zinc-100 dark:hover:bg-white/10 transition-colors"
                 >

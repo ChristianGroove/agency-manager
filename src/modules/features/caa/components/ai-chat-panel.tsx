@@ -1,10 +1,13 @@
 "use client"
 
-import { useState, useRef, useEffect } from "react"
-import { motion, AnimatePresence } from "framer-motion"
+import { useState, useRef, useEffect, useEffectEvent } from "react"
+import { motion } from "framer-motion"
 import { Sparkles, Send, User, Bot, Loader2, ArrowLeft, AlertCircle } from "lucide-react"
 import { cn } from "@/modules/infrastructure/utils/utils"
 import { askHelpAssistant, HelpChatMessage } from "../actions/ask-help-assistant"
+import { usePet } from "@/modules/core/pet/pet-provider"
+import { PetVisual } from "@/modules/core/pet/pet-visual"
+import { PetAlertAvatar } from "@/modules/core/pet/pet-alert-avatar"
 
 interface AIChatPanelProps {
     initialQuery?: string
@@ -16,6 +19,9 @@ interface AIChatPanelProps {
  * AIChatPanel v2 - Futuristic with Light/Dark Mode Support
  */
 export function AIChatPanel({ initialQuery, onBack, className }: AIChatPanelProps) {
+    const pet = usePet()
+    const reportHelpState = pet?.reportHelpState
+    const mountedRef = useRef(true)
     const [messages, setMessages] = useState<HelpChatMessage[]>([])
     const [input, setInput] = useState("")
     const [isLoading, setIsLoading] = useState(false)
@@ -25,15 +31,25 @@ export function AIChatPanel({ initialQuery, onBack, className }: AIChatPanelProp
     const initialQuerySentRef = useRef(false)
 
     useEffect(() => {
+        mountedRef.current = true
+        return () => {
+            mountedRef.current = false
+            reportHelpState?.('idle')
+        }
+    }, [reportHelpState])
+
+    useEffect(() => {
         messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
     }, [messages])
+
+    const sendInitialQuery = useEffectEvent((text: string) => { void handleSend(text) })
 
     useEffect(() => {
         if (initialQuery && !initialQuerySentRef.current && messages.length === 0) {
             initialQuerySentRef.current = true
-            handleSend(initialQuery)
+            sendInitialQuery(initialQuery)
         }
-    }, [initialQuery])
+    }, [initialQuery, messages.length])
 
     const handleSend = async (text?: string) => {
         const question = text || input.trim()
@@ -44,20 +60,29 @@ export function AIChatPanel({ initialQuery, onBack, className }: AIChatPanelProp
         setMessages(prev => [...prev, userMessage])
         setInput("")
         setIsLoading(true)
+        reportHelpState?.('thinking')
 
         try {
             const response = await askHelpAssistant(question, messages)
+            if (!mountedRef.current) return
 
             if (response.success && response.message) {
                 setMessages(prev => [...prev, { role: "assistant", content: response.message! }])
+                reportHelpState?.('happy')
             } else {
-                setError(response.error || "No pudimos procesar tu pregunta.")
+                setError(response.error || response.message || "No pudimos procesar tu pregunta.")
+                reportHelpState?.('error')
             }
-        } catch (err) {
-            setError("Error de conexión.")
+        } catch {
+            if (mountedRef.current) {
+                setError("Error de conexión.")
+                reportHelpState?.('error')
+            }
         } finally {
-            setIsLoading(false)
-            inputRef.current?.focus()
+            if (mountedRef.current) {
+                setIsLoading(false)
+                inputRef.current?.focus()
+            }
         }
     }
 
@@ -75,6 +100,8 @@ export function AIChatPanel({ initialQuery, onBack, className }: AIChatPanelProp
             )}>
                 {onBack && (
                     <button
+                        type="button"
+                        aria-label="Volver al dashboard"
                         onClick={onBack}
                         className={cn(
                             "p-2 rounded-lg transition-colors border",
@@ -89,7 +116,9 @@ export function AIChatPanel({ initialQuery, onBack, className }: AIChatPanelProp
                     <div className="relative">
                         <div className="absolute inset-0 rounded-xl bg-primary/50 blur-md" />
                         <div className="relative h-10 w-10 rounded-xl bg-gradient-to-br from-primary via-fuchsia-500 to-primary flex items-center justify-center text-white shadow-lg border border-white/20">
-                            <Sparkles className="h-5 w-5" />
+                            {pet?.enabled ? <PetVisual settings={pet.config.settings} palette={pet.palette} state={pet.state}
+                                size={32} animate={pet.config.settings.animation === 'continuous' || pet.state !== 'idle'}
+                                onFailure={pet.reportRendererFailure} /> : <Sparkles className="h-5 w-5" />}
                         </div>
                     </div>
                     <div>
@@ -191,6 +220,7 @@ export function AIChatPanel({ initialQuery, onBack, className }: AIChatPanelProp
                         animate={{ opacity: 1, y: 0 }}
                         className="flex gap-3"
                     >
+                        <PetAlertAvatar state="error" />
                         <div className="shrink-0 h-8 w-8 rounded-lg bg-amber-100 dark:bg-amber-500/20 border border-amber-200 dark:border-amber-500/30 flex items-center justify-center">
                             <AlertCircle className="h-4 w-4 text-amber-500" />
                         </div>
@@ -234,6 +264,7 @@ export function AIChatPanel({ initialQuery, onBack, className }: AIChatPanelProp
                     />
                     <motion.button
                         type="submit"
+                        aria-label="Enviar pregunta"
                         disabled={!input.trim() || isLoading}
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
