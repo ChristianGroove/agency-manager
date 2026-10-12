@@ -5,7 +5,7 @@ title: Administrar contactos y prospectos en el CRM
 module: crm-contacts
 status: draft
 audience: tenant-user
-source_revision: 0e5706d2f235ee40698ded73cc14e161e908e292
+source_revision: 047fa7ee0cadc0f49d9ce08220f633885b0801a7
 verified_on: 2026-10-12
 verification: source-only
 routes:
@@ -97,5 +97,5 @@ Mantener una base de contactos limpia, accesible y sincronizada con el resto de 
 
 ## Notas de verificación
 - Página principal: `src/app/(dashboard)/crm/contacts/page.tsx`
-- Acciones de cliente: `src/modules/features/crm/actions/contact-actions.ts`
+- Acciones de cliente: `src/modules/features/crm/services/logic/contact-actions.ts`
 - Verificación de ruta y permisos: `src/modules/core/saas/module-config.ts` (línea 87).

@@ -1,54 +1,197 @@
 {
   "schema_version": 1,
-  "revision": "a326c3d5ba5654877b5db71cb7c3e4cec1f921921e6f1928833ee16a13a30394",
+  "revision": "f79a1c4bca0f45975c5d9f38592af331439dfcc1e62f8b7ea2d19730e5ed12ec",
   "articles": [
     {
-      "id": "theme.toggle-theme",
-      "title": "Cambiar entre tema claro y tema oscuro",
-      "module": "theme",
-      "audience": "tenant-user",
+      "id": "automation.create-workflows",
+      "title": "Crear y gestionar flujos de trabajo automáticos",
+      "module": "automation",
+      "audience": "tenant-admin",
       "routes": [
-        "/dashboard"
+        "/automations",
+        "/crm/automations"
       ],
       "keywords": [
-        "tema",
-        "oscuro",
-        "claro",
-        "apariencia",
-        "noche",
-        "sol",
-        "luna"
+        "automatizaciones",
+        "flujos",
+        "triggers",
+        "disparadores",
+        "nodos",
+        "workflows",
+        "chatbots"
       ],
-      "content": "# Cambiar entre tema claro y tema oscuro\n\n## Propósito\nPermitir a los usuarios alternar cómodamente entre la apariencia visual clara (diseñada para entornos iluminados) y la apariencia oscura (diseñada para ambientes con poca luz).\n\n## Requisitos y permisos\n- Disponible para cualquier usuario autenticado en la plataforma.\n- No exige roles administrativos ni permisos especiales de organización.\n- No requiere guardar cambios en la base de datos: la preferencia se almacena en el navegador del usuario.\n\n## Ubicación en pantalla\n- **Ubicación exacta:** En el borde exterior derecho inferior de la barra de navegación lateral (sidebar flotante).\n- **Aspecto visual:** Es un botón circular compacto (32x32 píxeles) con borde sutil.\n  - En **modo claro**, muestra el icono de una **Luna**.\n  - En **modo oscuro**, muestra el icono de un **Sol**.\n\n## Pasos para cambiar de tema\n1. Dirige el cursor al menú lateral izquierdo de Pixy.\n2. Localiza la sección de acciones flotantes en la parte inferior derecha del contenedor del menú (junto a los accesos de Perfil y Notificaciones).\n3. Haz clic sobre el botón circular de **Luna** (para activar el modo oscuro) o sobre el botón de **Sol** (para regresar al modo claro).\n4. El cambio se aplica de inmediato, sin recargar la página ni pulsar confirmación.\n\n## Resultado esperado\nLos componentes compatibles con el tema adaptan su contraste y colores. Algunas vistas pueden conservar colores fijos. La elección permanece guardada en el mismo navegador para futuras visitas.\n\n## Problemas habituales y causas comprobadas\n- **Al abrir la aplicación en otra computadora o ventana de incógnito, el tema no se conserva:**\n  *Causa comprobada:* La preferencia se gestiona mediante almacenamiento local en el navegador del cliente (`localStorage` a través de `next-themes`) y no se guarda en el registro de usuario en el servidor.\n- **Buscar la opción en \"Configuración > Preferencias\":**\n  *Causa comprobada:* El cambio de tema no reside en el panel de configuración de la organización ni en menús desplegables; se encuentra accesible en todo momento desde el botón fijo del borde del menú lateral.\n- **Algún componente o estilo específico no altera su color tras conmutar:**\n  *Causa comprobada:* Si un componente secundario o elemento de terceros cuenta con estilos en línea o colores fijos no parametrizados con clases temáticas, mantendrá su apariencia constante. (Nota: interferencias por extensiones externas de modificación de estilos en el navegador constituyen hipótesis generales no comprobadas por las pruebas del sistema).\n\n## Limitaciones conocidas\n- La sincronización automática con el esquema de color del sistema operativo no se selecciona desde este control; el botón alterna exclusivamente de manera binaria entre `light` y `dark`.\n\n## Temas relacionados\n- [Navegación y vista general del panel principal](dashboard.overview.md)\n- [Personalizar el ADN de marca del negocio](branding.manage-adn.md)",
-      "required_modules": [],
-      "required_permissions": [],
+      "content": "# Crear y gestionar flujos de trabajo automáticos\n\n## Propósito\nPermitir a los administradores programar respuestas inmediatas, asignaciones de contactos y tareas operativas sin intervención manual mediante un diseñador visual de flujos basado en disparadores y acciones.\n\n## Requisitos y permisos\n- Que la empresa tenga habilitado el módulo de automatizaciones (`module_automation`) y la capacidad técnica `automation.engine`.\n- Permisos requeridos:\n  - *Consultar flujos existentes:* Permiso `automation.workflows.view`.\n  - *Crear, editar o desactivar flujos:* Permiso `automation.workflows.edit`.\n- Para utilizar acciones que envíen mensajes de WhatsApp o correos, los canales respectivos deben estar previamente conectados.\n\n## Ubicación en pantalla\n- **Ruta web:** `/automations` o `/crm/automations`\n- **Menú lateral:** Sección **CRM** → opción **Automatizaciones** (icono de diagrama de flujo).\n\n## Componentes de un flujo automático\nCada automatización se compone de:\n1. **Disparador (Trigger):** El evento que enciende el flujo. Ejemplos comprobados:\n   - *Nuevo prospecto registrado:* Se activa cuando entra un contacto por formulario o API.\n   - *Cambio de etapa en Pipeline:* Se activa cuando una oportunidad pasa a una columna específica (ej: *Propuesta Enviada*).\n   - *Mensaje entrante en canal:* Se activa cuando un cliente escribe por primera vez o envía una palabra clave.\n2. **Nodos de acción (Actions):** Pasos que el sistema ejecuta automáticamente:\n   - *Enviar mensaje por WhatsApp:* Envía un texto o plantilla predefinida al teléfono del contacto.\n   - *Enviar correo electrónico:* Notificación mediante el motor SMTP de la plataforma.\n   - *Asignar a agente:* Distribuye el chat o contacto a un miembro del equipo.\n   - *Crear tarea:* Registra un entregable en el módulo de TaskFlow.\n   - *Bifurcación condicional (If/Else):* Evalúa condiciones (por ejemplo, si el contacto tiene la etiqueta \"VIP\").\n   - *Retardo temporal (Delay):* Pausa la ejecución durante minutos u horas antes del siguiente paso.\n   - *Nodo de Agente IA:* Consulta al motor de inteligencia artificial para clasificar la intención del usuario.\n\n## Pasos para crear un flujo\n1. Accede a **Automatizaciones** en el menú.\n2. Haz clic en el botón superior **Nuevo Flujo** (o selecciona una plantilla recomendada).\n3. Ingresa un nombre descriptivo (ejemplo: *\"Bienvenida y calificación de leads\"*).\n4. En el lienzo visual (*Workflow Builder*), haz clic en el nodo inicial para seleccionar el **Disparador**.\n5. Haz clic en el conector inferior del disparador y arrastra para añadir el primer nodo de **Acción** (por ejemplo: *Enviar WhatsApp de bienvenida*).\n6. Configura el texto del mensaje en el panel lateral de propiedades del nodo (puedes insertar variables como `{{contact.first_name}}`).\n7. Conecta acciones subsecuentes según la lógica de tu negocio.\n8. Enciende el interruptor de **Estado Activo** en la esquina superior derecha y presiona **Guardar Flujo**.\n\n## Resultado esperado\nA partir del momento de activación, cada vez que ocurra el evento disparador en la plataforma, el sistema procesará los nodos en segundo plano de forma desatendida.\n\n## Problemas habituales y causas comprobadas\n- **El flujo no se dispara al recibir un mensaje:**\n  *Causa comprobada:* El flujo se encuentra en estado *Inactivo*, o el canal de WhatsApp por el cual llegó el mensaje no fue seleccionado en la configuración del disparador.\n- **Las acciones de IA fallan en la ejecución:**\n  *Causa comprobada:* La cuota de tokens de IA de la organización se encuentra agotada o el estado de la IA en la organización está suspendido (`ai_status !== 'active'`).\n- **Los mensajes no reemplazan las variables del cliente:**\n  *Causa comprobada:* El contacto no tiene diligenciado el campo solicitado (por ejemplo, carece de nombre registrado), lo que deja la variable vacía o con texto de fallback.\n\n## Limitaciones conocidas\n- Para prevenir bucles infinitos de mensajería (dos bots respondiéndose mutuamente), el motor de automatización bloquea la reactivación inmediata de un mismo flujo sobre una conversación dentro de una ventana de pocos segundos.\n\n## Temas relacionados\n- [Atender y gestionar conversaciones en Inbox](inbox.manage-conversations.md)\n- [Gestión de embudo de ventas y pipeline](crm.manage-pipeline.md)",
+      "required_modules": [
+        "module_automation"
+      ],
+      "required_permissions": [
+        "automation.workflows.view"
+      ],
       "verticals": [],
-      "link_route": null,
-      "revision": "f5af70c0b6728e6df0a4f6f96ed148126e1d85f7d2275129ac8a5d6221e11a67"
+      "link_route": "/automations",
+      "revision": "2425695466efbe3ab92a545d1f566f3b570354e9afecaed51d44339e9ac6dd9f"
     },
     {
-      "id": "pet.pet-interaction",
-      "title": "Estados visuales, hibernación e interacción con la mascota",
-      "module": "pet",
+      "id": "billing.manage-invoices",
+      "title": "Crear, emitir y gestionar facturas de cobro",
+      "module": "billing-invoices",
+      "audience": "tenant-user",
+      "routes": [
+        "/invoices",
+        "/invoices/new"
+      ],
+      "keywords": [
+        "facturación",
+        "facturas",
+        "cobros",
+        "pagos",
+        "comprobantes",
+        "pdf",
+        "impuestos"
+      ],
+      "content": "# Crear, emitir y gestionar facturas de cobro\n\n## Propósito\nPermitir a los equipos administrativos y comerciales generar comprobantes de cobro y facturas para sus clientes, controlar los saldos pendientes o morosos, emitir enlaces públicos de pago y registrar cancelaciones de saldo.\n\n## Requisitos y permisos\n- Que la organización tenga habilitado el módulo de facturación (`module_invoicing`) y la capacidad de gestión financiera (`billing.management`).\n- Permisos requeridos:\n  - *Consultar facturas:* Permiso `invoicing.view`.\n  - *Emitir facturas o registrar pagos:* Permiso `invoicing.manage`.\n  - *Exportar resúmenes contables:* Permiso `invoicing.export`.\n\n## Ubicación en pantalla\n- **Ruta web:** `/invoices`\n- **Menú lateral:** Sección **Finanzas** → opción **Centro de Facturación** (icono de documento contable).\n\n## Estados de una factura\n- **Borrador (`draft`):** Comprobante en preparación, no visible públicamente para el cliente.\n- **Pendiente (`pending`):** Factura emitida y vigente, esperando pago antes de la fecha límite.\n- **Pagada (`paid`):** Comprobante liquidado en su totalidad mediante pasarela o registro manual.\n- **Vencida (`overdue`):** Factura cuya fecha de vencimiento expiró sin haberse registrado el pago total.\n- **Anulada (`canceled`):** Factura cancelada por error de emisión o rectificación contable.\n\n## Pasos para emitir una nueva factura\n1. Navega a **Centro de Facturación** (`/invoices`).\n2. Haz clic en el botón superior **Nueva Factura**.\n3. En el formulario de emisión:\n   - Selecciona el **Cliente** destinatario del catálogo de contactos.\n   - Especifica la **Fecha de emisión** y la **Fecha de vencimiento**.\n   - En la tabla de conceptos, haz clic en **Agregar Ítem** e ingresa la descripción del servicio o producto, la cantidad y el precio unitario.\n   - Selecciona si aplica retención o impuesto sobre las ventas (IVA).\n   - Opcionalmente añade notas al cliente o condiciones de pago (por ejemplo: transferencias a cuenta bancaria).\n4. Revisa los totales calculados automáticamente (subtotal, impuestos y total general).\n5. Haz clic en **Emitir Factura** (o en **Guardar como Borrador** si deseas revisarla más tarde).\n\n## Compartir la factura con el cliente\nUna vez emitida la factura:\n1. Haz clic sobre la factura en el listado para abrir su vista de detalle.\n2. Puedes:\n   - **Copiar enlace público de pago:** Envía al cliente la URL directa (`/invoice/[id]`) para que consulte su cuenta de cobro y pague en línea (mediante Wompi o transferencia).\n   - **Descargar PDF:** Genera un documento con diseño profesional que incluye el logotipo, membrete y datos fiscales configurados en el ADN de marca.\n   - **Enviar por WhatsApp / Correo:** Notifica al cliente de forma instantánea si el módulo de mensajería está conectado.\n\n## Pasos para registrar un pago manual\n1. Localiza la factura con estado *Pendiente* o *Vencida*.\n2. Haz clic en **Registrar Pago**.\n3. Ingresa la fecha del abono, el monto pagado, el método de pago utilizado (efectivo, transferencia, datáfono) y la referencia bancaria.\n4. Confirma el registro. Si el monto cubre la totalidad, la factura pasará automáticamente a estado **Pagada**.\n\n## Resultado esperado\nActualización de los indicadores financieros del dashboard principal, reducción de la cartera vencida y registro auditable de los ingresos de la empresa.\n\n## Problemas habituales y causas comprobadas\n- **El cliente reporta que el enlace de pago muestra error:**\n  *Causa comprobada:* La factura fue guardada en estado *Borrador* y no ha sido formalmente emitida, o fue anulada. Debes emitirla para que el portal público la reconozca.\n- **El PDF de la factura aparece con colores o logos genéricos:**\n  *Causa comprobada:* La organización no ha personalizado su ADN de marca en `/platform/adn` o no completó la sección de Documentos. Los valores predeterminados de Pixy se utilizan como respaldo de seguridad.\n- **No se puede anular una factura pagada:**\n  *Causa comprobada:* Para anular un comprobante que ya tiene pagos registrados, primero se deben revertir o eliminar los pagos asociados desde la pestaña de movimientos.\n\n## Limitaciones conocidas\n- Una vez emitida una factura formal con consecutivo numérico asignado, los ítems y montos quedan bloqueados contra edición arbitraria para cumplir con estándares de auditoría; si hubo un error material debe anularse y emitirse una nueva.\n\n## Temas relacionados\n- [Personalizar el ADN de marca y documentos](branding.manage-adn.md)\n- [Navegación y vista general del panel principal](dashboard.overview.md)",
+      "required_modules": [
+        "module_invoicing"
+      ],
+      "required_permissions": [
+        "invoicing.view"
+      ],
+      "verticals": [],
+      "link_route": "/invoices",
+      "revision": "565e4cc8cb93bf21583cc36625e45cadebec6c0ae8b0835f6ca03cdadf3fc129"
+    },
+    {
+      "id": "branding.brand-center",
+      "title": "Gestionar identidad y portal en el Centro de Marca (Brand Center)",
+      "module": "branding",
+      "audience": "tenant-admin",
+      "routes": [
+        "/platform/settings"
+      ],
+      "keywords": [
+        "centro de marca",
+        "brand center",
+        "identidad",
+        "configuración",
+        "modal",
+        "mascota",
+        "operaciones"
+      ],
+      "content": "# Gestionar identidad y portal en el Centro de Marca (Brand Center)\n\n## Propósito\nPermitir a los administradores ajustar rápidamente la identidad corporativa, logotipos y documentos de la organización desde un panel deslizable accesible dentro de la configuración general, con retroalimentación visual inmediata.\n\n## Requisitos y permisos\n- Rol de **Administrador** (`admin`) o **Dueño** (`owner`) en la organización activa.\n- Para personalizar el portal o remover la marca Pixy, la organización debe contar con las capacidades correspondientes en su nivel de suscripción.\n\n## Ubicación en pantalla\n- **Acceso:** Navega a **Plataforma** (Configuración) → opción **Configuración** (`/platform/settings`).\n- En la sección de datos generales de la empresa, haz clic en el botón de acción **Centro de Marca** para abrir el panel lateral interactivo.\n\n## Funcionalidades del Centro de Marca\nEl panel lateral reúne las opciones clave de personalización:\n1. **Identidad:** Carga de logotipo oficial, isotipo para favicon y selección de la paleta cromática (colores primario y secundario en formato HEX).\n2. **Portal:** Personalización de la experiencia pública para clientes, incluyendo fondo de inicio de sesión e imagen de cabecera. Si tu plan actual no incluye marca blanca total, se mostrará un botón para solicitar la ampliación del plan.\n3. **Documentos:** Configuración de membretes, tamaño de logotipo y marcas de agua en cotizaciones y facturas generadas por el sistema.\n4. **Dominios:** Gestión y verificación de dominios personalizados con registro CNAME.\n\n## Interacción con la mascota robot durante el guardado\nEl Centro de Marca está integrado con el sistema de respuesta reactiva de la mascota robot Pixy:\n- Al presionar **Guardar**, si la mascota está visible en tu pantalla y tiene activadas las reacciones a operaciones, cambiará inmediatamente a su estado de **Trabajando** (`working`), indicando que la solicitud está en proceso.\n- Si el servidor guarda los cambios con éxito, la mascota expresará **Éxito** (`happy`) durante 2,5 segundos al tiempo que se muestra la notificación verde de confirmación.\n- Si ocurre una excepción o interrupción de red, la mascota reflejará **Error** (`error`) durante 8 segundos.\n- Si la mascota no está activada en tu tenant, el guardado transcurre de forma normal e imperceptible mediante avisos de sistema estándar.\n\n## Pasos para modificar y guardar\n1. Abre el panel lateral del **Centro de Marca** desde la configuración general.\n2. Modifica el parámetro deseado (por ejemplo, actualiza el código del color primario o carga un nuevo isotipo).\n3. Haz clic en el botón **Guardar**.\n4. Espera la confirmación de éxito. El sistema emitirá automáticamente una señal de actualización para sincronizar la barra lateral y los elementos visuales abiertos.\n\n## Resultado esperado\nLos valores se guardan en el registro de la organización (`organization_settings`) y se sincronizan instantáneamente con el portal y los componentes del panel.\n\n## Problemas habituales y causas comprobadas\n- **El botón de guardar queda deshabilitado:**\n  *Causa comprobada:* Ocurre si ya hay una petición de guardado en curso para evitar escrituras concurrentes o duplicadas en la base de datos.\n- **La mascota no reacciona al guardar:**\n  *Causa comprobada:* La mascota se encuentra hibernando, el superadministrador desactivó el interruptor *\"Reaccionar a avisos críticos y operaciones\"*, o el chat de ayuda está abierto (el chat tiene prioridad sobre las operaciones).\n\n## Limitaciones conocidas\n- La edición en el Centro de Marca no altera las credenciales maestras de la plataforma; solo afecta el ámbito del tenant activo.\n\n## Temas relacionados\n- [Personalizar el ADN de marca y la identidad del negocio](branding.manage-adn.md)\n- [Estados visuales, hibernación e interacción con la mascota](pet.pet-interaction.md)",
+      "required_modules": [
+        "core_settings"
+      ],
+      "required_permissions": [
+        "operations.branding.manage"
+      ],
+      "verticals": [],
+      "link_route": "/platform/settings",
+      "revision": "114afba542ca9b55d2668c4031e6406ede53c0bdc0d90bfe8e142da430b523c3"
+    },
+    {
+      "id": "branding.manage-adn",
+      "title": "Personalizar el ADN de marca y la identidad del negocio",
+      "module": "branding",
+      "audience": "tenant-admin",
+      "routes": [
+        "/platform/adn"
+      ],
+      "keywords": [
+        "adn",
+        "marca",
+        "identidad",
+        "logotipo",
+        "colores",
+        "tipografía",
+        "portal",
+        "documentos"
+      ],
+      "content": "# Personalizar el ADN de marca y la identidad del negocio\n\n## Propósito\nPermitir a los administradores definir y unificar la identidad corporativa de su empresa en Pixy: logotipos, colores principales, datos de contacto comercial, membretes de documentos PDF y apariencia visual del portal para clientes.\n\n## Requisitos y permisos\n- Contar con rol de **Administrador** (`admin`) o **Dueño** (`owner`) en la organización activa.\n- Los usuarios con rol de miembro (`member`) o colaboradores no tienen acceso a esta sección y serán redirigidos.\n- Para subir imágenes (logotipos o fondos), el archivo debe ser formato de imagen válido (PNG, JPG, SVG, WebP) y tener un peso máximo de **5 MB**.\n\n## Ubicación en pantalla\n- **Ruta web:** `/platform/adn`\n- **Menú lateral:** Sección **Plataforma** (Configuración) → opción con icono de escaneo facial y etiqueta **ADN del Negocio**.\n\n## Pestañas de configuración\nEl panel se organiza en seis pestañas temáticas:\n\n### 1. Esencia\n- **Nombre comercial:** Nombre oficial del negocio que figurará en encabezados, facturas y correos.\n- **Logotipos:** Subida independiente de logotipo para fondo claro y fondo oscuro.\n- **Isotipo / Favicon:** Ícono cuadrado compacto visible en la pestaña del navegador y accesos directos.\n- **Paleta de colores:** Color primario (utilizado en botones de acción y destaques) y color secundario. En caso de que la mascota robot esté disponible para todos los tenants, adoptará estos tonos automáticamente.\n- **Tipografía de marca:** Fuente tipográfica preferida para la experiencia del cliente.\n\n### 2. Contacto\n- Datos institucionales: sitio web oficial, correo de atención, teléfono principal, dirección y canales de contacto.\n\n### 3. Portal\n- Configuración visual del portal público B2C para clientes (comensales, compradores o usuarios externos).\n- Logotipo específico del portal, imagen de fondo de inicio de sesión y color de fondo de login.\n- *Nota de plan:* Si la organización no cuenta con un plan que incluya personalización de portal (Tier Pro o Whitelabel), esta pestaña muestra un aviso de bloqueo indicando las ventajas de actualizar de plan.\n\n### 4. Documentos\n- Personalización de cotizaciones, cuentas de cobro y facturas en formato PDF.\n- Permite definir el texto legal del pie de página, tamaño del logotipo (pequeño, mediano, grande) y conmutar la marca de agua.\n\n### 5. Dominios\n- Asignación de dominio web personalizado para operar la plataforma bajo una dirección propia. Requiere soporte de dominio en el plan contratado.\n\n### 6. Operación\n- Configuración regional de la operación, como país, moneda base y zona horaria. No debe confundirse con los datos de contacto.\n\n## Pasos para actualizar la identidad\n1. Navega a **ADN del Negocio** en el menú lateral.\n2. Selecciona la pestaña que deseas modificar (por ejemplo, **Esencia** para cambiar colores o logos).\n3. Para cambiar una imagen, haz clic en el área de carga correspondiente, selecciona el archivo desde tu equipo y espera a que la miniatura se actualice.\n4. Para ajustar los colores, utiliza el selector visual de color o ingresa directamente el código HEX (ejemplo: `#3594F1`).\n5. Observa el panel derecho de **Vista previa**: podrás ver en tiempo real cómo lucen los cambios tanto en la maqueta de inicio de sesión como en la del panel de control.\n6. Una vez conforme, haz clic en el botón superior **Guardar Identidad** (icono de disquete).\n\n## Resultado esperado\nAparecerá una notificación de confirmación: *\"ADN Actualizado: La identidad de tu negocio se ha guardado correctamente.\"*. Los nuevos logotipos y colores se propagarán a la barra lateral, documentos PDF emitidos y portales públicos.\n\n## Problemas habituales y causas comprobadas\n- **Error al subir imagen (\"El archivo no debe superar 5MB\"):**\n  *Causa comprobada:* El archivo seleccionado supera el límite técnico permitido de 5 megabytes. Debes comprimir la imagen antes de subirla.\n- **Los cambios de color no se reflejan en el menú lateral de inmediato:**\n  *Causa comprobada:* Aunque el guardado emite el evento `branding-updated` para limpiar la memoria caché del navegador, en conexiones lentas puede requerirse una recarga de página (`F5`) para rehidratar el layout del servidor.\n- **La pestaña \"Portal\" aparece bloqueada con un candado:**\n  *Causa comprobada:* La función de personalización de portal (`custom_colors` o `remove_pixy_branding`) requiere un plan con características avanzadas de marca blanca. Contacta a administración o utiliza el botón de actualización directa.\n\n## Limitaciones conocidas\n- La eliminación física de imágenes reemplazadas en el almacenamiento de Supabase se procesa mediante llamadas administrativas; si se utiliza una URL externa manual no se podrá gestionar su borrado automático.\n\n## Temas relacionados\n- [Gestionar identidad en el Centro de Marca (Brand Center)](branding.brand-center.md)\n- [Cambiar entre tema claro y tema oscuro](theme.toggle-theme.md)",
+      "required_modules": [
+        "core_settings"
+      ],
+      "required_permissions": [],
+      "verticals": [],
+      "link_route": null,
+      "revision": "030b6066840a5c728904ab139b0f1b5ba198f0962cf2027d33cae4d18f376885"
+    },
+    {
+      "id": "crm.manage-contacts",
+      "title": "Administrar contactos y prospectos en el CRM",
+      "module": "crm-contacts",
+      "audience": "tenant-user",
+      "routes": [
+        "/crm/contacts"
+      ],
+      "keywords": [
+        "crm",
+        "contactos",
+        "clientes",
+        "prospectos",
+        "leads",
+        "exportar",
+        "base de datos"
+      ],
+      "content": "# Administrar contactos y prospectos en el CRM\n\n## Propósito\nOrganizar y centralizar el directorio de clientes y prospectos de la organización, registrando su información de contacto, etapa comercial, etiquetas de segmentación e historial de interacciones.\n\n## Requisitos y permisos\n- Que la organización tenga habilitado el módulo de clientes (`core_clients`).\n- Permisos requeridos según la acción:\n  - *Visualizar directorio:* Permiso `crm.leads.view`.\n  - *Crear o editar contacto:* Permiso `crm.leads.edit`.\n  - *Eliminar registros:* Permiso `crm.leads.delete`.\n  - *Exportar a archivo CSV:* Permiso `crm.data.export`.\n\n## Ubicación en pantalla\n- **Ruta web:** `/crm/contacts`\n- **Menú lateral:** Sección **CRM** → opción **Contactos** (icono de libreta o usuario).\n\n## Información registrada por contacto\n- **Datos básicos:** Nombre y apellidos, correo electrónico, teléfono móvil con indicativo de país, y nombre de la empresa u organización.\n- **Segmentación:** Etiquetas (*tags*) para clasificar clientes (por ejemplo: VIP, Mayorista, Nuevo, Referido).\n- **Seguimiento comercial:** Origen del lead (web, WhatsApp, campaña de marketing), etapa actual en el embudo y agente asignado.\n- **Historial vinculado:** Conversaciones previas de Inbox, cotizaciones enviadas y facturas asociadas.\n\n## Pasos para crear un nuevo contacto\n1. Navega a **Contactos** en el menú de CRM.\n2. Haz clic en el botón superior derecho **Nuevo Contacto** (o **Nuevo Cliente**).\n3. Se desplegará el panel lateral de creación (*Create Client Sheet*).\n4. Diligencia los campos requeridos:\n   - Nombre completo (obligatorio).\n   - Teléfono móvil (fundamental para vincular con WhatsApp en el Inbox).\n   - Correo electrónico.\n   - Empresa o notas iniciales.\n5. Haz clic en **Guardar Contacto**. El registro se agregará de inmediato a la lista general.\n\n## Pasos para consultar o editar la ficha de un contacto\n1. En la tabla de contactos, haz clic sobre la fila del cliente o en el botón de edición.\n2. Se abrirá la ficha completa del cliente (*Client Drawer*) mostrando su resumen, notas y actividad.\n3. Actualiza los campos deseados y presiona **Guardar**.\n\n## Pasos para exportar la base de datos\n1. En la parte superior de la tabla de contactos, haz clic en el botón **Exportar** (icono de descarga).\n2. Si tu usuario cuenta con el permiso `crm.data.export`, el navegador descargará inmediatamente un archivo `.csv` con todos los contactos filtrados en pantalla.\n3. Si el botón no aparece o la descarga es rechazada, solicita a un administrador que habilite la capacidad de exportación en tu rol.\n\n## Resultado esperado\nMantener una base de contactos limpia, accesible y sincronizada con el resto de módulos de la plataforma (Inbox, Pipeline y Facturación).\n\n## Problemas habituales y causas comprobadas\n- **El botón de exportar datos no aparece en la interfaz:**\n  *Causa comprobada:* Tu usuario no tiene asignado el permiso granular `crm.data.export`. Esta restricción existe para evitar filtraciones de bases de datos por personal no autorizado.\n- **Un contacto no enlaza con la conversación de WhatsApp:**\n  *Causa comprobada:* El número telefónico ingresado carece del código de país (ejemplo: `+57` para Colombia) o tiene caracteres no numéricos que impiden la coincidencia exacta con el identificador del canal de mensajería.\n- **No se puede eliminar un contacto:**\n  *Causa comprobada:* El usuario carece del permiso `crm.leads.delete`, o el contacto tiene facturas o documentos tributarios formalizados que impiden el borrado físico directo para preservar la integridad contable.\n\n## Limitaciones conocidas\n- La importación masiva mediante archivo de hoja de cálculo debe ajustarse estrictamente a la estructura de columnas requerida por el asistente de importación.\n\n## Temas relacionados\n- [Atender y gestionar conversaciones en Inbox](inbox.manage-conversations.md)\n- [Gestión de embudo de ventas y pipeline](crm.manage-pipeline.md)",
+      "required_modules": [
+        "core_clients"
+      ],
+      "required_permissions": [
+        "crm.leads.view"
+      ],
+      "verticals": [],
+      "link_route": "/crm/contacts",
+      "revision": "77f81db5daf428b164fb018a1283da836d27ec2e5526055348675b7f78935f81"
+    },
+    {
+      "id": "crm.manage-pipeline",
+      "title": "Gestionar el embudo de ventas y oportunidades (Pipeline)",
+      "module": "crm-pipeline",
+      "audience": "tenant-user",
+      "routes": [
+        "/crm/pipeline"
+      ],
+      "keywords": [
+        "pipeline",
+        "embudo",
+        "ventas",
+        "tratos",
+        "kanban",
+        "oportunidades",
+        "comercial"
+      ],
+      "content": "# Gestionar el embudo de ventas y oportunidades (Pipeline)\n\n## Propósito\nOfrecer una vista gráfica tipo Kanban para dar seguimiento al avance de las oportunidades comerciales, desde el primer contacto hasta el cierre de la venta, permitiendo proyectar ingresos y priorizar esfuerzos comerciales.\n\n## Requisitos y permisos\n- Que la empresa cuente con el módulo principal de CRM (`core_crm`).\n- Para consultar el tablero se requiere el permiso `crm.leads.view`.\n- Para crear oportunidades, modificar valores o mover tarjetas de etapa se requiere el permiso `crm.leads.edit`.\n\n## Ubicación en pantalla\n- **Ruta web:** `/crm/pipeline`\n- **Menú lateral:** Sección **CRM** → opción **Pipeline** (icono de tablero Kanban).\n\n## Componentes del tablero\n- **Columnas de etapas:** Cada columna representa una fase del ciclo de ventas (por ejemplo: *Nuevo Prospecto*, *En Calificación*, *Cotización Presentada*, *Negociación*, *Cerrado Ganado*, *Cerrado Perdido*).\n- **Encabezado de etapa:** Muestra la cantidad de tratos activos en esa fase y la sumatoria del valor monetario acumulado.\n- **Tarjetas de oportunidad (Deals):** Cada tarjeta sintetiza:\n  - Título del trato o servicio cotizado.\n  - Nombre del cliente o prospecto.\n  - Valor económico proyectado.\n  - Agente comercial asignado.\n  - Días transcurridos en la etapa actual.\n\n## Pasos para gestionar una oportunidad\n1. Accede a **Pipeline** en el menú lateral.\n2. **Crear una nueva oportunidad:**\n   - Haz clic en el botón superior **Nuevo Trato** (o en el botón `+` de la primera columna).\n   - Ingresa el título del negocio, selecciona el contacto existente, ingresa el valor económico estimado y selecciona la fecha estimada de cierre.\n   - Presiona **Guardar**.\n3. **Avanzar una oportunidad de etapa:**\n   - Haz clic y mantén presionada la tarjeta deseada.\n   - Arrástrala horizontalmente a la columna de la siguiente fase (por ejemplo, de *Contacto Inicial* a *Propuesta Enviada*) y suéltala.\n   - Los totales financieros de ambas columnas se recalcularán de inmediato.\n4. **Cierre de venta:**\n   - Si la venta se concreta, arrastra la tarjeta a la columna **Cerrado Ganado**. Desde el deck de contexto podrás generar la factura correspondiente.\n   - Si el negocio no prospera, arrástrala a **Cerrado Perdido** registrando el motivo de descarte.\n\n## Resultado esperado\nVisualización fluida del flujo de ingresos proyectados, facilitando el control comercial y la asignación equitativa de cuentas entre los agentes.\n\n## Problemas habituales y causas comprobadas\n- **No se pueden mover tarjetas entre columnas:**\n  *Causa comprobada:* Tu usuario tiene asignado un rol con permiso de solo lectura (`crm.leads.view`), pero carece de `crm.leads.edit`. Contacta al administrador para elevar tus privilegios.\n- **Las etapas no coinciden con el proceso de mi empresa:**\n  *Causa comprobada:* Las etapas del embudo pueden configurarse de forma personalizada en `/crm/settings/pipeline` por usuarios administradores.\n- **El total monetario de una columna no coincide:**\n  *Causa comprobada:* Ocurre si existen tratos registrados en monedas diferentes o con el campo de valor en cero. Verifica las monedas configuradas en cada oportunidad.\n\n## Limitaciones conocidas\n- La reordenación vertical manual dentro de una misma columna no persiste un ordenamiento forzado; el listado se ordena por prioridad o fecha de modificación reciente.\n\n## Temas relacionados\n- [Administrar contactos y prospectos en el CRM](crm.manage-contacts.md)\n- [Crear y emitir cotizaciones comerciales](quotes.create-quotes.md)",
+      "required_modules": [
+        "core_crm"
+      ],
+      "required_permissions": [
+        "crm.leads.view"
+      ],
+      "verticals": [],
+      "link_route": "/crm/pipeline",
+      "revision": "ff69d598ac9907f73c68874ed1b16de4e39a9ddb1efb600e8a8ebc686faa09e0"
+    },
+    {
+      "id": "dashboard.overview",
+      "title": "Navegación y vista general del panel principal",
+      "module": "dashboard",
       "audience": "tenant-user",
       "routes": [
         "/dashboard"
       ],
       "keywords": [
-        "mascota",
-        "robot",
-        "expresiones",
-        "estados",
-        "hibernación",
-        "reposo",
-        "ayuda"
+        "dashboard",
+        "métricas",
+        "resumen",
+        "inicio",
+        "navegación"
       ],
-      "content": "# Estados visuales, hibernación e interacción con la mascota\n\n## Propósito\nExplicar el comportamiento interactivo de la mascota robot Pixy en el panel, el significado de sus expresiones faciales y cómo opera su mecanismo de hibernación para conservar batería y recursos del equipo.\n\n## Requisitos y permisos\n- Que la mascota se encuentre activada para la organización actual por el superadministrador.\n- Disponible para todos los usuarios de la organización.\n- Si la mascota está apagada o se detecta un fallo de renderizado, se muestra un botón de ayuda con icono de mensaje. El robot no requiere aceleración gráfica específica para acceder a la ayuda.\n\n## Ubicación en pantalla\n- **En el panel principal:** En la esquina inferior derecha de la pantalla (posición fija, por encima del contenido y respetando áreas seguras en dispositivos móviles).\n- **Dentro del diálogo de ayuda:** En la esquina inferior derecha del formulario de redacción de preguntas.\n\n## Estados y expresiones visuales\nLa pantalla LED del robot reacciona dinámicamente a los eventos del sistema:\n- **Disponible (`idle`):** Expresión neutra. En modo contextual se detiene la animación continua; puede seguir el cursor si el seguimiento está habilitado y se cumplen sus condiciones.\n- **Pensando (`thinking`):** Expresión de procesamiento activo mientras el asistente de inteligencia artificial analiza la consulta.\n- **Trabajando (`working`):** Expresión concentrada que acompaña operaciones de guardado de datos sensibles (por ejemplo, al guardar el ADN de marca en el Centro de Marca).\n- **Éxito (`happy`):** Expresión alegre que confirma que la respuesta se generó con éxito o que una operación finalizó correctamente (se mantiene aproximadamente 2,5 segundos antes de volver al reposo).\n- **Error (`error`):** Expresión de alerta ante fallos de conexión o imposibilidad de procesar una tarea (se conserva unos 8 segundos).\n- **Descansando (`sleeping`):** Ojos cerrados o tenues que indican que el robot entró en modo de hibernación.\n\n## Ciclo de hibernación y despertar\nPara garantizar un rendimiento óptimo y evitar consumo innecesario de procesador o batería:\n1. **Ventana de actividad:** Si la hibernación está habilitada, tras 5 minutos por defecto (o el tiempo configurado por administración) sin interacción directa con el robot, este entra en **hibernación**. Si se desactiva ese ajuste, no se aplica este temporizador.\n2. **Pausa del motor gráfico:** Durante la hibernación, el canvas se suspende completamente: el robot deja de seguir el cursor y no ejecuta bucles de renderizado.\n3. **Cómo despertarlo:**\n   - Pasar el cursor directamente sobre el robot (`hover`).\n   - Enfocar el botón de ayuda utilizando la tecla `Tab` del teclado.\n   - Tocar la mascota en pantallas táctiles (`touchstart`).\n4. **Regla de aislamiento del cursor:** Mover el ratón por otras áreas de la página o navegar por tablas y menús **no renueva** el tiempo activo del robot; solo la interacción directa sobre él reinicia el contador.\n\n## Control y límites del seguimiento del cursor\nEl robot orienta la cabeza hacia la posición del ratón en tiempo real cuando se cumplen tres condiciones simultáneas (`RobotHeadView`):\n1. **Interactividad encendida:** La opción `settings.interactive` está habilitada en la configuración global.\n2. **Estado disponible:** El robot se encuentra en reposo normal (`state === 'idle'`).\n3. **Puntero fino:** El usuario navega con ratón o trackpad de precisión (`finePointer`), excluyendo pantallas táctiles donde el cursor continuo no existe.\n\nEl modo de reposo contextual **no interrumpe el seguimiento del ratón**: si la interactividad está activa, el robot continúa orientando su mirada hacia el cursor aunque el cuerpo no esté ejecutando bucles de animación continua.\n\nPor el contrario, la animación y el seguimiento se pausan o suspenden en cualquiera de las siguientes situaciones:\n- **Hibernación:** El temporizador de inactividad directa expira y el robot entra en descanso.\n- **Reducción de movimiento:** El sistema operativo o navegador tiene activada la preferencia `prefers-reduced-motion`.\n- **Pestaña no visible:** El usuario cambia de pestaña o minimiza la ventana (`document.hidden`).\n- **Fuera del viewport:** El elemento queda fuera del área visible al hacer scroll por la página.\n- **Animación apagada:** La configuración global tiene seleccionado el modo `off`.\n- **Estado ocupado:** La mascota está procesando una consulta de IA (`thinking`, `searching`) o confirmando un guardado (`working`).\n\n## Pasos para abrir la ayuda con la mascota\n1. Pasa el cursor sobre la mascota en la esquina inferior derecha para despertarla.\n2. Haz clic sobre ella.\n3. Se abrirá la ventana modal del **Centro de Ayuda**. Al abrirse, la mascota flotante exterior se oculta automáticamente para mantener la pantalla despejada.\n4. En el campo inferior del chat verás a la mascota integrada, con un tamaño de 112 px en escritorio (u 80 px en móvil), ubicada a la derecha de la barra de texto sin interferir con la escritura ni el botón de envío.\n\n## Problemas habituales y causas comprobadas\n- **En lugar del robot aparece un botón circular con icono de mensaje:**\n  *Causa comprobada:* La mascota fue desactivada en la plataforma, la organización no forma parte del piloto, o el navegador falló al inicializar el contexto 2D del Canvas (`reportRendererFailure`). El botón alternativo permite seguir usando la ayuda con total normalidad.\n- **La mascota no gira ni mira hacia el ratón:**\n  *Causa comprobada:* El seguimiento requiere interactividad activa (`settings.interactive: true`), estado disponible (`idle`) y un ratón o trackpad de precisión (`finePointer`). Se pausa si el robot está en hibernación, si el sistema operativo tiene activada la reducción de movimiento (`prefers-reduced-motion`), si la pestaña está en segundo plano, si la mascota quedó fuera de la vista al desplazarse o si la animación está apagada. El reposo contextual por sí mismo no inhabilita el seguimiento cuando estas condiciones se cumplen.\n- **La mascota no reacciona al guardar en algunos módulos:**\n  *Causa comprobada:* Las reacciones operativas están conectadas a formularios clave (como el Centro de Marca mediante `usePetOperation`) y avisos críticos del sistema; no todos los formularios secundarios del sistema tienen instrumentación visual.\n\n## Limitaciones conocidas\n- La mascota exterior no utiliza textos flotantes al pasar el cursor (tooltips) para evitar bloqueos visuales sobre elementos subyacentes.\n- Si el diálogo de ayuda está abierto y se produce un error, el robot mostrará el rostro de error pero no emitirá sonidos.\n\n## Temas relacionados\n- [Configurar y administrar la mascota robot Pixy](pet.manage-pet.md)\n- [Consultar al asistente de ayuda e historial](help.chat-and-history.md)",
+      "content": "# Navegación y vista general del panel principal\n\n## Propósito\nEl panel principal de Pixy proporciona una panorámica instantánea de la salud operativa y financiera del negocio, adaptada dinámicamente al sector o tipo de organización activa (agencia, restaurante, inmobiliaria, comercio o plataforma).\n\n## Requisitos y permisos\n- Contar con una cuenta de usuario activa y pertenecer a una organización.\n- No requiere permisos administrativos especiales para acceder a la ruta general `/dashboard`.\n- La visibilidad de módulos, métricas y accesos responde a tres niveles diferenciados:\n  1. **Módulos contratados:** Módulos de alto nivel activados para el tenant (como `module_crm` o `module_billing`).\n  2. **Capacidades de organización:** Banderas atómicas en `capabilities-registry.ts` (como `billing.management` o `crm.core`) que habilitan áreas funcionales según la industria del tenant.\n  3. **Permisos IAM del usuario:** Permisos granulares asignados al rol en `permissions.ts` (como `crm.leads.view`).\n- *Nota de verificación:* La visualización de la página no certifica automáticamente que cada tarjeta o widget individual filtre métricas por permisos específicos de usuario sin revisar la consulta y acción de servidor de cada componente.\n- Si la organización tiene su suscripción en estado `canceled` o `unpaid` y el usuario no es superadministrador, el panel se bloquea mostrando una pantalla de suspensión.\n\n## Ubicación en pantalla\n- **Ruta web:** `/dashboard`\n- **Acceso:** Primer elemento del menú lateral (categoría Principal) con icono de cuadrícula/dashboard y etiqueta **Dashboard**.\n\n## Pasos para explorar el panel\n1. Inicia sesión en Pixy con tus credenciales.\n2. Si tienes acceso a múltiples empresas, verifica en la esquina inferior izquierda del menú flotante o selector de organización que te encuentres en la organización deseada.\n3. Haz clic en **Dashboard** en el menú lateral si te encuentras en otra sección.\n4. En el área principal observarás:\n   - **Tarjetas de métricas superiores:** Ingresos consolidados, pagos pendientes, cartera morosa y número de clientes activos.\n   - **Acciones rápidas:** Botones directos para crear nuevo cliente, emitir cotización o generar factura (disponibles según la vertical y permisos).\n   - **Listado de actividad o deudores:** Resumen de cuentas por cobrar o movimientos recientes.\n\n## Resultado esperado\nVisualizar los datos consolidados actualizados de la organización activa sin errores de carga, con acceso rápido a las operaciones más frecuentes.\n\n## Problemas habituales y causas comprobadas\n- **Aparece pantalla de organización suspendida:**\n  *Causa comprobada:* La suscripción del tenant se encuentra vencida o impaga (`subscription.status === 'canceled' || subscription.status === 'unpaid'`). El acceso solo puede restablecerse actualizando el método de pago o mediante intervención de un superadministrador.\n- **No aparecen módulos u opciones esperadas en el menú lateral o en el panel:**\n  *Causa comprobada:* Debe verificarse la restricción en su nivel correspondiente: el módulo principal no está contratado para el tenant, la organización carece de la capacidad correspondiente en `capabilities-registry.ts` (como la capacidad `billing.management` para herramientas financieras o `crm.quotes` para cotizaciones), o el rol del usuario carece del permiso granular IAM requerido (como `crm.leads.view`).\n- **El menú lateral se ve muy estrecho con solo iconos:**\n  *Causa comprobada:* El sidebar está en modo colapsado. Puedes pulsar el botón circular rosa con flecha situado en el borde derecho del sidebar superior para expandirlo.\n\n## Limitaciones conocidas\n- La disposición de widgets está predeterminada por la vertical de la organización; actualmente no existe personalización de widgets por usuario individual en base de datos.\n- El tiempo de respuesta de los contadores numéricos animados depende de la velocidad de consulta a Supabase.\n\n## Temas relacionados\n- [Cambiar entre tema claro y oscuro](theme.toggle-theme.md)\n- [Consultar al asistente de ayuda e historial](help.chat-and-history.md)",
       "required_modules": [],
       "required_permissions": [],
       "verticals": [],
-      "link_route": null,
-      "revision": "df95ada00a1e13bc2d67f48fb4f36418408e41202d6d6dbd2a8afffc6d969f31"
+      "link_route": "/dashboard",
+      "revision": "7c9e4a76f75dbf31878625edb1c47f77a51c8465effd8170c810fed9915bf190"
     },
     {
       "id": "help.chat-and-history",
@@ -72,7 +215,95 @@
       "required_permissions": [],
       "verticals": [],
       "link_route": null,
-      "revision": "cec29e1755f51b2efbc1ab73159db36d1944b1b7af788b5521b1be2281a8ca69"
+      "revision": "e8db4d82f4aa8cd341a5cadbf0731f740faa2d7fc9bc62315c6342d6af097121"
+    },
+    {
+      "id": "iam.invite-members",
+      "title": "Invitar y gestionar miembros del equipo en la organización",
+      "module": "iam-permissions",
+      "audience": "tenant-admin",
+      "routes": [
+        "/platform/settings"
+      ],
+      "keywords": [
+        "miembros",
+        "invitar",
+        "equipo",
+        "usuarios",
+        "roles",
+        "colaboradores",
+        "bajas"
+      ],
+      "content": "# Invitar y gestionar miembros del equipo en la organización\n\n## Propósito\nPermitir a los administradores incorporar nuevos colaboradores a la organización mediante enlaces seguros de invitación, asignarles roles de acceso específicos y gestionar las altas o bajas del equipo.\n\n## Requisitos y permisos\n- Contar con rol de **Administrador** (`admin`) o **Dueño** (`owner`) en la organización activa.\n- Para enviar invitaciones se requiere el permiso granular **Gestionar Miembros** (`org.members.manage`).\n- El correo electrónico del colaborador debe ser válido y tener acceso a su bandeja de entrada para completar la confirmación.\n\n## Ubicación en pantalla\n- **Ruta web:** `/platform/settings`\n- **Pestaña:** Navega a la pestaña de **Equipo** (*Team*) dentro de la configuración de la empresa.\n\n## Flujo de invitación\nEl sistema maneja de forma inteligente dos escenarios según el estado previo del usuario en la plataforma:\n1. **Usuario nuevo:** El sistema genera un enlace de invitación oficial (`type: 'invite'`) que le permite definir su contraseña personal al ingresar por primera vez.\n2. **Usuario existente en Pixy (que ya pertenece a otra empresa o tiene cuenta previa):** Para evitar errores de cuenta duplicada, el sistema genera de forma transparente un enlace de acceso directo seguro (*Magic Link*) que lo vincula a la nueva organización sin requerir un nuevo registro.\n\n## Pasos para invitar a un colaborador\n1. Accede a **Configuración** (`/platform/settings`) y selecciona la pestaña **Equipo**.\n2. Haz clic en el botón superior **Invitar Miembro**.\n3. En el formulario modal que se abre:\n   - Introduce el **Correo electrónico** del nuevo colaborador.\n   - Selecciona el **Rol** que desempeñará (puedes elegir roles base o cualquier rol personalizado creado previamente en el gestor de roles).\n4. Haz clic en **Enviar Invitación** o copia el enlace de acceso generado si requieres enviarlo directamente por canal interno.\n5. El sistema añadirá el registro a la lista de miembros de la organización en estado activo o pendiente de ingreso.\n\n## Pasos para modificar el rol de un miembro\n1. En la tabla de miembros de la pestaña **Equipo**, localiza al usuario.\n2. Utiliza el selector desplegable en la columna de **Rol** para asignar el nuevo rol deseado.\n3. El cambio se guarda automáticamente y el usuario recibirá sus nuevos permisos de inmediato.\n\n## Pasos para dar de baja a un miembro\n1. Localiza al usuario en la lista de miembros.\n2. Haz clic en el menú de acciones (icono de tres puntos o botón de papelera).\n3. Selecciona **Eliminar Miembro**.\n4. Confirma la acción. El usuario perderá el acceso a la organización de inmediato (sus sesiones abiertas no podrán seguir consultando datos del tenant).\n\n## Resultado esperado\nEl usuario recibe la invitación por correo con un enlace seguro firmado por el sistema, o accede mediante el enlace proporcionado. Al autenticarse, es redirigido al `/dashboard` con las vistas y permisos correspondientes a su rol.\n\n## Problemas habituales y causas comprobadas\n- **Mensaje \"Rol inválido (UUID requerido)\":**\n  *Causa comprobada:* Ocurre si se intenta enviar un rol legacy con nombre plano en vez del identificador único del catálogo dinámico de roles de la base de datos. Selecciona siempre el rol desde el desplegable oficial.\n- **La cuenta del superadministrador no aparece en la lista del equipo:**\n  *Causa comprobada:* Es un comportamiento intencional de seguridad (`getOrganizationMembers`). Las cuentas con rol de superadministrador global de la plataforma se excluyen deliberadamente de las vistas de los tenants para garantizar la confidencialidad técnica.\n- **El enlace expiró antes de que el usuario lo abriera:**\n  *Causa comprobada:* Los enlaces temporales tienen un plazo de expiración por seguridad. Si expira, el administrador simplemente debe volver a generar la invitación desde el panel.\n\n## Limitaciones conocidas\n- El Dueño inicial de la organización (`owner`) no puede ser eliminado ni degradado por otros administradores; la transferencia de titularidad requiere un proceso de cesión formal.\n\n## Temas relacionados\n- [Administrar roles personalizados y permisos del equipo](iam.manage-roles.md)\n- [Navegación y vista general del panel principal](dashboard.overview.md)",
+      "required_modules": [
+        "core_settings"
+      ],
+      "required_permissions": [
+        "org.members.manage"
+      ],
+      "verticals": [],
+      "link_route": "/platform/settings",
+      "revision": "cd4d86086ef7ed1928da670347b88c492a095b88f01da01bdbdec42b73938444"
+    },
+    {
+      "id": "iam.manage-roles",
+      "title": "Administrar roles personalizados y permisos del equipo (IAM V2)",
+      "module": "iam-permissions",
+      "audience": "tenant-admin",
+      "routes": [
+        "/platform/settings/roles"
+      ],
+      "keywords": [
+        "roles",
+        "permisos",
+        "iam",
+        "equipo",
+        "accesos",
+        "seguridad",
+        "privilegios"
+      ],
+      "content": "# Administrar roles personalizados y permisos del equipo (IAM V2)\n\n## Propósito\nPermitir a los administradores diseñar y asignar perfiles de acceso a la medida de su equipo, concediendo únicamente los permisos necesarios para cada puesto de trabajo (vendedores, supervisores de soporte, cajeros, meseros u operativos) sin exponer información confidencial.\n\n## Requisitos y permisos\n- Contar con el permiso granular **Gestionar Roles** (`org.roles.manage`).\n- Por defecto, este permiso está asignado a los roles de Dueño (`owner`) y Administrador (`admin`).\n- Los usuarios que carezcan de este privilegio son redirigidos automáticamente fuera de la página de gestión de roles.\n\n## Ubicación en pantalla\n- **Ruta web:** `/platform/settings/roles`\n- **Navegación:** Sección **Plataforma** (Configuración) → pestaña o submenú de **Roles & Permisos**.\n\n## Estructura de la interfaz\nLa pantalla se divide en dos áreas de trabajo:\n1. **Panel lateral izquierdo (Lista de roles):**\n   - Buscador para filtrar roles por nombre.\n   - Botón **`+` (Nuevo Rol)** para crear un rol desde cero.\n   - Listado de roles existentes con indicativo de rol de sistema (*System Role*) en los roles base.\n   - Menú de opciones por rol (tres puntos) con opción de eliminar roles personalizados.\n2. **Panel derecho (Editor de permisos):**\n   - Campos de nombre y descripción del rol.\n   - Indicador de permisos habilitados vs. total de permisos disponibles.\n   - Acordeones desplegables con interruptores (*switches*) para cada permiso atómico.\n\n## Catálogo de permisos por módulo\nLos permisos disponibles se ajustan dinámicamente a los módulos activos de la empresa:\n- **CRM y Clientes:**\n  - *Ver Leads (`crm.leads.view`):* Visualización de prospectos y detalles.\n  - *Editar Leads (`crm.leads.edit`):* Creación y modificación de datos de clientes.\n  - *Eliminar Leads (`crm.leads.delete`):* Borrado de registros de clientes.\n  - *Exportar Datos (`crm.data.export`):* Descarga de bases de datos en formato CSV.\n- **Bandeja y Mensajería (Inbox):**\n  - *Vista Global de Canales (`inbox.conversations.global_view`):* Acceso total a todos los canales de WhatsApp y redes sin requerir asignación previa.\n  - *Ver Todas las Conversaciones (`inbox.conversations.view_all`):* Modo supervisor para leer chats asignados a otros agentes o no asignados.\n  - *Supervisión de Equipo (`inbox.team.view`):* Monitoreo de carga y actividad de agentes.\n  - *Asignar Agentes (`inbox.conversations.assign`):* Reasignar conversaciones entre miembros.\n  - *Gestionar Canales (`inbox.channels.manage`):* Conectar o desconectar números de WhatsApp.\n- **Facturación y Finanzas:**\n  - *Ver Facturas (`invoicing.view`):* Consulta de comprobantes emitidos.\n  - *Gestionar Pagos (`invoicing.manage`):* Registrar abonos y crear facturas.\n  - *Exportar Reportes (`invoicing.export`):* Descargar reportes financieros.\n- **Configuración de Empresa:**\n  - *Gestionar Miembros (`org.members.manage`):* Invitar o dar de baja colaboradores.\n  - *Gestionar Roles (`org.roles.manage`):* Crear y editar roles y permisos.\n  - *Administrar Suscripción (`org.billing.manage`):* Métodos de pago y plan de la plataforma.\n  - *Gestionar Configuración (`org.settings.manage`):* Parámetros generales del tenant.\n- **Módulos Operativos (según vertical activa):**\n  - Tareas (`operations.tasks.view`, `operations.tasks.manage`), Catálogo (`operations.catalog.manage`), Sedes (`operations.locations.manage`), Asistencia (`operations.attendance.manage`), Menú digital y Pedidos de restaurante.\n\n## Pasos para crear y configurar un rol\n1. Accede a `/platform/settings/roles`.\n2. Haz clic en el botón **`+`** en la parte superior de la lista izquierda. Se creará un nuevo rol con nombre provisional (*New Custom Role*).\n3. En el panel derecho, edita el nombre (por ejemplo: *\"Agente de Ventas Junior\"*) y escribe una descripción clara.\n4. Despliega los grupos de permisos que corresponden a sus funciones y enciende los interruptores necesarios.\n5. Haz clic en el botón superior **Guardar Cambios** (`Save`).\n6. El rol quedará disponible de inmediato para ser asignado a miembros nuevos o existentes.\n\n## Pasos para eliminar un rol personalizado\n1. Selecciona el rol en la lista izquierda.\n2. Haz clic en el icono de opciones (tres puntos) junto al nombre del rol.\n3. Selecciona **Eliminar**.\n4. Confirma la advertencia de que los usuarios que tenían asignado este rol perderán sus accesos asociados.\n\n## Resultado esperado\nLos cambios se persisten en la tabla `organization_roles`. Los miembros asignados a este rol verán adaptadas sus pantallas y opciones de menú de inmediato en su siguiente acción o recarga.\n\n## Problemas habituales y causas comprobadas\n- **No aparece el botón de eliminar o el nombre del rol está bloqueado:**\n  *Causa comprobada:* El rol seleccionado es un **Rol de Sistema** predefinido (`is_system_role: true`, como Dueño o Administrador). Estos roles no pueden eliminarse ni renombrarse para proteger la estabilidad del sistema.\n- **Un usuario con permiso de ver leads no puede exportar datos:**\n  *Causa comprobada:* La exportación a CSV está segregada bajo el permiso independiente `crm.data.export`. Debes habilitar ese interruptor específico en el editor de roles.\n- **Un grupo de permisos completo no aparece en pantalla:**\n  *Causa comprobada:* El editor de roles oculta automáticamente los grupos cuyos módulos no estén contratados o habilitados en la organización activa para mantener limpia la configuración.\n\n## Limitaciones conocidas\n- La jerarquía de roles impide que un usuario edite un rol con mayor nivel de privilegios que el suyo propio.\n- Los superadministradores de la plataforma global gestionan sus permisos de forma externa a este panel de tenant.\n\n## Temas relacionados\n- [Invitar y gestionar miembros del equipo](iam.invite-members.md)\n- [Navegación y vista general del panel principal](dashboard.overview.md)",
+      "required_modules": [
+        "core_settings"
+      ],
+      "required_permissions": [
+        "org.roles.manage"
+      ],
+      "verticals": [],
+      "link_route": "/platform/settings/roles",
+      "revision": "0e1a47b67e5f6b097837cf396ff5f1d0fd049b96092f38cf5a8492fcf05d838f"
+    },
+    {
+      "id": "inbox.manage-channels",
+      "title": "Configurar y sincronizar canales de mensajería",
+      "module": "inbox",
+      "audience": "tenant-admin",
+      "routes": [
+        "/crm/settings/channels"
+      ],
+      "keywords": [
+        "canales",
+        "whatsapp",
+        "meta",
+        "messenger",
+        "instagram",
+        "cloud api",
+        "coexistencia",
+        "desconectar",
+        "horarios",
+        "asignación",
+        "canal principal"
+      ],
+      "content": "# Configurar y sincronizar canales de mensajería\n\n## Propósito\nAdministrar la vinculación técnica, supervisión operativa y configuración de los canales de mensajería omnicanal de la empresa (WhatsApp Business Cloud API, Facebook Messenger e Instagram Direct), definiendo canal principal, horarios de atención y respuestas automáticas.\n\n## Requisitos y permisos\n- Módulo de mensajería (`module_messaging`) activo en el tenant.\n- Permiso granular de administración de canales (`inbox.channels.manage`) o rol administrativo (`admin` / `owner`).\n- Para vincular WhatsApp: cuenta comercial en Meta Business Manager con número de teléfono habilitado para Cloud API o modo coexistencia.\n\n## Ubicación en pantalla\n- **Ruta web:** `/crm/settings/channels`\n- **Menú lateral:** Sección **CRM** → subsección **Settings** → opción **Canales**.\n\n## Vista general de canales conectados\nEn la página principal se listan las tarjetas interactivas de cada canal configurado:\n- **Indicador de salud en tiempo real:** Punto luminoso que refleja el estado de conexión verificado periódicamente (`active`, `inactive`, `error`).\n- **Distintivo de proveedor y modo:** Identifica la plataforma (WhatsApp, Instagram, Messenger) y el modo de conexión (por ejemplo `App + API` para coexistencia o `Cloud API` estándar).\n- **Insignia de canal principal:** Una estrella dorada destaca el canal configurado por defecto para las comunicaciones salientes de la empresa.\n\n## Procedimientos de gestión operativa\n\n### 1. Vincular un nuevo canal de mensajería\n1. Dirígete a `/crm/settings/channels`.\n2. En la cabecera superior, haz clic en el botón correspondiente a la red que deseas integrar:\n   - **WhatsApp:** Abre el asistente modal de conexión guiada para Meta Cloud API o registro integrado (Embedded Signup).\n   - **Messenger:** Inicia el flujo seguro de autenticación OAuth de Facebook.\n   - **Instagram:** Conecta la cuenta profesional de Instagram vinculada a tu página de Meta.\n3. Autoriza los permisos requeridos en el portal de Meta y confirma la selección del activo.\n4. El nuevo canal aparecerá de inmediato en la cuadrícula de canales de Pixy.\n\n### 2. Establecer un canal como principal\n1. En la tarjeta del canal que deseas priorizar, haz clic en el menú contextual de opciones (tres puntos verticales) o abre el panel de edición.\n2. Selecciona **Marcar como principal**.\n3. El canal recibirá el distintivo de estrella y será seleccionado automáticamente al abrir nuevas conversaciones salientes.\n\n### 3. Configurar horarios laborales y respuestas automáticas\n1. Haz clic directamente sobre la tarjeta del canal para abrir el panel lateral de configuración.\n2. **Nombre de conexión:** Asigna una etiqueta interna clara para identificar el canal entre los agentes (ejemplo: \"WhatsApp Ventas Bogotá\").\n3. **Etapa por defecto en el Pipeline:** Selecciona la fase del embudo comercial donde ingresarán automáticamente los nuevos prospectos que escriban a este canal.\n4. **Mensaje de bienvenida:** Redacta el texto de saludo que se remitirá al usuario al iniciar su primer contacto.\n5. **Horarios de atención (Working Hours):**\n   - Activa el interruptor de horarios laborales.\n   - Configura la zona horaria de operación (por ejemplo: `America/Bogota`).\n   - Define los rangos de atención permitidos para cada día de la semana (por ejemplo, lunes a viernes de 09:00 a 18:00).\n6. **Respuesta fuera de horario:** Escribe el mensaje automático que el sistema despachará cuando un cliente escriba fuera del horario comercial definido.\n7. Presiona **Guardar cambios** para aplicar la configuración.\n\n### 4. Desconectar un canal de Pixy\n1. En la tarjeta del canal, abre el menú de opciones y haz clic en **Desconectar / Eliminar**.\n2. **Diferencia técnica fundamental:**\n   - La desconexión en Pixy elimina el registro del canal en la plataforma y detiene el tráfico de entrada y salida local (`deleteChannel`).\n   - **No desvincula automáticamente el número en Meta.** Si el canal operaba en modo de coexistencia de WhatsApp Business, debes desvincularlo manualmente desde el dispositivo móvil en: *WhatsApp Business → Configuración → Cuenta → Plataforma empresarial → Desconectar cuenta*.\n3. Confirma el cuadro de diálogo de seguridad para completar la desconexión.\n\n## Resultado esperado\nLos canales activos sincronizan los mensajes bidireccionalmente con la bandeja unificada (`/crm/inbox`), enrutando a los prospectos según las etapas y asignaciones fijadas.\n\n## Problemas habituales y causas comprobadas\n- **El estado del canal aparece en color rojo o error:**\n  *Causa comprobada:* El token de acceso de Meta expiró, o el webhook de la API de WhatsApp fue revocado en la consola de desarrolladores. Se requiere reautenticar el canal mediante el asistente.\n- **Los mensajes entran a Pixy pero no se despachan respuestas automáticas de noche:**\n  *Causa comprobada:* El interruptor de horarios de atención está desactivado en la configuración del canal o la zona horaria configurada no coincide con la región de operación de la empresa.\n- **Un agente no puede ver el canal en su bandeja:**\n  *Causa comprobada:* El agente no posee el permiso `inbox.conversations.global_view` y el administrador no ha incluido este canal específico en la lista de canales autorizados de su perfil.\n\n## Limitaciones conocidas\n- Para vincular una línea de WhatsApp a Meta Cloud API, dicho número no debe estar registrado simultáneamente en la aplicación móvil de WhatsApp tradicional a menos que utilice el modo de coexistencia oficial habilitado por Meta.\n\n## Temas relacionados\n- [Atender y gestionar conversaciones en Inbox](inbox.manage-conversations.md)\n- [Respuestas rápidas y plantillas de mensaje en Inbox](inbox.saved-replies-and-templates.md)\n- [Gestión de roles y permisos IAM V2](iam.manage-roles.md)",
+      "required_modules": [
+        "module_messaging"
+      ],
+      "required_permissions": [
+        "inbox.channels.manage"
+      ],
+      "verticals": [],
+      "link_route": "/crm/settings/channels",
+      "revision": "acc6bcd9c30f456d2c8b8c35ca590923e9b2363aee611c0a5081229848ca21a7"
     },
     {
       "id": "inbox.manage-conversations",
@@ -107,34 +338,36 @@
       "required_permissions": [],
       "verticals": [],
       "link_route": null,
-      "revision": "7b430c789b73b65f9f20f35e56c0b9fd94d4dec12c96bff9f9862f261f1d461a"
+      "revision": "06f53ec72e965e10ef4e8718498bcf3a30a44303f3def2a73d772d08cd3aea34"
     },
     {
-      "id": "branding.manage-adn",
-      "title": "Personalizar el ADN de marca y la identidad del negocio",
-      "module": "branding",
-      "audience": "tenant-admin",
+      "id": "inbox.saved-replies-and-templates",
+      "title": "Respuestas rápidas y plantillas de mensaje en Inbox",
+      "module": "inbox",
+      "audience": "tenant-user",
       "routes": [
-        "/platform/adn"
+        "/crm/inbox"
       ],
       "keywords": [
-        "adn",
-        "marca",
-        "identidad",
-        "logotipo",
-        "colores",
-        "tipografía",
-        "portal",
-        "documentos"
+        "inbox",
+        "respuestas rápidas",
+        "respuestas guardadas",
+        "plantillas",
+        "whatsapp",
+        "meta",
+        "ventana 24 horas",
+        "mensajes",
+        "redactor",
+        "variables"
       ],
-      "content": "# Personalizar el ADN de marca y la identidad del negocio\n\n## Propósito\nPermitir a los administradores definir y unificar la identidad corporativa de su empresa en Pixy: logotipos, colores principales, datos de contacto comercial, membretes de documentos PDF y apariencia visual del portal para clientes.\n\n## Requisitos y permisos\n- Contar con rol de **Administrador** (`admin`) o **Dueño** (`owner`) en la organización activa.\n- Los usuarios con rol de miembro (`member`) o colaboradores no tienen acceso a esta sección y serán redirigidos.\n- Para subir imágenes (logotipos o fondos), el archivo debe ser formato de imagen válido (PNG, JPG, SVG, WebP) y tener un peso máximo de **5 MB**.\n\n## Ubicación en pantalla\n- **Ruta web:** `/platform/adn`\n- **Menú lateral:** Sección **Plataforma** (Configuración) → opción con icono de escaneo facial y etiqueta **ADN del Negocio**.\n\n## Pestañas de configuración\nEl panel se organiza en seis pestañas temáticas:\n\n### 1. Esencia\n- **Nombre comercial:** Nombre oficial del negocio que figurará en encabezados, facturas y correos.\n- **Logotipos:** Subida independiente de logotipo para fondo claro y fondo oscuro.\n- **Isotipo / Favicon:** Ícono cuadrado compacto visible en la pestaña del navegador y accesos directos.\n- **Paleta de colores:** Color primario (utilizado en botones de acción y destaques) y color secundario. En caso de que la mascota robot esté disponible para todos los tenants, adoptará estos tonos automáticamente.\n- **Tipografía de marca:** Fuente tipográfica preferida para la experiencia del cliente.\n\n### 2. Contacto\n- Datos institucionales: sitio web oficial, correo de atención, teléfono principal, dirección y canales de contacto.\n\n### 3. Portal\n- Configuración visual del portal público B2C para clientes (comensales, compradores o usuarios externos).\n- Logotipo específico del portal, imagen de fondo de inicio de sesión y color de fondo de login.\n- *Nota de plan:* Si la organización no cuenta con un plan que incluya personalización de portal (Tier Pro o Whitelabel), esta pestaña muestra un aviso de bloqueo indicando las ventajas de actualizar de plan.\n\n### 4. Documentos\n- Personalización de cotizaciones, cuentas de cobro y facturas en formato PDF.\n- Permite definir el texto legal del pie de página, tamaño del logotipo (pequeño, mediano, grande) y conmutar la marca de agua.\n\n### 5. Dominios\n- Asignación de dominio web personalizado para operar la plataforma bajo una dirección propia. Requiere soporte de dominio en el plan contratado.\n\n### 6. Operación\n- Configuración regional de la operación, como país, moneda base y zona horaria. No debe confundirse con los datos de contacto.\n\n## Pasos para actualizar la identidad\n1. Navega a **ADN del Negocio** en el menú lateral.\n2. Selecciona la pestaña que deseas modificar (por ejemplo, **Esencia** para cambiar colores o logos).\n3. Para cambiar una imagen, haz clic en el área de carga correspondiente, selecciona el archivo desde tu equipo y espera a que la miniatura se actualice.\n4. Para ajustar los colores, utiliza el selector visual de color o ingresa directamente el código HEX (ejemplo: `#3594F1`).\n5. Observa el panel derecho de **Vista previa**: podrás ver en tiempo real cómo lucen los cambios tanto en la maqueta de inicio de sesión como en la del panel de control.\n6. Una vez conforme, haz clic en el botón superior **Guardar Identidad** (icono de disquete).\n\n## Resultado esperado\nAparecerá una notificación de confirmación: *\"ADN Actualizado: La identidad de tu negocio se ha guardado correctamente.\"*. Los nuevos logotipos y colores se propagarán a la barra lateral, documentos PDF emitidos y portales públicos.\n\n## Problemas habituales y causas comprobadas\n- **Error al subir imagen (\"El archivo no debe superar 5MB\"):**\n  *Causa comprobada:* El archivo seleccionado supera el límite técnico permitido de 5 megabytes. Debes comprimir la imagen antes de subirla.\n- **Los cambios de color no se reflejan en el menú lateral de inmediato:**\n  *Causa comprobada:* Aunque el guardado emite el evento `branding-updated` para limpiar la memoria caché del navegador, en conexiones lentas puede requerirse una recarga de página (`F5`) para rehidratar el layout del servidor.\n- **La pestaña \"Portal\" aparece bloqueada con un candado:**\n  *Causa comprobada:* La función de personalización de portal (`custom_colors` o `remove_pixy_branding`) requiere un plan con características avanzadas de marca blanca. Contacta a administración o utiliza el botón de actualización directa.\n\n## Limitaciones conocidas\n- La eliminación física de imágenes reemplazadas en el almacenamiento de Supabase se procesa mediante llamadas administrativas; si se utiliza una URL externa manual no se podrá gestionar su borrado automático.\n\n## Temas relacionados\n- [Gestionar identidad en el Centro de Marca (Brand Center)](branding.brand-center.md)\n- [Cambiar entre tema claro y tema oscuro](theme.toggle-theme.md)",
+      "content": "# Respuestas rápidas y plantillas de mensaje en Inbox\n\n## Propósito\nExplicar el uso, las diferencias operativas y las restricciones entre las respuestas rápidas guardadas localmente en Pixy y las plantillas oficiales homologadas por Meta en WhatsApp Business, así como el manejo de notas internas privadas en el redactor de conversaciones.\n\n## Requisitos y permisos\n- Organización con el módulo de mensajería (`module_messaging`) habilitado.\n- Acceso asignado al canal correspondiente (mediante `inbox.conversations.global_view` o canales específicos concedidos al miembro del equipo).\n- Para plantillas oficiales: disponer de plantillas previamente creadas y aprobadas en Meta Business Manager con identificador oficial (`meta_id`).\n\n## Ubicación en pantalla\n- **Ruta web:** `/crm/inbox`\n- **Menú lateral:** Sección **CRM** → opción **Inbox**.\n- **Controles de redacción:** En la parte inferior del área de chat central.\n\n## Diferencia crítica: Respuestas rápidas vs. Plantillas oficiales de Meta\n\nEs fundamental no confundir ambos mecanismos, pues responden a arquitecturas y normativas distintas:\n\n1. **Respuestas rápidas (Saved Replies):**\n   - Son fragmentos de texto reutilizables creados y almacenados localmente dentro de Pixy.\n   - Su función es ahorrar tiempo de digitación a los agentes frente a consultas repetitivas (saludos, preguntas frecuentes, horarios).\n   - Al pulsar sobre una respuesta rápida, su contenido se inserta directamente en el campo de texto del redactor.\n   - **Restricción estricta:** Insertar una respuesta rápida equivale a redactar texto libre. Por tanto, **no evade ni supera la ventana de 24 horas de WhatsApp**. Si el cliente lleva más de 24 horas sin enviar un mensaje, intentar enviar una respuesta rápida como texto libre provocará un error de envío por políticas de Meta.\n\n2. **Plantillas oficiales (Official Meta Templates):**\n   - Son mensajes estructurados y pre-aprobados directamente por Meta a través de la WhatsApp Business Platform.\n   - Cuentan con estado `APPROVED` y un identificador oficial (`meta_id`).\n   - Soportan parámetros variables dinámicos como `{{1}}` o `{{2}}` (por ejemplo: nombre del cliente, número de pedido o fecha de cita).\n   - **Función exclusiva:** Son el único medio autorizado por Meta para iniciar una conversación con un cliente o reabrir el canal cuando han transcurrido más de 24 horas desde la última intervención del usuario.\n\n## Pasos para utilizar respuestas rápidas guardadas\n\n1. Abre la conversación con el cliente en `/crm/inbox`.\n2. En la barra de redacción inferior, abre el panel de respuestas guardadas.\n3. Se desplegará el panel lateral con la lista de respuestas disponibles y una barra de búsqueda para filtrar por palabras clave.\n4. Si deseas redactar una nueva respuesta reutilizable para el equipo, presiona **Nueva Plantilla**, asigna un título, icono y contenido, y guarda los cambios. También dispones del botón de refinamiento con inteligencia artificial si requieres mejorar la redacción.\n5. Haz clic sobre la respuesta rápida deseada. El texto se volcará de inmediato en la caja de redacción del chat.\n6. Revisa y ajusta el texto si lo consideras pertinente antes de pulsar **Enviar** (o presionar la tecla `Enter`). La selección de una respuesta nunca envía el mensaje de forma instantánea al cliente sin confirmación.\n\n## Pasos para enviar una plantilla oficial de Meta (fuera de la ventana de 24 horas)\n\n1. En la conversación deseada, haz clic en el icono de documento/plantilla oficial ubicado en los controles inferiores del chat o en la cabecera.\n2. El sistema se sincronizará automáticamente con Meta (`syncTemplatesForConversation`) y mostrará el catálogo de plantillas aprobadas vinculadas al número telefónico del canal.\n3. Selecciona la plantilla que deseas remitir.\n4. Si la plantilla contiene variables dinámicas (como `{{1}}` o `{{2}}`), la interfaz presentará campos de formulario individuales para que ingreses el valor de cada variable.\n5. Verifica la previsualización del mensaje con las variables completadas.\n6. Presiona el botón de envío. El sistema remitirá la plantilla mediante la acción de servidor (`sendTemplateMessage`), la cual invocará la API oficial de Meta y registrará el mensaje en el historial del chat.\n\n## Modo Nota interna privada\n\nPara dejar apuntes de seguimiento, recordatorios o directrices técnicas entre compañeros de equipo sin que el cliente las reciba:\n\n1. En la parte superior de la caja de redacción del chat, haz clic en el conmutador **Nota**.\n2. El control cambiará a **Modo Nota** y el área de texto adoptará una apariencia visual ámbar distintiva.\n3. Escribe las observaciones deseadas y pulsa **Enviar**.\n4. La nota se guardará en la base de datos de la conversación y se mostrará en el historial con un fondo destacado visible exclusivamente para los miembros autorizados del equipo.\n5. Antes de responder al cliente, vuelve a pulsar el conmutador para desactivar el Modo Nota y regresar al redactor estándar.\n\n## Resultado esperado\n- Al insertar una respuesta rápida, el texto queda listo para edición o envío inmediato en el redactor.\n- Al enviar una plantilla oficial, Meta valida la estructura y entrega el mensaje al destinatario fuera del horario convencional de atención.\n- Las notas internas quedan archivadas cronológicamente en el hilo sin transferirse al canal de WhatsApp del cliente.\n\n## Problemas habituales y causas comprobadas\n- **Error al enviar mensaje por vencimiento de ventana:**\n  *Causa comprobada:* Intentaste enviar texto libre o una respuesta rápida después de cumplidas 24 horas de inactividad del cliente. Solución: Utiliza el selector de plantillas oficiales para reactivar la conversación con una plantilla aprobada.\n- **La plantilla requerida no aparece en la lista:**\n  *Causa comprobada:* La plantilla aún está en revisión o fue rechazada en el administrador comercial de Meta, o bien pertenece a otro número/canal diferente al activo.\n- **El cliente recibió una nota que debía ser privada:**\n  *Causa comprobada:* Se redactó el mensaje sin verificar que el botón superior indicara activamente **Modo Nota** en color ámbar.\n\n## Limitaciones conocidas\n- Las plantillas oficiales deben gestionarse y homologarse previamente en la plataforma comercial de Meta; no pueden crearse arbitrariamente como texto libre en el momento del envío.\n- Las variables dinámicas en plantillas oficiales no admiten saltos de línea ni caracteres especiales prohibidos por Meta.\n\n## Temas relacionados\n- [Atender y gestionar conversaciones en Inbox](inbox.manage-conversations.md)\n- [Configurar y sincronizar canales de mensajería](inbox.manage-channels.md)",
       "required_modules": [
-        "core_settings"
+        "module_messaging"
       ],
       "required_permissions": [],
       "verticals": [],
-      "link_route": null,
-      "revision": "948da91634b9288494397e707eb9cd604ba25c2cc7965533966a920a89fc4492"
+      "link_route": "/crm/inbox",
+      "revision": "3bd222c8cde7b21debf7941fa13575394514cc04461d65a05a0669c6593e6a88"
     },
     {
       "id": "pet.manage-pet",
@@ -159,7 +392,170 @@
       "required_permissions": [],
       "verticals": [],
       "link_route": null,
-      "revision": "a2e4141643b47744a8657720313f3b3d2001181358f619d598ba29d55e0b407e"
+      "revision": "bcff52ce8b75bdd3b790b6a8f5d2e2fe81b9d1275eac895e3b8fe0868726c92e"
+    },
+    {
+      "id": "pet.pet-interaction",
+      "title": "Estados visuales, hibernación e interacción con la mascota",
+      "module": "pet",
+      "audience": "tenant-user",
+      "routes": [
+        "/dashboard"
+      ],
+      "keywords": [
+        "mascota",
+        "robot",
+        "expresiones",
+        "estados",
+        "hibernación",
+        "reposo",
+        "ayuda"
+      ],
+      "content": "# Estados visuales, hibernación e interacción con la mascota\n\n## Propósito\nExplicar el comportamiento interactivo de la mascota robot Pixy en el panel, el significado de sus expresiones faciales y cómo opera su mecanismo de hibernación para conservar batería y recursos del equipo.\n\n## Requisitos y permisos\n- Que la mascota se encuentre activada para la organización actual por el superadministrador.\n- Disponible para todos los usuarios de la organización.\n- Si la mascota está apagada o se detecta un fallo de renderizado, se muestra un botón de ayuda con icono de mensaje. El robot no requiere aceleración gráfica específica para acceder a la ayuda.\n\n## Ubicación en pantalla\n- **En el panel principal:** En la esquina inferior derecha de la pantalla (posición fija, por encima del contenido y respetando áreas seguras en dispositivos móviles).\n- **Dentro del diálogo de ayuda:** En la esquina inferior derecha del formulario de redacción de preguntas.\n\n## Estados y expresiones visuales\nLa pantalla LED del robot reacciona dinámicamente a los eventos del sistema:\n- **Disponible (`idle`):** Expresión neutra. En modo contextual se detiene la animación continua; puede seguir el cursor si el seguimiento está habilitado y se cumplen sus condiciones.\n- **Pensando (`thinking`):** Expresión de procesamiento activo mientras el asistente de inteligencia artificial analiza la consulta.\n- **Trabajando (`working`):** Expresión concentrada que acompaña operaciones de guardado de datos sensibles (por ejemplo, al guardar el ADN de marca en el Centro de Marca).\n- **Éxito (`happy`):** Expresión alegre que confirma que la respuesta se generó con éxito o que una operación finalizó correctamente (se mantiene aproximadamente 2,5 segundos antes de volver al reposo).\n- **Error (`error`):** Expresión de alerta ante fallos de conexión o imposibilidad de procesar una tarea (se conserva unos 8 segundos).\n- **Descansando (`sleeping`):** Ojos cerrados o tenues que indican que el robot entró en modo de hibernación.\n\n## Ciclo de hibernación y despertar\nPara garantizar un rendimiento óptimo y evitar consumo innecesario de procesador o batería:\n1. **Ventana de actividad:** Si la hibernación está habilitada, tras 5 minutos por defecto (o el tiempo configurado por administración) sin interacción directa con el robot, este entra en **hibernación**. Si se desactiva ese ajuste, no se aplica este temporizador.\n2. **Pausa del motor gráfico:** Durante la hibernación, el canvas se suspende completamente: el robot deja de seguir el cursor y no ejecuta bucles de renderizado.\n3. **Cómo despertarlo:**\n   - Pasar el cursor directamente sobre el robot (`hover`).\n   - Enfocar el botón de ayuda utilizando la tecla `Tab` del teclado.\n   - Tocar la mascota en pantallas táctiles (`touchstart`).\n4. **Regla de aislamiento del cursor:** Mover el ratón por otras áreas de la página o navegar por tablas y menús **no renueva** el tiempo activo del robot; solo la interacción directa sobre él reinicia el contador.\n\n## Control y límites del seguimiento del cursor\nEl robot orienta la cabeza hacia la posición del ratón en tiempo real cuando se cumplen tres condiciones simultáneas (`RobotHeadView`):\n1. **Interactividad encendida:** La opción `settings.interactive` está habilitada en la configuración global.\n2. **Estado disponible:** El robot se encuentra en reposo normal (`state === 'idle'`).\n3. **Puntero fino:** El usuario navega con ratón o trackpad de precisión (`finePointer`), excluyendo pantallas táctiles donde el cursor continuo no existe.\n\nEl modo de reposo contextual **no interrumpe el seguimiento del ratón**: si la interactividad está activa, el robot continúa orientando su mirada hacia el cursor aunque el cuerpo no esté ejecutando bucles de animación continua.\n\nPor el contrario, la animación y el seguimiento se pausan o suspenden en cualquiera de las siguientes situaciones:\n- **Hibernación:** El temporizador de inactividad directa expira y el robot entra en descanso.\n- **Reducción de movimiento:** El sistema operativo o navegador tiene activada la preferencia `prefers-reduced-motion`.\n- **Pestaña no visible:** El usuario cambia de pestaña o minimiza la ventana (`document.hidden`).\n- **Fuera del viewport:** El elemento queda fuera del área visible al hacer scroll por la página.\n- **Animación apagada:** La configuración global tiene seleccionado el modo `off`.\n- **Estado ocupado:** La mascota está procesando una consulta de IA (`thinking`, `searching`) o confirmando un guardado (`working`).\n\n## Pasos para abrir la ayuda con la mascota\n1. Pasa el cursor sobre la mascota en la esquina inferior derecha para despertarla.\n2. Haz clic sobre ella.\n3. Se abrirá la ventana modal del **Centro de Ayuda**. Al abrirse, la mascota flotante exterior se oculta automáticamente para mantener la pantalla despejada.\n4. En el campo inferior del chat verás a la mascota integrada, con un tamaño de 112 px en escritorio (u 80 px en móvil), ubicada a la derecha de la barra de texto sin interferir con la escritura ni el botón de envío.\n\n## Problemas habituales y causas comprobadas\n- **En lugar del robot aparece un botón circular con icono de mensaje:**\n  *Causa comprobada:* La mascota fue desactivada en la plataforma, la organización no forma parte del piloto, o el navegador falló al inicializar el contexto 2D del Canvas (`reportRendererFailure`). El botón alternativo permite seguir usando la ayuda con total normalidad.\n- **La mascota no gira ni mira hacia el ratón:**\n  *Causa comprobada:* El seguimiento requiere interactividad activa (`settings.interactive: true`), estado disponible (`idle`) y un ratón o trackpad de precisión (`finePointer`). Se pausa si el robot está en hibernación, si el sistema operativo tiene activada la reducción de movimiento (`prefers-reduced-motion`), si la pestaña está en segundo plano, si la mascota quedó fuera de la vista al desplazarse o si la animación está apagada. El reposo contextual por sí mismo no inhabilita el seguimiento cuando estas condiciones se cumplen.\n- **La mascota no reacciona al guardar en algunos módulos:**\n  *Causa comprobada:* Las reacciones operativas están conectadas a formularios clave (como el Centro de Marca mediante `usePetOperation`) y avisos críticos del sistema; no todos los formularios secundarios del sistema tienen instrumentación visual.\n\n## Limitaciones conocidas\n- La mascota exterior no utiliza textos flotantes al pasar el cursor (tooltips) para evitar bloqueos visuales sobre elementos subyacentes.\n- Si el diálogo de ayuda está abierto y se produce un error, el robot mostrará el rostro de error pero no emitirá sonidos.\n\n## Temas relacionados\n- [Configurar y administrar la mascota robot Pixy](pet.manage-pet.md)\n- [Consultar al asistente de ayuda e historial](help.chat-and-history.md)",
+      "required_modules": [],
+      "required_permissions": [],
+      "verticals": [],
+      "link_route": null,
+      "revision": "dab83373b97201a49dfad054a0d07b6c5cb1c5990e8c35ba345affeede7f1471"
+    },
+    {
+      "id": "quotes.create-quotes",
+      "title": "Crear, enviar y dar seguimiento a cotizaciones comerciales",
+      "module": "quotes",
+      "audience": "tenant-user",
+      "routes": [
+        "/quotes",
+        "/quotes/new"
+      ],
+      "keywords": [
+        "cotizaciones",
+        "propuestas",
+        "presupuestos",
+        "ventas",
+        "comercial",
+        "portal"
+      ],
+      "content": "# Crear, enviar y dar seguimiento a cotizaciones comerciales\n\n## Propósito\nPermitir a los equipos comerciales elaborar presupuestos claros y profesionales, enviarlos a los prospectos mediante enlaces interactivos o documentos PDF y registrar su aprobación para agilizar el cierre de ventas.\n\n## Requisitos y permisos\n- Que la empresa tenga habilitado el módulo de cotizaciones (`module_quotes`) y la capacidad `crm.quotes`.\n- Roles autorizados por defecto: Dueño (`owner`) y Administrador (`admin`), o usuarios con permisos de gestión comercial asignados.\n\n## Ubicación en pantalla\n- **Ruta web:** `/quotes`\n- **Menú lateral:** Sección **Operaciones** → opción **Cotizaciones** (icono de documento de texto). También accesible desde el acceso rápido del dashboard o desde la barra lateral del Inbox.\n\n## Estados de una cotización\n- **Borrador (`draft`):** Propuesta en redacción interna, no accesible para el cliente.\n- **Enviada (`sent`):** Cotización enviada al prospecto y pendiente de decisión.\n- **Aceptada (`accepted`):** El cliente aprobó la propuesta formalmente desde el portal o el agente registró la confirmación.\n- **Rechazada (`rejected`):** La propuesta no fue aprobada por el prospecto.\n- **Expirada (`expired`):** La fecha de vigencia límite venció sin respuesta del cliente.\n\n## Pasos para crear una cotización\n1. Navega a **Cotizaciones** (`/quotes`).\n2. Haz clic en el botón superior **Nueva Cotización**.\n3. En el editor de propuestas:\n   - Selecciona el **Cliente o Prospecto** del directorio del CRM.\n   - Define la **Fecha de vigencia** (plazo de días durante el cual los precios se mantienen vigentes).\n   - Añade los ítems desde el catálogo de servicios o ingresa descripciones manuales con sus cantidades y precios unitarios.\n   - Aplica descuentos porcentuales o fijos si procede.\n   - Agrega términos y condiciones comerciales en las notas finales (por ejemplo: tiempos de entrega o forma de pago).\n4. Revisa el resumen financiero (subtotal, descuentos, impuestos y total).\n5. Haz clic en **Guardar y Emitir**.\n\n## Envío y aprobación por el cliente\n1. Una vez emitida, abre el detalle de la cotización.\n2. Puedes:\n   - **Copiar enlace interactivo del portal:** El cliente podrá abrir el enlace en su móvil o computador, revisar las partidas detalladas y presionar el botón **Aceptar Propuesta**.\n   - **Descargar PDF corporativo:** Genera un presupuesto imprimible con la estética, membrete y sellos del ADN de marca de tu negocio.\n   - **Enviar por WhatsApp:** Comparte el enlace directo dentro de la conversación del Inbox.\n\n## Convertir cotización en factura\n- Cuando el cliente acepta la cotización, la propuesta cambia a estado **Aceptada**.\n- Desde la vista de detalle de la cotización aceptada, haz clic en **Convertir a Factura**: los conceptos, cantidades y montos se transferirán automáticamente al borrador del Centro de Facturación sin necesidad de reescribir la información.\n\n## Resultado esperado\nPresentación comercial ágil y profesional que reduce tiempos de negociación y facilita la transición inmediata hacia la cobranza y la ejecución del servicio.\n\n## Problemas habituales y causas comprobadas\n- **El cliente dice que el enlace indica que la cotización ha caducado:**\n  *Causa comprobada:* La fecha de vigencia configurada expiró (`status === 'expired'`). Debes editar la cotización, ampliar la fecha de validez y volver a guardarla para reactivar el enlace de aceptación.\n- **La cotización no se convirtió automáticamente en factura tras la aceptación:**\n  *Causa comprobada:* Por diseño contable, la aprobación del cliente no genera de inmediato una factura fiscal sin confirmación del operador; el agente debe presionar el botón de conversión para validar los datos fiscales finales.\n\n## Limitaciones conocidas\n- Las cotizaciones aceptadas quedan archivadas como registro histórico y no deben modificarse en sus montos base; para cambios posteriores se debe emitir una cotización complementaria.\n\n## Temas relacionados\n- [Crear, emitir y gestionar facturas de cobro](billing.manage-invoices.md)\n- [Gestión de embudo de ventas y pipeline](crm.manage-pipeline.md)",
+      "required_modules": [
+        "module_quotes"
+      ],
+      "required_permissions": [],
+      "verticals": [],
+      "link_route": "/quotes",
+      "revision": "3e8e439bd09471896230b3d755d439ce8e50123f0782c8fe3f8f911b4bc59473"
+    },
+    {
+      "id": "resto.manage-menu",
+      "title": "Administrar el menú digital, categorías y horarios de restaurante",
+      "module": "resto",
+      "audience": "tenant-user",
+      "routes": [
+        "/menu"
+      ],
+      "keywords": [
+        "restaurante",
+        "menú",
+        "carta",
+        "platos",
+        "categorías",
+        "horarios",
+        "pedidos",
+        "comida"
+      ],
+      "content": "# Administrar el menú digital, categorías y horarios de restaurante\n\n## Propósito\nPermitir a los restaurantes y negocios de gastronomía estructurar su carta digital interactiva, organizar categorías de alimentos y bebidas, definir horarios de atención con doble jornada y controlar la disponibilidad de pedidos en el portal público B2C.\n\n## Requisitos y permisos\n- Que la empresa tenga habilitado el módulo de menú de restaurante (`module_resto_menu`).\n- Permisos requeridos:\n  - *Consultar la carta:* Permiso `operations.resto_menu.view`.\n  - *Crear, editar platos y configurar horarios:* Permiso `operations.resto_menu.manage`.\n- Por defecto, disponible para roles de Administrador (`admin`) y Dueño (`owner`).\n\n## Ubicación en pantalla\n- **Ruta web:** `/menu`\n- **Menú lateral:** Sección **Operaciones** → opción **Menú Digital** (icono de cubiertos).\n\n## Estructura de la carta gastronómica\n1. **Categorías:** Agrupaciones temáticas de platos (por ejemplo: *Entradas*, *Platos Fuertes*, *Pizzas*, *Bebidas*, *Postres*). Permite definir orden de visualización en la navegación por pestañas o pills del portal.\n2. **Platos y Productos:**\n   - Nombre comercial y descripción detallada de ingredientes.\n   - Precio de venta al público (con o sin impuestos incluidos).\n   - Imagen fotográfica del plato (con fondo transparente o encuadre optimizado).\n   - Indicadores de alérgenos o etiquetas dietéticas (vegetariano, sin gluten, picante).\n   - **Modificadores y adicionales:** Opciones de personalización con o sin costo adicional (por ejemplo: término de la carne, tipo de salsa, o adición de tocineta).\n3. **Horarios de atención y doble turno:**\n   - Configuración de turnos para cada día de la semana (Lunes a Domingo) y bloque especial para **Días Festivos**.\n   - Soporte de **doble jornada diaria** (por ejemplo: turno de Almuerzo 11:30 - 15:00 y turno de Cena 18:30 - 22:30).\n   - Conmutador de **bloqueo de emergencia de pedidos**: permite cerrar temporalmente la recepción de pedidos en línea ante saturación de cocina.\n\n## Pasos para agregar un nuevo plato\n1. Navega a **Menú Digital** (`/menu`).\n2. En la sección de la categoría correspondiente, haz clic en **Agregar Plato** (o en el botón superior `+`).\n3. Diligencia los campos:\n   - Nombre del plato y descripción atractiva.\n   - Precio de venta.\n   - Carga la fotografía del producto.\n   - Añade modificadores o guarniciones si el plato lo requiere.\n4. Presiona **Guardar Plato**. El nuevo producto estará disponible de inmediato en el portal web y en las terminales de comandas.\n\n## Pasos para configurar los horarios de atención\n1. En la parte superior de la página del menú, haz clic en **Horarios de Atención** (o pestaña de Horarios).\n2. Para cada día de la semana que el local opere, enciende el interruptor del día.\n3. Especifica la hora de apertura y cierre del **Turno 1**.\n4. Si el negocio cierra en la tarde y reabre por la noche, haz clic en **Añadir turno** para configurar el **Turno 2**.\n5. Si requieres suspender pedidos de inmediato por alta demanda, enciende la opción **Bloqueo manual de pedidos**.\n6. Haz clic en **Guardar Horarios**.\n\n## Resultado esperado\nEl portal público para comensales (`/portal`) evaluará en tiempo real el reloj del servidor: si el local está dentro del horario configurado mostrará el distintivo verde **ABIERTO** permitiendo añadir platos al carrito; si está fuera de turno mostrará **CERRADO** y deshabilitará el checkout.\n\n## Problemas habituales y causas comprobadas\n- **Los clientes no pueden hacer pedidos aunque el restaurante esté abierto:**\n  *Causa comprobada:* El conmutador de *Bloqueo manual de pedidos* quedó encendido por error, o la zona horaria del tenant (`agency_timezone`) no coincide con la hora local real.\n- **Un plato agotado sigue apareciendo para ordenar:**\n  *Causa comprobada:* Debes abrir el editor del plato y marcar el interruptor de disponibilidad en estado *Agotado* o desactivar el producto para que no se pueda añadir al carrito.\n- **Los cambios de precios no se reflejan en el teléfono del comensal:**\n  *Causa comprobada:* El navegador del cliente puede tener la versión previa en memoria. El sistema utiliza revalidación paralela en el servidor; basta con que el cliente actualice el menú deslizando hacia abajo.\n\n## Limitaciones conocidas\n- El bloqueo automático de pedidos aplica al portal público B2C para clientes; los meseros que utilicen terminales internas de toma de pedidos pueden seguir registrando comandas manualmente si sus permisos lo autorizan.\n\n## Temas relacionados\n- [Gestión de pedidos y comandas de restaurante](resto.manage-orders.md)\n- [Personalizar el ADN de marca del negocio](branding.manage-adn.md)",
+      "required_modules": [
+        "module_resto_menu"
+      ],
+      "required_permissions": [
+        "operations.resto_menu.view"
+      ],
+      "verticals": [
+        "resto"
+      ],
+      "link_route": "/menu",
+      "revision": "7dfefb3455ceda4f68c931ad012a5fa3be02c3158a59b9ab0c9e22027af4d8f5"
+    },
+    {
+      "id": "resto.manage-orders",
+      "title": "Gestionar pedidos, comandas y pantalla de cocina (KDS)",
+      "module": "resto",
+      "audience": "tenant-user",
+      "routes": [
+        "/resto-orders"
+      ],
+      "keywords": [
+        "pedidos",
+        "comandas",
+        "cocina",
+        "kds",
+        "restaurante",
+        "mesas",
+        "despacho"
+      ],
+      "content": "# Gestionar pedidos, comandas y pantalla de cocina (KDS)\n\n## Propósito\nPermitir al personal de sala, cocina y caja monitorear los pedidos en tiempo real, coordinar los tiempos de cocción y preparación mediante una pantalla de cocina (KDS), y controlar el estado de servicio de cada mesa o despacho.\n\n## Requisitos y permisos\n- Que la empresa tenga activado el módulo de pedidos de restaurante (`module_resto_orders`).\n- Permisos requeridos:\n  - *Ver comandas y pedidos:* Permiso `operations.resto_orders.view`.\n  - *Cambiar estados, despachar o cancelar pedidos:* Permiso `operations.resto_orders.manage`.\n- Disponible para administradores y para roles operativos (meseros, cocineros, jefes de sala y cajeros).\n\n## Ubicación en pantalla\n- **Ruta web:** `/resto-orders`\n- **Menú lateral:** Sección **Operaciones** → opción **Gestor de Pedidos** (icono de lista de control).\n\n## Estados de un pedido\nCada orden transita por un ciclo operativo estructurado:\n1. **Pendiente (`pending`):** Comanda recién creada por un mesero o enviada por un comensal desde el portal web. Emite alerta en pantalla.\n2. **En Cocina (`in_kitchen`):** Pedido aceptado por el equipo de cocina y en proceso activo de preparación.\n3. **Listo (`ready`):** Platos preparados y emplatados, esperando ser llevados a la mesa o empacados para despacho.\n4. **Entregado (`delivered`):** Comida servida en mesa o entregada al repartidor/cliente.\n5. **Completado (`completed`):** Cuenta liquidada y cerrada en caja.\n6. **Cancelado (`canceled`):** Orden anulada por solicitud del cliente o falta de insumos.\n\n## Información de la tarjeta de comanda\nCada tarjeta en la pantalla de pedidos muestra:\n- Número de orden y tiempo transcurrido desde la creación (con alerta visual si excede los minutos esperados).\n- Modalidad: **Mesa** (con número de mesa escaneada por QR), **Para Llevar**, o **Domicilio**.\n- Lista de platos con sus cantidades y especificaciones de modificadores (por ejemplo: *\"Término medio, sin cebolla, adición de queso\"*).\n- Nombre del comensal o mesero que tomó la orden.\n\n## Pasos para gestionar comandas en cocina\n1. Accede a **Gestor de Pedidos** (`/resto-orders`) en la pantalla táctil de cocina o terminal de sala.\n2. Al llegar un pedido nuevo (columna *Pendientes*), revísalo y haz clic en **Pasar a Cocina**.\n3. Cuando los platos estén listos para salir del pase de cocina, haz clic en **Marcar Listo**. El personal de sala recibirá una indicación visual para recoger los platos.\n4. Una vez servido en la mesa correspondiente, haz clic en **Entregar**.\n5. Desde el módulo de caja o facturación se podrá procesar el cobro final y cerrar la orden como **Completada**.\n\n## Resultado esperado\nSincronización instantánea entre comensales, meseros y cocineros, eliminando comandas extraviadas en papel y reduciendo los tiempos de espera en mesa.\n\n## Problemas habituales y causas comprobadas\n- **Una orden entrante no aparece en la pantalla de cocina:**\n  *Causa comprobada:* Ocurre si la conexión a internet en la terminal se interrumpió y Supabase Realtime no pudo entregar el evento. Basta con pulsar el botón de refrescar para sincronizar las comandas activas del servidor.\n- **No se puede cambiar el estado de una orden:**\n  *Causa comprobada:* El usuario autenticado en la terminal carece del permiso `operations.resto_orders.manage`. Verifica que el rol asignado al colaborador tenga permisos operativos de gestión.\n\n## Limitaciones conocidas\n- Si se cancela una orden que ya había sido despachada, el registro contable conservará la trazabilidad del incidente para control de inventarios de alimentos.\n\n## Temas relacionados\n- [Administrar el menú digital, categorías y horarios](resto.manage-menu.md)\n- [Crear, emitir y gestionar facturas de cobro](billing.manage-invoices.md)",
+      "required_modules": [
+        "module_resto_orders"
+      ],
+      "required_permissions": [
+        "operations.resto_orders.view"
+      ],
+      "verticals": [
+        "resto"
+      ],
+      "link_route": "/resto-orders",
+      "revision": "59417034d1c59531258502fd13e7986a0731c42e90055691cbd4fbd7084a4aaf"
+    },
+    {
+      "id": "tasks.manage-tasks",
+      "title": "Administrar proyectos y tareas en TaskFlow",
+      "module": "tasks",
+      "audience": "tenant-user",
+      "routes": [
+        "/operations/tasks"
+      ],
+      "keywords": [
+        "tareas",
+        "proyectos",
+        "taskflow",
+        "kanban",
+        "entregables",
+        "operaciones",
+        "responsables"
+      ],
+      "content": "# Administrar proyectos y tareas en TaskFlow\n\n## Propósito\nPermitir a los equipos coordinar la ejecución operativa de proyectos y servicios mediante un sistema ágil de tareas (TaskFlow) con tableros Kanban, asignación de responsables, fechas de entrega y listas de verificación.\n\n## Requisitos y permisos\n- Que la empresa tenga habilitado el módulo de tareas (`module_tasks`) y la capacidad `tasks.management`.\n- Permisos requeridos:\n  - *Ver tareas y proyectos:* Permiso `operations.tasks.view`.\n  - *Crear, editar y mover tareas:* Permiso `operations.tasks.manage`.\n  - *Eliminación masiva en lote:* Permiso `can_bulk_delete_tasks`.\n\n## Ubicación en pantalla\n- **Ruta web:** `/operations/tasks`\n- **Menú lateral:** Sección **Operaciones** → opción **Tareas** (icono de tablero de tareas).\n\n## Vistas del módulo\nEl módulo ofrece dos modos de visualización:\n1. **Tablero Kanban:** Agrupa las tareas en columnas según su estado de avance (*Por hacer*, *En progreso*, *En revisión* y *Completada*), permitiendo cambiar de estado arrastrando las tarjetas.\n2. **Vista de Lista:** Presenta una tabla con detalles de prioridad, fechas de vencimiento, etiquetas y opciones de selección múltiple para acciones masivas.\n\n## Estructura de una tarea\nCada tarea incluye los siguientes campos clave:\n- **Título y descripción:** Detalle claro del requerimiento o entregable.\n- **Proyecto y cliente:** Vinculación opcional con un proyecto global o con la ficha de un cliente del CRM.\n- **Responsable:** Miembro del equipo encargado de llevar a cabo la labor.\n- **Prioridad:** Nivel de urgencia (*Baja*, *Media*, *Alta* o *Urgente* con distintivo visual en color).\n- **Fecha límite de entrega (`Due Date`):** Alerta visual cuando una tarea está próxima a vencer o vencida.\n- **Subtareas (Checklist):** Pasos concretos que deben marcarse como concluidos para completar la tarea principal.\n\n## Pasos para crear una tarea\n1. Accede a **Tareas** en el menú de Operaciones.\n2. Haz clic en el botón superior **Nueva Tarea**.\n3. En el formulario modal:\n   - Ingresa el título de la tarea.\n   - Selecciona el proyecto o cliente correspondiente.\n   - Asigna al colaborador responsable.\n   - Define la fecha de vencimiento y el nivel de prioridad.\n   - Añade subtareas en la lista de chequeo si aplica.\n4. Presiona **Crear Tarea**.\n\n## Pasos para actualizar el estado de una tarea\n- **En vista Kanban:** Arrastra la tarjeta de la tarea desde su columna actual a la columna de destino (por ejemplo, de *En progreso* a *Completada*).\n- **En vista de Lista o Detalle:** Haz clic sobre la tarea para abrir su modal y cambia el estado directamente desde el selector de estado.\n\n## Acciones en masa (Bulk Actions)\n1. En la vista de lista, selecciona las casillas de verificación de múltiples tareas.\n2. Aparecerá en la parte inferior la **Barra flotante de acciones masivas**.\n3. Desde allí podrás reasignar responsable en bloque, modificar fecha límite o eliminar tareas seleccionadas (si cuentas con el permiso `can_bulk_delete_tasks`).\n\n## Resultado esperado\nCoordinación transparente del trabajo en equipo, trazabilidad en los tiempos de entrega y visibilidad del progreso para supervisores y clientes.\n\n## Problemas habituales y causas comprobadas\n- **No aparece la opción de eliminar tareas en lote:**\n  *Causa comprobada:* Tu rol no tiene habilitado el permiso especial `can_bulk_delete_tasks` en la configuración de IAM de la empresa.\n- **La tarea vencida no envía alerta al correo:**\n  *Causa comprobada:* Las alertas de vencimiento automáticas requieren tener configurado un flujo en el módulo de *Automatizaciones* que reaccione a tareas no completadas.\n\n## Limitaciones conocidas\n- Los colaboradores externos con acceso únicamente al portal de tareas solo pueden visualizar y actualizar el estado de las tareas que les han sido asignadas directamente.\n\n## Temas relacionados\n- [Crear y gestionar flujos de trabajo automáticos](automation.create-workflows.md)\n- [Administrar contactos y prospectos en el CRM](crm.manage-contacts.md)",
+      "required_modules": [
+        "module_tasks"
+      ],
+      "required_permissions": [
+        "operations.tasks.view"
+      ],
+      "verticals": [],
+      "link_route": "/operations/tasks",
+      "revision": "a6f6332ebae65a50a38d53cff0e55b3565a43e86ff01318f7a5bb6aebe73b103"
+    },
+    {
+      "id": "theme.toggle-theme",
+      "title": "Cambiar entre tema claro y tema oscuro",
+      "module": "theme",
+      "audience": "tenant-user",
+      "routes": [
+        "/dashboard"
+      ],
+      "keywords": [
+        "tema",
+        "oscuro",
+        "claro",
+        "apariencia",
+        "noche",
+        "sol",
+        "luna"
+      ],
+      "content": "# Cambiar entre tema claro y tema oscuro\n\n## Propósito\nPermitir a los usuarios alternar cómodamente entre la apariencia visual clara (diseñada para entornos iluminados) y la apariencia oscura (diseñada para ambientes con poca luz).\n\n## Requisitos y permisos\n- Disponible para cualquier usuario autenticado en la plataforma.\n- No exige roles administrativos ni permisos especiales de organización.\n- No requiere guardar cambios en la base de datos: la preferencia se almacena en el navegador del usuario.\n\n## Ubicación en pantalla\n- **Ubicación exacta:** En el borde exterior derecho inferior de la barra de navegación lateral (sidebar flotante).\n- **Aspecto visual:** Es un botón circular compacto (32x32 píxeles) con borde sutil.\n  - En **modo claro**, muestra el icono de una **Luna**.\n  - En **modo oscuro**, muestra el icono de un **Sol**.\n\n## Pasos para cambiar de tema\n1. Dirige el cursor al menú lateral izquierdo de Pixy.\n2. Localiza la sección de acciones flotantes en la parte inferior derecha del contenedor del menú (junto a los accesos de Perfil y Notificaciones).\n3. Haz clic sobre el botón circular de **Luna** (para activar el modo oscuro) o sobre el botón de **Sol** (para regresar al modo claro).\n4. El cambio se aplica de inmediato, sin recargar la página ni pulsar confirmación.\n\n## Resultado esperado\nLos componentes compatibles con el tema adaptan su contraste y colores. Algunas vistas pueden conservar colores fijos. La elección permanece guardada en el mismo navegador para futuras visitas.\n\n## Problemas habituales y causas comprobadas\n- **Al abrir la aplicación en otra computadora o ventana de incógnito, el tema no se conserva:**\n  *Causa comprobada:* La preferencia se gestiona mediante almacenamiento local en el navegador del cliente (`localStorage` a través de `next-themes`) y no se guarda en el registro de usuario en el servidor.\n- **Buscar la opción en \"Configuración > Preferencias\":**\n  *Causa comprobada:* El cambio de tema no reside en el panel de configuración de la organización ni en menús desplegables; se encuentra accesible en todo momento desde el botón fijo del borde del menú lateral.\n- **Algún componente o estilo específico no altera su color tras conmutar:**\n  *Causa comprobada:* Si un componente secundario o elemento de terceros cuenta con estilos en línea o colores fijos no parametrizados con clases temáticas, mantendrá su apariencia constante. (Nota: interferencias por extensiones externas de modificación de estilos en el navegador constituyen hipótesis generales no comprobadas por las pruebas del sistema).\n\n## Limitaciones conocidas\n- La sincronización automática con el esquema de color del sistema operativo no se selecciona desde este control; el botón alterna exclusivamente de manera binaria entre `light` y `dark`.\n\n## Temas relacionados\n- [Navegación y vista general del panel principal](dashboard.overview.md)\n- [Personalizar el ADN de marca del negocio](branding.manage-adn.md)",
+      "required_modules": [],
+      "required_permissions": [],
+      "verticals": [],
+      "link_route": null,
+      "revision": "fc455db409b9b197bf75688249f3f39d83ec49c64289b45b0f56a09c5abe76c4"
     }
   ]
 }

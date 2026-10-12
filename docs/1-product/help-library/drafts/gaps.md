@@ -2,7 +2,7 @@
 
 Fecha de auditoría: 12 de octubre de 2026.  
 Rama inspeccionada: `pixyrobotpet` en `tmp/pet-workspace`.  
-Revisión de referencia (HEAD): `0e5706d2f235ee40698ded73cc14e161e908e292`.
+Revisión de referencia (HEAD): `047fa7ee0cadc0f49d9ce08220f633885b0801a7`.
 
 ---
 
@@ -59,3 +59,14 @@ Revisión de referencia (HEAD): `0e5706d2f235ee40698ded73cc14e161e908e292`.
 | Hosting Web (`module_hosting`) | `/hosting`, `/platform/hosting-accounts` | Módulo legacy orientado a agencias de desarrollo web; no habilitado para la mayoría de sectores. |
 | Limpieza (`module_cleaning`) | `/cleaning` | Módulo específico de vertical con baja actividad de actualización; restringido a preset cleaning. |
 | Menú de Restaurante (`resto`) | `/menu` | El bloqueo automático de pedidos opera para el portal B2C; no bloquea la toma de comandas internas por meseros en `/resto-orders`. |
+
+---
+
+## 6. Mensajería, Canales y Respuestas Rápidas vs. Plantillas Oficiales
+
+| Componente | Comportamiento en código fuente | Impacto operativo |
+|---|---|---|
+| Ventana de 24 horas (WhatsApp Cloud API) | `sendTemplateMessage` impone envío de HSM oficial cuando vence la ventana de atención. El texto libre y las respuestas rápidas fallan al remitirse fuera de esa ventana. | La ayuda debe enfatizar que insertar una respuesta rápida no elude la política de Meta. Solo una plantilla `APPROVED` con `meta_id` puede reabrir la conversación. |
+| Desconexión de canal en Pixy vs. Meta | `deleteChannel` en `actions.ts` borra el registro en BD de Pixy y cancela el tráfico local. En canales con modo `coexistence`, la app física sigue vinculada a Meta hasta que el usuario la desconecte desde el celular. | El operador debe completar la desvinculación manual en su teléfono móvil (*WhatsApp Business → Configuración → Cuenta → Plataforma empresarial*). |
+| Visibilidad de canales para agentes | Controlado por `evaluateInboxPermissions` (`inbox-permissions.ts`). Requiere `inbox.conversations.global_view` para ver todos los números conectados. | Sin este permiso, el agente no visualiza conversaciones de canales que no le hayan sido asignados de forma explícita. |
+| Respuestas automáticas fuera de horario | `EditChannelSheet` almacena `working_hours` y `auto_reply_when_offline`. Solo se despachan si el switch general de horarios está encendido. | Si el usuario redacta el mensaje de fuera de horario pero olvida activar el interruptor de horarios, ningún cliente recibirá respuesta automática nocturna. |

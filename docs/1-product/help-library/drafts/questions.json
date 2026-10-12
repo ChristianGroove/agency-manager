@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "source_revision": "0e5706d2f235ee40698ded73cc14e161e908e292",
+  "source_revision": "047fa7ee0cadc0f49d9ce08220f633885b0801a7",
   "questions": [
     {
       "id": "Q01",
@@ -773,7 +773,7 @@
       "question": "¿Dónde configuro el número de WhatsApp oficial de mi empresa?",
       "audience": "tenant-admin",
       "view_id": "inbox",
-      "expected_article_ids": ["inbox.manage-conversations"],
+      "expected_article_ids": ["inbox.manage-channels", "inbox.manage-conversations"],
       "expected_points": [
         "En CRM > Settings > Canales (/crm/settings/channels)",
         "Requiere permiso de gestión de canales (inbox.channels.manage)"
@@ -930,6 +930,86 @@
       ],
       "must_not_claim": [
         "No afirmar que cualquier usuario con rol member puede ver reportes financieros"
+      ],
+      "expected_behavior": "answer"
+    },
+    {
+      "id": "Q61",
+      "question": "¿Cuál es la diferencia entre una respuesta rápida y una plantilla oficial en el Inbox?",
+      "audience": "tenant-user",
+      "view_id": "inbox",
+      "expected_article_ids": ["inbox.saved-replies-and-templates"],
+      "expected_points": [
+        "Las respuestas rápidas son textos reutilizables guardados localmente para agilizar la redacción y no superan la ventana de 24 horas",
+        "Las plantillas oficiales están pre-aprobadas por Meta (estado APPROVED con meta_id), soportan variables dinámicas {{1}} y permiten iniciar o reanudar conversaciones fuera de 24 horas"
+      ],
+      "must_not_claim": [
+        "No afirmar que una respuesta rápida local permite saltarse la política de 24 horas de WhatsApp",
+        "No afirmar que abrir una respuesta rápida envía el mensaje automáticamente sin confirmar"
+      ],
+      "expected_behavior": "answer"
+    },
+    {
+      "id": "Q62",
+      "question": "¿Cómo envío un mensaje si pasaron más de 24 horas desde que el cliente escribió por última vez?",
+      "audience": "tenant-user",
+      "view_id": "inbox",
+      "expected_article_ids": ["inbox.saved-replies-and-templates", "inbox.manage-conversations"],
+      "expected_points": [
+        "Abrir el selector de plantillas oficiales en los controles inferiores del chat o en la cabecera",
+        "Seleccionar una plantilla aprobada por Meta y completar los valores para las variables dinámicas {{1}} o {{2}}",
+        "Confirmar el envío; Meta restringe el texto libre tras 24 horas de inactividad del cliente"
+      ],
+      "must_not_claim": [
+        "No afirmar que se puede redactar texto libre normal después de 24 horas sin plantilla",
+        "No afirmar que las notas internas privadas se entregan al cliente por WhatsApp"
+      ],
+      "expected_behavior": "answer"
+    },
+    {
+      "id": "Q63",
+      "question": "¿Cómo configuro el horario de atención y la respuesta automática nocturna de un canal de WhatsApp?",
+      "audience": "tenant-admin",
+      "view_id": "channels",
+      "expected_article_ids": ["inbox.manage-channels"],
+      "expected_points": [
+        "Ir a CRM > Settings > Canales (/crm/settings/channels) y hacer clic sobre la tarjeta del canal",
+        "Activar el interruptor de horarios de atención (Working Hours) y definir la zona horaria y rangos semanales",
+        "Redactar el texto en Respuesta Fuera de Horario y presionar Guardar cambios"
+      ],
+      "must_not_claim": [
+        "No afirmar que la respuesta fuera de horario se despacha si el interruptor de horarios de atención permanece desactivado"
+      ],
+      "expected_behavior": "answer"
+    },
+    {
+      "id": "Q64",
+      "question": "¿Cómo desconecto un canal de WhatsApp de Pixy sin perder mi número?",
+      "audience": "tenant-admin",
+      "view_id": "channels",
+      "expected_article_ids": ["inbox.manage-channels"],
+      "expected_points": [
+        "En /crm/settings/channels, en las opciones de la tarjeta del canal, seleccionar Desconectar",
+        "La desconexión en Pixy detiene el tráfico de mensajes en la plataforma; si se utilizó el modo de coexistencia, la desvinculación en Meta se completa desde la app WhatsApp Business (Configuración > Cuenta > Plataforma empresarial > Desconectar cuenta)"
+      ],
+      "must_not_claim": [
+        "No afirmar que desconectar el canal en Pixy borra permanentemente la cuenta de WhatsApp Business en Meta"
+      ],
+      "expected_behavior": "answer"
+    },
+    {
+      "id": "Q65",
+      "question": "¿Cómo establezco un canal de mensajería como el canal principal de la empresa?",
+      "audience": "tenant-admin",
+      "view_id": "channels",
+      "expected_article_ids": ["inbox.manage-channels"],
+      "expected_points": [
+        "En /crm/settings/channels, abrir las opciones de la tarjeta del canal que deseas priorizar",
+        "Seleccionar Marcar como principal",
+        "El canal mostrará una estrella dorada y se utilizará por defecto para nuevos envíos salientes"
+      ],
+      "must_not_claim": [
+        "No afirmar que pueden existir múltiples canales principales simultáneos"
       ],
       "expected_behavior": "answer"
     }

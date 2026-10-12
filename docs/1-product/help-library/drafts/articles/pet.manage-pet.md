@@ -5,7 +5,7 @@ title: Configurar y administrar la mascota robot Pixy
 module: pet
 status: draft
 audience: platform-admin
-source_revision: 0e5706d2f235ee40698ded73cc14e161e908e292
+source_revision: 047fa7ee0cadc0f49d9ce08220f633885b0801a7
 verified_on: 2026-10-12
 verification: source-only
 routes:

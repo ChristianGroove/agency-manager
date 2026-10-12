@@ -9,10 +9,18 @@ const questions = JSON.parse(fs.readFileSync('docs/1-product/help-library/drafts
 const ids = new Set(corpus.articles.map(article => article.id))
 const cases = questions.map(question => {
     const supported = question.expected_article_ids.some(id => ids.has(id))
-    const access = { platformAdmin: question.audience === 'platform-admin', tenantAdmin: question.audience !== 'tenant-user', modules: ['all'], permissions: knownPermissions, vertical: 'agency', route: '/dashboard' }
-    const retrieved = retrieveHelp(corpus.articles, question.question, access).map(article => article.id)
+    // Evaluate relevance in a compatible synthetic tenant, not every vertical as an agency.
+    // These permissive fixtures are separate from the runtime authorization tests.
+    const expected = corpus.articles.filter(article => question.expected_article_ids.includes(article.id))
+    const verticals = [...new Set(expected.flatMap(article => article.verticals))]
+    if (!verticals.length) verticals.push('agency')
+    const route = expected.flatMap(article => article.routes).find(route => route === `/${question.view_id}`) || '/dashboard'
+    const retrieved = [...new Set(verticals.flatMap(vertical => {
+        const access = { platformAdmin: question.audience === 'platform-admin', tenantAdmin: question.audience !== 'tenant-user', modules: ['all'], permissions: knownPermissions, vertical, route }
+        return retrieveHelp(corpus.articles, question.question, access).map(article => article.id)
+    }))]
     const hit = retrieved.some(id => question.expected_article_ids.includes(id))
-    return { id: question.id, expected_behavior: question.expected_behavior, published_expected: question.expected_article_ids.filter(id => ids.has(id)), retrieved,
+    return { id: question.id, expected_behavior: question.expected_behavior, evaluated_verticals: verticals, published_expected: question.expected_article_ids.filter(id => ids.has(id)), retrieved,
         status: question.expected_behavior !== 'answer' ? 'boundary_requires_action_or_model_check' : !supported ? 'coverage_pending' : hit ? 'retrieval_hit' : 'retrieval_miss' }
 })
 const answerCases = cases.filter(item => ['retrieval_hit', 'retrieval_miss'].includes(item.status))

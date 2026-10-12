@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "source_revision": "0e5706d2f235ee40698ded73cc14e161e908e292",
+  "source_revision": "047fa7ee0cadc0f49d9ce08220f633885b0801a7",
   "modules": [
     {
       "id": "dashboard",
@@ -172,10 +172,21 @@
       "evidence_paths": [
         "src/app/(dashboard)/crm/inbox/page.tsx",
         "src/modules/features/messaging/components/chat-area/chat-area.tsx",
+        "src/modules/features/messaging/components/chat-area/chat-input.tsx",
+        "src/modules/features/messaging/components/saved-replies-sheet.tsx",
+        "src/modules/features/messaging/components/template-picker-sheet.tsx",
+        "src/modules/features/messaging/actions/templates.ts",
+        "src/modules/features/messaging/send-template-action.ts",
+        "src/app/(dashboard)/crm/settings/channels/page.tsx",
+        "src/modules/features/channels/components/channels-list.tsx",
+        "src/modules/features/channels/components/channel-card.tsx",
+        "src/modules/features/channels/components/edit-channel-sheet.tsx",
         "src/modules/features/channels/actions.ts"
       ],
       "article_ids": [
-        "inbox.manage-conversations"
+        "inbox.manage-conversations",
+        "inbox.saved-replies-and-templates",
+        "inbox.manage-channels"
       ],
       "gaps": [
         "Conexión de WhatsApp depende de Meta Cloud API con webhook verificado",
