@@ -195,7 +195,7 @@ async function processHelpQuestion(
             trace.articleIds = articles.map(article => article.id)
             if (!articles.length) {
                 trace.noContext = true
-                return { success: true, message: 'No tengo información verificada para ese caso. ¿Qué acción intentas realizar y qué opción o error ves en pantalla?' }
+                return { success: true, message: 'No puedo confirmar cómo hacerlo. ¿Qué opción o error ves en pantalla?' }
             }
             trace.modelCalls++
             const response = await trace.measure('generation', () => AIEngine.executeTask({
@@ -223,7 +223,7 @@ async function processHelpQuestion(
                 question: sanitizedQuestion,
                 history: limitedHistory,
                 spaceCategory,
-                interfaceVersion: 'robot-pet-theme-v1' // Invalidate help cache after navigation/UI changes.
+                interfaceVersion: 'robot-pet-theme-v2-natural-help' // Invalidate legacy replies after the tone change.
             }
         }))
 
