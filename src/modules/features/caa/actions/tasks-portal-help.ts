@@ -7,7 +7,7 @@ import { resolveTasksPortalHelpSession } from '../library/tasks-portal-session'
 import { helpCorpus } from '../library/runtime'
 import { canReadArticle, retrieveHelp, boundedHistory } from '../library/retrieval'
 import { selectAuthorizedArticles } from '../library/selection'
-import { casualHelpReply, naturalizeHelpUncertainty } from '../library/response-policy'
+import { casualHelpReply, naturalizeHelpUncertainty, isGeneralHelpRecommendation, previousHelpTopic } from '../library/response-policy'
 import { HelpDiagnostics } from '../library/diagnostics'
 import { portalHistoryCutoff, readPortalHelpMessages, restrictPortalHistory } from '../library/portal-history'
 import { DEFAULT_PET_SETTINGS, type DashboardPetConfig } from '@/modules/core/pet/config'
@@ -94,23 +94,30 @@ export async function askTasksPortalHelp(input: unknown): Promise<HelpChatRespon
         // The transaction just persisted this question; exclude it from prior history.
         const history = boundedHistory(restrictPortalHistory(stored.slice(0, -1), authorized))
         trace.historySource = 'database'; trace.historyMessages = history.length
-        const prior = history.filter(message => message.role === 'user').at(-1)?.content || ''
-        let answer = casualHelpReply(data.question)?.replace('Pixy', 'Tasks y este portal') || (outsideScope(data.question) ? scopeMessage : '')
-        let articles = answer ? [] : await trace.measure('retrieval', () => retrieveHelp(authorized, data.question, session.access, prior))
+        const prior = previousHelpTopic(history) || ''
+        const recommendation = isGeneralHelpRecommendation(data.question)
+        const retrievalQuestion = recommendation ? prior : data.question
+        const localReply = casualHelpReply(data.question)?.replace('Pixy', 'Tasks y este portal')
+        if (localReply) trace.mode = 'casual'
+        let answer = localReply || (outsideScope(retrievalQuestion) ? scopeMessage : '')
+            || (recommendation && !prior ? '¿Sobre qué función de Tasks quieres una recomendación?' : '')
+        let articles = answer ? [] : await trace.measure('retrieval', () => retrieveHelp(authorized, retrievalQuestion, session.access, prior))
         if (!answer && !articles.length) {
             trace.selectionUsed = true; trace.modelCalls++
             const selection = await trace.measure('selection', () => AIEngine.executeTask({ organizationId: session.tenantId, taskType: 'help-select-guides-v1', payload: {
-                question: data.question, priorQuestion: prior, catalogue: authorized.slice(0, 40).map(article => ({ id: article.id, title: article.title, keywords: article.keywords,
+                question: retrievalQuestion, priorQuestion: prior, catalogue: authorized.slice(0, 40).map(article => ({ id: article.id, title: article.title, keywords: article.keywords,
                     sections: article.content.split('\n').filter(line => /^#{1,3}\s/.test(line)).slice(0, 12) })),
             } }))
             if (!selection.success) return response
             articles = selectAuthorizedArticles(selection.data, authorized)
         }
-        if (!answer && !articles.length) { trace.noContext = true; answer = 'No puedo confirmar cómo hacerlo desde este portal. ¿Qué opción o estado ves en Tasks?' }
+        if (!answer && !articles.length) { trace.noContext = true; answer = recommendation
+            ? 'No tengo una recomendación concreta para ese tema por ahora.'
+            : 'Por ahora no puedo responder esa consulta con certeza.' }
         if (!answer) {
             trace.modelCalls++
             const result = await trace.measure('generation', () => AIEngine.executeTask({ organizationId: session.tenantId, taskType: 'help-tasks-portal-v1', payload: {
-                question: data.question, history, articles, corpusRevision: helpCorpus.revision,
+                question: data.question, recommendationTopic: recommendation ? prior : undefined, history, articles, corpusRevision: helpCorpus.revision,
                 session: { surface: 'portal.tasks', profiles: session.access.portalProfiles, capabilities: session.access.portalCapabilities,
                     portalMode: session.capabilities.portalMode, route: '/portal/tasks/[token]' },
             } }))

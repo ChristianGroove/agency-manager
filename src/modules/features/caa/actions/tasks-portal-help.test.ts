@@ -71,6 +71,41 @@ it('redirects explicit dashboard topics and handles casual chat without a provid
     expect((await askTasksPortalHelp({ ...input, question: 'Cuéntame un chiste de programadores.' })).message).not.toMatch(/opción|estado ves/)
     expect(mocks.execute).not.toHaveBeenCalled()
 })
+
+it.each(['nada mas, gracias', 'perfecto, gracias', 'hola'])('stores a social reply without guide selection or a provider call: %s', async question => {
+    const response = await askTasksPortalHelp({ ...input, question })
+    expect(response.success).toBe(true)
+    expect(response.message).not.toMatch(/confirm|opción|estado ves/)
+    expect(mocks.execute).not.toHaveBeenCalled()
+    expect(mocks.rpc.mock.calls.at(-1)?.[1]).toMatchObject({ p_answer: response.message, p_articles: [] })
+})
+
+it('retrieves the previous verified topic for a recommendation after a courtesy turn', async () => {
+    mocks.read.mockResolvedValue([{ role: 'user', content: input.question }, { role: 'assistant', content: 'Escribe comentarios.', article_ids: [article.id] },
+        { role: 'user', content: 'excelente' }, { role: 'assistant', content: 'Perfecto.' }, { role: 'user', content: 'ah excelente, alguna recomendacion?' }])
+    const response = await askTasksPortalHelp({ ...input, question: 'ah excelente, alguna recomendacion?', threadId })
+    expect(response.success).toBe(true)
+    expect(mocks.execute).toHaveBeenCalledTimes(1)
+    expect(mocks.execute.mock.calls[0][0]).toMatchObject({ taskType: 'help-tasks-portal-v1', payload: { question: 'ah excelente, alguna recomendacion?', recommendationTopic: input.question, articles: [article] } })
+})
+
+it('asks for the recommendation topic without a provider when there is no substantive history', async () => {
+    const result = await askTasksPortalHelp({ ...input, question: 'alguna recomendacion?' })
+    expect(result.message).toBe('¿Sobre qué función de Tasks quieres una recomendación?')
+    expect(mocks.execute).not.toHaveBeenCalled()
+})
+
+it('keeps the last topic outside Tasks out of the recommendation context', async () => {
+    mocks.read.mockResolvedValue([{ role: 'user', content: 'Cómo creo una factura?' }, { role: 'assistant', content: 'Usa la ayuda del dashboard.' }, { role: 'user', content: 'alguna recomendacion?' }])
+    expect((await askTasksPortalHelp({ ...input, question: 'alguna recomendacion?' })).message).toContain('dashboard')
+    expect(mocks.execute).not.toHaveBeenCalled()
+})
+
+it('does not expose a guide after capabilities are revoked even through a recommendation', async () => {
+    mocks.articles.splice(0, mocks.articles.length, { ...article, required_portal_capabilities: ['finance_costs'] })
+    expect((await askTasksPortalHelp({ ...input, question: 'alguna recomendacion?' })).success).toBe(false)
+    expect(mocks.execute).not.toHaveBeenCalled()
+})
 it('assisted selection sees only portal guides and rejects invented or dashboard IDs', async () => {
     mocks.execute.mockResolvedValueOnce({ success: true, data: { articleIds: ['dashboard.secret', 'invented.id', article.id] } }).mockResolvedValueOnce({ success: true, data: 'Usa comentarios.' })
     await askTasksPortalHelp({ ...input, question: 'Necesito compartir una observación confidencial' })

@@ -45,6 +45,8 @@ El payload de sesión contiene únicamente superficie, perfiles, capacidades, va
 
 Se comprueba nuevamente la sesión y el acceso a las guías después del modelo y antes de guardar/devolver la respuesta. Fallos liberan la reserva sin persistir un error del proveedor como respuesta. Markdown, ola de navegación, selector de historia, branding del portal y hibernación reutilizan los componentes existentes. Solo se muestra un robot: flotante con chat cerrado, junto al input con chat abierto. Un fallo del renderizador permite usar el acceso sencillo.
 
+Conversación (ajuste posterior al piloto): los turnos completos de saludo, agradecimiento, aceptación y despedida se reconocen antes de recuperar guías y se guardan como respuestas locales, con las mismas comprobaciones de sesión/cuota. No se interceptan preguntas técnicas que simplemente incluyen «gracias» o «hola». Una recomendación genérica recupera el último tema sustantivo del usuario en el historial del servidor, omitiendo cortesías y recomendaciones anteriores. El prompt recibe ese tema como dato; la generación continúa limitada a guías autorizadas. Si el tema previo era de otro módulo, conserva el límite Tasks. Sin tema pregunta cuál interesa; sin evidencia no inventa recomendaciones ni solicita un estado/error de pantalla por rutina. Esta política usa patrones acotados, no un clasificador semántico universal.
+
 ## Historial y control de consumo
 
 - Propietario: organización + `organization_staff.id` estable + superficie `portal.tasks`. Nunca se usa un token como propietario ni se simula un usuario `auth.users`.

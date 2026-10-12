@@ -5,10 +5,10 @@ Estado vigente: 2026-10-12, rama `pixyrobotpet`. Punto de entrada para cualquier
 ## Estado y límites
 
 - Dashboard: robot integrado con branding, hibernación, estados de ayuda y algunas operaciones/alertas; chat con Markdown seguro, historial privado, selector de conversaciones y navegador de preguntas a la derecha.
-- Ayuda V2: 21 guías publicadas. Evaluación offline: 56/56 casos de respuesta recuperan una guía esperada; otros 4 casos de aclaración y 5 de abstención requieren evaluación de comportamiento. No equivale a 100% de exactitud de la IA.
-- Piloto activado únicamente en el tenant Pixy de la base local. Portales: aún sin robot/chat ni historial de ayuda activos. Su diseño está en [el plan de Tasks](../../2-architecture/modules/pixy-help-tasks-portal-plan.md).
-- Base Tasks entregada después del cierre: [contratos por superficie y resolver de acceso](../../2-architecture/modules/pixy-help-tasks-portal-foundation.md). La validación interna ya existe, pero no hay endpoint conversacional/UI/historial del portal activo. Sus flags independientes permanecen apagados.
-- No hay consultas a datos vivos de negocio, acciones ejecutables, streaming, embeddings para esta biblioteca, resumen automático ni límites distribuidos. El bot explica procedimientos; no opera el sistema.
+- Biblioteca V2: 39 guías publicadas, 21 del dashboard y 18 del portal Tasks. Dashboard offline: 56/56 casos de respuesta recuperan una guía esperada; otros 4 de aclaración y 5 de abstención requieren evaluar comportamiento. Tasks: 35 aciertos, 8 misses, 3 bloqueados por acceso y 1 caso de política local entre 47 casos de respuesta; otros 12 de aclaración y 11 de abstención. No equivale a exactitud de respuestas reales.
+- Pilotos locales independientes: dashboard en Pixy; portal Tasks en Movilservicios, con robot/chat e historial privado. Ver [integración vigente](../../2-architecture/modules/pixy-help-tasks-portal-integration.md). El [plan](../../2-architecture/modules/pixy-help-tasks-portal-plan.md) y la [base inicial](../../2-architecture/modules/pixy-help-tasks-portal-foundation.md) son antecedentes.
+- No hay consultas a datos vivos de negocio, acciones ejecutables, streaming, embeddings para esta biblioteca ni resumen automático. Tasks tiene cuotas/concurrencia compartidas en PostgreSQL; el dashboard conserva su límite en memoria. El bot explica procedimientos; no opera el sistema.
+- Conversación: saludos, agradecimientos, confirmaciones y cierres completos reciben respuestas locales, sin modelo. La cortesía incluida en una consulta técnica no intercepta la consulta. En Tasks, una recomendación genérica usa el último tema del usuario en el historial del servidor, omitiendo cortesías y otras recomendaciones; filtra guías por acceso actual. Sin tema, pregunta qué función interesa. Sin guía verificada, no inventa consejos ni pide un estado/error arbitrario.
 
 ## Separación de responsabilidades
 

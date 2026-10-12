@@ -1,5 +1,5 @@
 import { expect, it } from 'vitest'
-import { casualHelpReply, naturalizeHelpUncertainty } from './response-policy'
+import { casualHelpReply, naturalizeHelpUncertainty, isGeneralHelpRecommendation, previousHelpTopic } from './response-policy'
 
 it.each(['sabes chistes?', '¿Conoces algún chiste?', 'Cuéntame un chiste', 'puedes contarme un chiste?'])('recognizes a direct casual request: %s', question => {
     expect(casualHelpReply(question)).toContain('Pixy')
@@ -8,6 +8,27 @@ it.each(['sabes chistes?', '¿Conoces algún chiste?', 'Cuéntame un chiste', 'p
 
 it.each(['¿Cómo guardo una respuesta rápida con un chiste en Inbox?', '¿Sabes cómo enviar chistes por una plantilla?', '¿Cómo funciona el historial?'])('does not intercept a product question: %s', question => {
     expect(casualHelpReply(question)).toBeNull()
+})
+
+it.each(['nada mas, gracias', 'Gracias por la ayuda.', 'Perfecto, gracias', 'hasta luego', 'hola, ¿cómo estás?', 'ah excelente'])('answers social turns without technical uncertainty: %s', question => {
+    expect(casualHelpReply(question)).toBeTruthy()
+    expect(casualHelpReply(question)).not.toMatch(/confirm|opción|estado|documentación/)
+})
+
+it.each(['Gracias, pero no puedo subir un archivo.', 'Hola, ¿cómo creo una tarea?', 'Listo, ¿cómo lo envío a revisión?', '¿Hay alguna recomendación para completar subtareas?'])('keeps mixed and explicit product questions in the help flow: %s', question => {
+    expect(casualHelpReply(question)).toBeNull()
+    expect(isGeneralHelpRecommendation(question)).toBe(false)
+})
+
+it.each(['ah excelente, alguna recomendacion?', 'algún consejo?', '¿Y qué me recomiendas?', 'Gracias, ¿alguna recomendación?'])('recognizes a generic follow-up for recommendations: %s', question => {
+    expect(isGeneralHelpRecommendation(question)).toBe(true)
+    expect(casualHelpReply(question)).toBeNull()
+})
+
+it('finds the substantive user topic through courtesy and recommendations without trusting assistant text', () => {
+    expect(previousHelpTopic([{ role: 'user', content: '¿Cómo escribo comentarios?' }, { role: 'assistant', content: 'Nueva factura' },
+        { role: 'user', content: 'excelente' }, { role: 'user', content: 'alguna recomendacion?' }, { role: 'user', content: 'gracias' }])).toBe('¿Cómo escribo comentarios?')
+    expect(previousHelpTopic([{ role: 'user', content: 'hola' }, { role: 'assistant', content: 'Cambiar prioridades' }])).toBeUndefined()
 })
 
 it('keeps uncertainty without repeating source gaps or asserting lack of capability', () => {
