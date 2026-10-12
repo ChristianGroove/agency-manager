@@ -1,0 +1,623 @@
+{
+  "schema_version": 1,
+  "source_revision": "0e5706d2f235ee40698ded73cc14e161e908e292",
+  "modules": [
+    {
+      "id": "dashboard",
+      "name": "Dashboard Principal",
+      "implementation_status": "implemented",
+      "routes": [
+        "/dashboard"
+      ],
+      "evidence_paths": [
+        "src/app/(dashboard)/dashboard/page.tsx",
+        "src/modules/core/dashboard/components/agency-dashboard.tsx",
+        "src/modules/core/dashboard/modular-dashboard-layout.tsx",
+        "src/components/layout/sidebar.tsx"
+      ],
+      "article_ids": [
+        "dashboard.overview"
+      ],
+      "gaps": [
+        "El enrutamiento del dashboard depende rígidamente de orgType cargado en el servidor",
+        "No existe personalización de widgets guardada por usuario individual en base de datos"
+      ],
+      "manual_checks_pending": [
+        "Validar renderizado de widgets en móviles y resolución de métricas en caliente"
+      ]
+    },
+    {
+      "id": "theme",
+      "name": "Selector de Tema (Claro / Oscuro)",
+      "implementation_status": "implemented",
+      "routes": [
+        "/dashboard"
+      ],
+      "evidence_paths": [
+        "src/components/layout/sidebar-theme-toggle.tsx",
+        "src/components/layout/sidebar-floating-actions.tsx",
+        "src/components/layout/sidebar.tsx"
+      ],
+      "article_ids": [
+        "theme.toggle-theme"
+      ],
+      "gaps": [
+        "El tema se guarda exclusivamente en el almacenamiento local del navegador (next-themes) y no se persiste en el perfil de usuario en base de datos"
+      ],
+      "manual_checks_pending": [
+        "Comprobar contraste en modo claro de componentes con glassmorphism"
+      ]
+    },
+    {
+      "id": "pet",
+      "name": "Mascota Robot Pixy",
+      "implementation_status": "implemented",
+      "routes": [
+        "/platform/admin",
+        "/dashboard"
+      ],
+      "evidence_paths": [
+        "src/modules/core/pet/pet-help-trigger.tsx",
+        "src/modules/core/pet/pet-settings-manager.tsx",
+        "src/modules/core/pet/pet-provider.tsx",
+        "src/modules/core/pet/pet-visual.tsx",
+        "src/modules/core/pet/config-actions.ts",
+        "src/modules/core/pet/use-pet-hibernation.ts",
+        "src/components/layout/fab-controller.tsx"
+      ],
+      "article_ids": [
+        "pet.manage-pet",
+        "pet.pet-interaction"
+      ],
+      "gaps": [
+        "La configuración solo se actualiza en clientes tras recargar la página (no hay Realtime ni polling)",
+        "Seguimiento del cursor continuo solo opera con puntero fino y animación activa",
+        "La animación continua eleva consumo de CPU y se recomienda modo contextual"
+      ],
+      "manual_checks_pending": [
+        "Comprobar rendimiento FPS y temperatura de GPU en dispositivos móviles gama media"
+      ]
+    },
+    {
+      "id": "help-history",
+      "name": "Historial y Asistente de Ayuda",
+      "implementation_status": "implemented",
+      "routes": [
+        "/dashboard"
+      ],
+      "evidence_paths": [
+        "src/modules/features/caa/components/assistant-modal.tsx",
+        "src/modules/features/caa/components/ai-chat-panel.tsx",
+        "src/modules/features/caa/components/help-history-menu.tsx",
+        "src/modules/features/caa/actions/help-history.ts",
+        "src/modules/features/caa/actions/ask-help-assistant.ts"
+      ],
+      "article_ids": [
+        "help.chat-and-history"
+      ],
+      "gaps": [
+        "Localmente no existen tablas de pgvector / match_knowledge_v2 en el baseline activo; la IA responde sin base de conocimiento oficial indexada",
+        "Límite máximo estricto de 200 mensajes por conversación",
+        "El modelo solo recibe los últimos 4 mensajes como memoria conversacional y preguntas recortadas a 500 caracteres",
+        "No hay sincronización en tiempo real entre múltiples pestañas abiertas"
+      ],
+      "manual_checks_pending": [
+        "Validar comportamiento cuando la organización no tiene proveedor IA activo o está suspendida"
+      ]
+    },
+    {
+      "id": "branding",
+      "name": "ADN de Marca e Identidad del Negocio",
+      "implementation_status": "implemented",
+      "routes": [
+        "/platform/adn",
+        "/platform/settings"
+      ],
+      "evidence_paths": [
+        "src/app/(dashboard)/platform/adn/page.tsx",
+        "src/modules/core/branding/components/identity-dashboard.tsx",
+        "src/modules/core/branding/components/brand-center.tsx",
+        "src/modules/core/branding/actions.ts"
+      ],
+      "article_ids": [
+        "branding.manage-adn",
+        "branding.brand-center"
+      ],
+      "gaps": [
+        "Subida de archivos requiere rol admin en la organización y almacenamiento público",
+        "Personalización avanzada de dominios y remoción de marca Pixy está bloqueada a tiers Whitelabel / Pro",
+        "Cambios en el ADN requieren evento branding-updated y recarga de layout para reflejarse en sidebar"
+      ],
+      "manual_checks_pending": [
+        "Verificar sincronización de colores primarios y secundarios en el portal B2C tras actualizar ADN"
+      ]
+    },
+    {
+      "id": "iam-permissions",
+      "name": "Roles y Permisos de Equipo (IAM V2)",
+      "implementation_status": "implemented",
+      "routes": [
+        "/platform/settings/roles",
+        "/platform/settings"
+      ],
+      "evidence_paths": [
+        "src/app/(dashboard)/platform/settings/roles/page.tsx",
+        "src/modules/core/iam/components/role-manager.tsx",
+        "src/modules/core/iam/components/role-editor.tsx",
+        "src/modules/core/iam/actions/permissions.ts",
+        "src/modules/core/iam/actions/role-actions.ts",
+        "src/modules/core/settings/actions/team.ts"
+      ],
+      "article_ids": [
+        "iam.manage-roles",
+        "iam.invite-members"
+      ],
+      "gaps": [
+        "Existe código legacy en defaults.ts marcado como deprecated conviviendo con el motor IAM V2",
+        "Roles de sistema predefinidos (owner, admin, member) no pueden eliminarse ni cambiar de nombre",
+        "Super admins de plataforma se filtran en las vistas de miembros de los tenants para aislamiento estricto"
+      ],
+      "manual_checks_pending": [
+        "Comprobar asignación de permisos granulares por módulo al crear un rol personalizado nuevo"
+      ]
+    },
+    {
+      "id": "inbox",
+      "name": "Bandeja Unificada de Mensajería (Inbox)",
+      "implementation_status": "implemented",
+      "routes": [
+        "/crm/inbox",
+        "/crm/settings/channels"
+      ],
+      "evidence_paths": [
+        "src/app/(dashboard)/crm/inbox/page.tsx",
+        "src/modules/features/messaging/components/chat-area/chat-area.tsx",
+        "src/modules/features/channels/actions.ts"
+      ],
+      "article_ids": [
+        "inbox.manage-conversations"
+      ],
+      "gaps": [
+        "Conexión de WhatsApp depende de Meta Cloud API con webhook verificado",
+        "El menú lateral se auto-colapsa al navegar a /crm/inbox para priorizar espacio"
+      ],
+      "manual_checks_pending": [
+        "Comprobar recepción de mensajes entrantes y asignación en tiempo real a agentes"
+      ]
+    },
+    {
+      "id": "crm-contacts",
+      "name": "Gestión de Contactos y Clientes",
+      "implementation_status": "implemented",
+      "routes": [
+        "/crm/contacts",
+        "/clients"
+      ],
+      "evidence_paths": [
+        "src/app/(dashboard)/crm/contacts/page.tsx",
+        "src/modules/features/crm/components/list/clients-table.tsx",
+        "src/modules/features/crm/services/logic/contact-actions.ts"
+      ],
+      "article_ids": [
+        "crm.manage-contacts"
+      ],
+      "gaps": [
+        "La exportación masiva a CSV requiere permiso explícito crm.data.export",
+        "Contactos creados sin teléfono o email no pueden vincularse directamente a WhatsApp"
+      ],
+      "manual_checks_pending": [
+        "Comprobar importación y deduplicación de prospectos"
+      ]
+    },
+    {
+      "id": "crm-pipeline",
+      "name": "Embudo de Ventas (Pipeline)",
+      "implementation_status": "implemented",
+      "routes": [
+        "/crm/pipeline"
+      ],
+      "evidence_paths": [
+        "src/app/(dashboard)/crm/pipeline/page.tsx",
+        "src/modules/features/crm/components/crm-dashboard.tsx",
+        "src/modules/features/crm/crm-actions.ts"
+      ],
+      "article_ids": [
+        "crm.manage-pipeline"
+      ],
+      "gaps": [
+        "Las etapas del embudo se configuran por tenant pero no soportan reglas de automatización en cascada complejas sin el módulo automation"
+      ],
+      "manual_checks_pending": [
+        "Verificar arrastre drag-and-drop de tarjetas entre etapas y recálculo de valor estimado"
+      ]
+    },
+    {
+      "id": "billing-invoices",
+      "name": "Facturación y Cobranzas",
+      "implementation_status": "implemented",
+      "routes": [
+        "/invoices",
+        "/invoices/new",
+        "/payments"
+      ],
+      "evidence_paths": [
+        "src/app/(dashboard)/invoices/page.tsx",
+        "src/modules/features/billing/components/invoices-view.tsx",
+        "src/modules/features/billing/billing-actions.ts"
+      ],
+      "article_ids": [
+        "billing.manage-invoices"
+      ],
+      "gaps": [
+        "Soporte de pasarela Wompi y transferencias manuales requiere configuración previa en settings",
+        "Facturas anuladas no pueden reactivarse; se debe crear un nuevo comprobante"
+      ],
+      "manual_checks_pending": [
+        "Comprobar generación de PDF y enlace público de pago para comensal/cliente"
+      ]
+    },
+    {
+      "id": "automation",
+      "name": "Motor de Automatizaciones y Flujos",
+      "implementation_status": "implemented",
+      "routes": [
+        "/automations",
+        "/crm/automations"
+      ],
+      "evidence_paths": [
+        "src/app/(dashboard)/automations/page.tsx",
+        "src/modules/features/automation/components/automations-view.tsx",
+        "src/modules/features/automation/actions.ts"
+      ],
+      "article_ids": [
+        "automation.create-workflows"
+      ],
+      "gaps": [
+        "La ejecución de nodos IA requiere cuota de IA disponible y credenciales activas del tenant",
+        "Disparadores basados en eventos externos dependen de la correcta entrega de webhooks"
+      ],
+      "manual_checks_pending": [
+        "Comprobar ejecución de disparador al cambiar de etapa un lead en el CRM"
+      ]
+    },
+    {
+      "id": "tasks",
+      "name": "TaskFlow: Proyectos y Tareas",
+      "implementation_status": "implemented",
+      "routes": [
+        "/operations/tasks"
+      ],
+      "evidence_paths": [
+        "src/app/(dashboard)/operations/tasks/page.tsx",
+        "src/modules/features/tasks/components/kanban/task-kanban-board.tsx",
+        "src/modules/features/tasks/actions/task-actions.ts"
+      ],
+      "article_ids": [
+        "tasks.manage-tasks"
+      ],
+      "gaps": [
+        "Eliminación masiva de tareas requiere el permiso granular can_bulk_delete_tasks",
+        "Portal de colaboradores externo solo expone tareas asignadas mediante token protegido"
+      ],
+      "manual_checks_pending": [
+        "Verificar vista Kanban vs vista lista y asignación de colaboradores"
+      ]
+    },
+    {
+      "id": "quotes",
+      "name": "Cotizaciones y Propuestas Comerciales",
+      "implementation_status": "implemented",
+      "routes": [
+        "/quotes",
+        "/quotes/new"
+      ],
+      "evidence_paths": [
+        "src/app/(dashboard)/quotes/page.tsx",
+        "src/modules/features/quotes/components/quote-editor.tsx",
+        "src/modules/features/quotes/quotes-actions.ts"
+      ],
+      "article_ids": [
+        "quotes.create-quotes"
+      ],
+      "gaps": [
+        "La aprobación de cotización por el cliente no emite automáticamente la factura sin confirmación manual"
+      ],
+      "manual_checks_pending": [
+        "Comprobar aceptación de cotización desde la vista pública del portal"
+      ]
+    },
+    {
+      "id": "resto",
+      "name": "Módulo Gastronómico y Menú Digital",
+      "implementation_status": "implemented",
+      "routes": [
+        "/menu",
+        "/resto-orders",
+        "/resto-staff"
+      ],
+      "evidence_paths": [
+        "src/app/(dashboard)/menu/page.tsx",
+        "src/app/(dashboard)/resto-orders/page.tsx",
+        "src/modules/features/menu/actions/theme-actions.ts",
+        "src/modules/features/resto-orders/actions.ts"
+      ],
+      "article_ids": [
+        "resto.manage-menu",
+        "resto.manage-orders"
+      ],
+      "gaps": [
+        "Horarios de doble jornada y bloqueo de pedidos aplican al portal B2C pero no restringen comandas manuales de meseros",
+        "El KDS de cocina requiere actualización activa"
+      ],
+      "manual_checks_pending": [
+        "Verificar bloqueo automático de pedidos fuera del horario de atención configurado"
+      ]
+    },
+    {
+      "id": "briefings",
+      "name": "Briefings y Formularios de Entrada",
+      "implementation_status": "implemented",
+      "routes": [
+        "/briefings",
+        "/briefings/new"
+      ],
+      "evidence_paths": [
+        "src/app/(dashboard)/briefings/page.tsx",
+        "src/modules/features/forms/actions.ts"
+      ],
+      "article_ids": [],
+      "gaps": [
+        "No soporta validaciones avanzadas de expresiones regulares en campos personalizados"
+      ],
+      "manual_checks_pending": [
+        "Verificar llenado anónimo vía token público"
+      ]
+    },
+    {
+      "id": "catalog",
+      "name": "Catálogo de Servicios y Portafolio",
+      "implementation_status": "implemented",
+      "routes": [
+        "/portfolio"
+      ],
+      "evidence_paths": [
+        "src/app/(dashboard)/portfolio/page.tsx",
+        "src/modules/features/catalog/actions.ts"
+      ],
+      "article_ids": [],
+      "gaps": [
+        "Sincronización con cotizador requiere que los ítems estén marcados como activos"
+      ],
+      "manual_checks_pending": [
+        "Comprobar visibilidad pública en el portal del tenant"
+      ]
+    },
+    {
+      "id": "locations",
+      "name": "Sedes y Puntos Físicos",
+      "implementation_status": "implemented",
+      "routes": [
+        "/platform/locations"
+      ],
+      "evidence_paths": [
+        "src/app/(dashboard)/platform/locations/page.tsx",
+        "src/modules/features/locations/actions.ts"
+      ],
+      "article_ids": [],
+      "gaps": [
+        "La asignación de inventario o stock por sede no está disponible de forma centralizada"
+      ],
+      "manual_checks_pending": [
+        "Verificar filtro de métricas por sucursal en dashboards"
+      ]
+    },
+    {
+      "id": "attendance",
+      "name": "Control de Asistencia del Personal",
+      "implementation_status": "implemented",
+      "routes": [
+        "/attendance"
+      ],
+      "evidence_paths": [
+        "src/app/(dashboard)/attendance/page.tsx",
+        "src/modules/features/attendance/actions.ts"
+      ],
+      "article_ids": [],
+      "gaps": [
+        "El reconocimiento facial depende de dispositivos con cámara autorizada y permisos de navegador"
+      ],
+      "manual_checks_pending": [
+        "Comprobar registro offline y sincronización posterior"
+      ]
+    },
+    {
+      "id": "rentals",
+      "name": "Gestión de Arriendos Inmobiliarios",
+      "implementation_status": "partial",
+      "routes": [
+        "/rentals"
+      ],
+      "evidence_paths": [
+        "src/app/(dashboard)/rentals/page.tsx",
+        "src/modules/features/rentals/actions/leases.ts",
+        "src/modules/core/organizations/capabilities-registry.ts"
+      ],
+      "article_ids": [],
+      "gaps": [
+        "Restringido exclusivamente a organizaciones configuradas con vertical real_estate",
+        "No accesible para tenants generales ni agencias"
+      ],
+      "manual_checks_pending": [
+        "Verificar ciclo de cobro de canon de arriendo e integración con facturación"
+      ]
+    },
+    {
+      "id": "cartera",
+      "name": "Cartera y Cobranzas Multi-Industria",
+      "implementation_status": "partial",
+      "routes": [
+        "/cartera"
+      ],
+      "evidence_paths": [
+        "src/app/(dashboard)/cartera/page.tsx",
+        "src/modules/features/cartera/actions/cartera-actions.ts"
+      ],
+      "article_ids": [],
+      "gaps": [
+        "Módulo bajo desarrollo activo en rama paralela; la versión presente en esta rama es un avance de interfaz",
+        "Faltan tablas finales de amortización en migraciones consolidadas"
+      ],
+      "manual_checks_pending": [
+        "Comprobar consistencia de saldos morosos contra facturas vencidas"
+      ]
+    },
+    {
+      "id": "contracts",
+      "name": "Generador de Contratos",
+      "implementation_status": "implemented",
+      "routes": [
+        "/tools/contract-generator"
+      ],
+      "evidence_paths": [
+        "src/app/(dashboard)/tools/contract-generator/page.tsx",
+        "src/modules/infrastructure/tools/contract-generator/contract-actions.ts"
+      ],
+      "article_ids": [],
+      "gaps": [
+        "Las firmas digitales registradas son firmas gráficas simples, sin sello de tiempo criptográfico cualificado"
+      ],
+      "manual_checks_pending": [
+        "Comprobar descarga de PDF generado"
+      ]
+    },
+    {
+      "id": "email_engine",
+      "name": "Motor de Correos Electrónicos",
+      "implementation_status": "implemented",
+      "routes": [
+        "/tools/email-engine"
+      ],
+      "evidence_paths": [
+        "src/app/(dashboard)/tools/email-engine/page.tsx"
+      ],
+      "article_ids": [],
+      "gaps": [
+        "Requiere configuración SMTP o API key de Resend en settings del tenant"
+      ],
+      "manual_checks_pending": [
+        "Comprobar prueba de entrega de correo"
+      ]
+    },
+    {
+      "id": "hosting",
+      "name": "Cuentas de Hosting y Servidores",
+      "implementation_status": "partial",
+      "routes": [
+        "/hosting",
+        "/platform/hosting-accounts"
+      ],
+      "evidence_paths": [
+        "src/app/(dashboard)/hosting/page.tsx",
+        "src/app/(dashboard)/platform/hosting-accounts/page.tsx"
+      ],
+      "article_ids": [],
+      "gaps": [
+        "Módulo legacy mantenido para compatibilidad de agencias de desarrollo web; no habilitado por defecto para otros tenants"
+      ],
+      "manual_checks_pending": [
+        "Comprobar estado de conexión con servidores externos cPanel/WHMCS"
+      ]
+    },
+    {
+      "id": "cleaning",
+      "name": "Operaciones de Limpieza",
+      "implementation_status": "partial",
+      "routes": [
+        "/cleaning"
+      ],
+      "evidence_paths": [
+        "src/app/(dashboard)/cleaning/page.tsx"
+      ],
+      "article_ids": [],
+      "gaps": [
+        "Módulo vertical específico con baja actividad de actualización; depende de preset cleaning"
+      ],
+      "manual_checks_pending": [
+        "Comprobar asignación de turnos a operarios"
+      ]
+    },
+    {
+      "id": "manifests",
+      "name": "Manifiestos Aduaneros e IMEI",
+      "implementation_status": "implemented",
+      "routes": [
+        "/manifests"
+      ],
+      "evidence_paths": [
+        "src/app/(dashboard)/manifests/page.tsx"
+      ],
+      "article_ids": [],
+      "gaps": [
+        "Herramienta especializada activada mediante override manual en organizaciones de retail tecnológico"
+      ],
+      "manual_checks_pending": [
+        "Validar exportación de manifiestos"
+      ]
+    },
+    {
+      "id": "knowledge-base",
+      "name": "Base de Conocimiento IA del Tenant",
+      "implementation_status": "partial",
+      "routes": [
+        "/platform/knowledge"
+      ],
+      "evidence_paths": [
+        "src/app/(dashboard)/platform/knowledge/page.tsx",
+        "src/modules/features/knowledge/components/knowledge-list.tsx",
+        "docs/2-architecture/modules/pixy-help-context-audit.md"
+      ],
+      "article_ids": [],
+      "gaps": [
+        "En el entorno local actual no están migradas las tablas de embeddings ni pgvector",
+        "No existe separación clara en el esquema antiguo entre FAQs del cliente y ayuda del sistema Pixy"
+      ],
+      "manual_checks_pending": [
+        "Verificar disponibilidad de la extensión vector en Supabase remoto"
+      ]
+    },
+    {
+      "id": "meta-control-assistant",
+      "name": "Asistente Flotante Antiguo y Meta Control",
+      "implementation_status": "retired",
+      "routes": [],
+      "evidence_paths": [
+        "docs/2-architecture/modules/pixy-robot-pet-verification.md",
+        "src/components/layout/fab-controller.tsx"
+      ],
+      "article_ids": [],
+      "gaps": [
+        "Retirado del layout del dashboard; UnifiedFloatingFab y useAssistant quedaron desvinculados",
+        "No debe presentarse en la ayuda como una función activa para los usuarios"
+      ],
+      "manual_checks_pending": [
+        "Auditoría técnica previa para eliminar archivos fuente huérfanos sin romper posibles tests"
+      ]
+    },
+    {
+      "id": "legacy-trash-emitter",
+      "name": "Emisor de Evento de Papelera en Sidebar",
+      "implementation_status": "retired",
+      "routes": [],
+      "evidence_paths": [
+        "docs/2-architecture/modules/pixy-robot-pet-verification.md",
+        "src/components/layout/sidebar.tsx"
+      ],
+      "article_ids": [],
+      "gaps": [
+        "El botón de papelera del sidebar fue reemplazado por el conmutador de tema de Sol/Luna",
+        "El evento pixy:open-trash carecía de receptores en el frontend activo"
+      ],
+      "manual_checks_pending": []
+    }
+  ]
+}
