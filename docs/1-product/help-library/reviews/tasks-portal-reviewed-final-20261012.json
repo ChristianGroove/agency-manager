@@ -1,0 +1,889 @@
+{
+  "schema_version": 1,
+  "articles": [
+    {
+      "id": "automation.create-workflows",
+      "draft_sha256": "2a7fa8c46d0af4ae6b366b633578756bd5566ab6adaec26741fc6c35d387d187",
+      "reviewed_by": "Gemini: source verification and editorial review",
+      "reviewed_on": "2026-10-12",
+      "evidence_sha256": {
+        "src/app/(dashboard)/automations/page.tsx": "d9aca9a84d3097c582179b35b7691a4d58a74b7a6c4782fe2c4fee8402aee26e",
+        "src/modules/features/automation/components/automations-view.tsx": "196f00a7c70cf93d1078490d0371c4d5b2ae51dcd1e335737e1505e817f826ab",
+        "src/modules/features/automation/actions.ts": "9bc5526bc038fc4249974a73f8efc0374f0ed8123f89a61502b7149187368544",
+        "src/modules/features/automation/components/properties/TriggerProperties.tsx": "57da2624697a4ee457010efe0fcfa11d0044363f625ab0c75603be02fc078a51"
+      },
+      "required_modules": [
+        "module_automation"
+      ],
+      "required_permissions": [
+        "automation.workflows.view"
+      ],
+      "verticals": [],
+      "link_route": "/automations"
+    },
+    {
+      "id": "billing.manage-invoices",
+      "draft_sha256": "565e4cc8cb93bf21583cc36625e45cadebec6c0ae8b0835f6ca03cdadf3fc129",
+      "reviewed_by": "Gemini: source verification and editorial review",
+      "reviewed_on": "2026-10-12",
+      "evidence_sha256": {
+        "src/app/(dashboard)/invoices/page.tsx": "4812e8d4de392ff3316a651b844eaa019490fb249f5ca89b5fc71dd13e965e24",
+        "src/modules/core/saas/module-config.ts": "fb94433b332066827eef3304e8eb23c7f0c4a3cb5f9a901b37d078a122e2dbbf",
+        "src/modules/features/billing/billing-actions.ts": "4fe5d4420d8a254e50542cc00d5447412b7d0d913d6d9a93a2a477545bfcd796"
+      },
+      "required_modules": [
+        "module_invoicing"
+      ],
+      "required_permissions": [
+        "invoicing.view"
+      ],
+      "verticals": [],
+      "link_route": "/invoices"
+    },
+    {
+      "id": "branding.brand-center",
+      "draft_sha256": "114afba542ca9b55d2668c4031e6406ede53c0bdc0d90bfe8e142da430b523c3",
+      "reviewed_by": "Gemini: source verification and editorial review",
+      "reviewed_on": "2026-10-12",
+      "evidence_sha256": {
+        "src/modules/core/branding/components/brand-center.tsx": "6877f7b88cf808098aa08e061cd5123e56ffc1e9764832a17fba1649cd60fc2d",
+        "src/modules/core/branding/components/brand-center-sheet.tsx": "c5bdc23b3c13b59bbd95f71a62bb1d80a71f38a0257317144eae15c455b23b3a",
+        "src/modules/core/pet/use-pet-operation.ts": "cc4e484e8c2b2df601a9be2bb948f4a28777610c3fefa133d494dd4c509e435c"
+      },
+      "required_modules": [
+        "core_settings"
+      ],
+      "required_permissions": [
+        "operations.branding.manage"
+      ],
+      "verticals": [],
+      "link_route": "/platform/settings"
+    },
+    {
+      "id": "branding.manage-adn",
+      "draft_sha256": "030b6066840a5c728904ab139b0f1b5ba198f0962cf2027d33cae4d18f376885",
+      "reviewed_by": "Gemini: source verification and editorial review",
+      "reviewed_on": "2026-10-12",
+      "evidence_sha256": {
+        "src/app/(dashboard)/platform/adn/page.tsx": "cd2a90fa7da9741dd1377b5c12356ebbf228508f99b5dd7a0803434e1d8506ac",
+        "src/modules/core/branding/components/identity-dashboard.tsx": "35427e34cedae768de317ef75ab32cfe39cfdf6fae5285b949fe27c76c9d819d",
+        "src/modules/core/branding/actions.ts": "04568e226093ec94b261d5bc2282ffea403b88a88017429f8b98114cd0df0d6a",
+        "src/modules/core/branding/components/operations-tab.tsx": "b133fb15110305857b0566655eb8d61d3c547ea5db548cf661f636a086b48d7c"
+      },
+      "required_modules": [
+        "core_settings"
+      ],
+      "required_permissions": [],
+      "verticals": [],
+      "link_route": null
+    },
+    {
+      "id": "crm.crm-reports",
+      "draft_sha256": "15ce8fd29c2b073706ba318e347ca39460d1f0ce59fda44a1b12caa192aeff3e",
+      "reviewed_by": "Gemini: source verification and editorial review",
+      "reviewed_on": "2026-10-12",
+      "evidence_sha256": {
+        "src/app/(dashboard)/crm/reports/page.tsx": "3c7cb8cdf46efed58731bddf8d10e25d44baf39c80d2d1eed1d2963664376950",
+        "src/modules/features/crm/services/logic/analytics-actions.ts": "26dd8d851eec71db3b317ed34278bb4d9e0f42ade74b177240d9b43cc6e91857",
+        "src/modules/core/saas/module-config.ts": "fb94433b332066827eef3304e8eb23c7f0c4a3cb5f9a901b37d078a122e2dbbf"
+      },
+      "required_modules": [
+        "module_crm_reports"
+      ],
+      "required_permissions": [],
+      "verticals": [],
+      "link_route": "/crm/reports"
+    },
+    {
+      "id": "crm.manage-contacts",
+      "draft_sha256": "77f81db5daf428b164fb018a1283da836d27ec2e5526055348675b7f78935f81",
+      "reviewed_by": "Gemini: source verification and editorial review",
+      "reviewed_on": "2026-10-12",
+      "evidence_sha256": {
+        "src/app/(dashboard)/crm/contacts/page.tsx": "b8f8fc5d796d272a24dbe8d1275133f7fbeebdbcee819e284a2e0a95e15e93e6",
+        "src/modules/core/saas/module-config.ts": "fb94433b332066827eef3304e8eb23c7f0c4a3cb5f9a901b37d078a122e2dbbf",
+        "src/modules/core/iam/actions/permissions.ts": "68d0525b12e2aeed38175f5dea98e1b44301a3b3bdcccf12e676cd9bbf55a302"
+      },
+      "required_modules": [
+        "core_clients"
+      ],
+      "required_permissions": [
+        "crm.leads.view"
+      ],
+      "verticals": [],
+      "link_route": "/crm/contacts"
+    },
+    {
+      "id": "crm.manage-pipeline",
+      "draft_sha256": "eb13c3e8a725d8d8778fa98165e450497ebf7f82d071fe5204a5b942998b8802",
+      "reviewed_by": "Gemini: source verification and editorial review",
+      "reviewed_on": "2026-10-12",
+      "evidence_sha256": {
+        "src/app/(dashboard)/crm/pipeline/page.tsx": "45acf11383be252721467618e81454c6f4907fb675411d0536aa3a15a762bf04",
+        "src/modules/features/crm/components/crm-dashboard.tsx": "85bd4d89f319b449662b876df70ad69a5eaf3c5e23fce151001fa9f2d8d1ae2a",
+        "src/modules/features/crm/crm-actions.ts": "23448512224803fb70d778111f9926013b271b4171bb161736cb64d4c4710140"
+      },
+      "required_modules": [
+        "core_crm"
+      ],
+      "required_permissions": [
+        "crm.leads.view"
+      ],
+      "verticals": [],
+      "link_route": "/crm/pipeline"
+    },
+    {
+      "id": "dashboard.overview",
+      "draft_sha256": "7c9e4a76f75dbf31878625edb1c47f77a51c8465effd8170c810fed9915bf190",
+      "reviewed_by": "Gemini: source verification and editorial review",
+      "reviewed_on": "2026-10-12",
+      "evidence_sha256": {
+        "src/app/(dashboard)/dashboard/page.tsx": "80bad566ed66fc6454b5fa5a9771b40af32c12d0c5024441875a93fc3004484f",
+        "src/modules/core/dashboard/components/agency-dashboard.tsx": "924402a76d87c22c244870125629dc0da39b7e1397a08585900ecb879d486688",
+        "src/components/layout/sidebar.tsx": "1aa7151f401dc366929ba1cba03ff3c87b2dcb10b4588a58c914e0342d9f9fe8",
+        "src/modules/core/organizations/capabilities-registry.ts": "88f0ca3d99f85c92cc4687b058ad37fadd3b782ba23fc64edf58679536be4399"
+      },
+      "required_modules": [],
+      "required_permissions": [],
+      "verticals": [],
+      "link_route": "/dashboard"
+    },
+    {
+      "id": "help.chat-and-history",
+      "draft_sha256": "e8db4d82f4aa8cd341a5cadbf0731f740faa2d7fc9bc62315c6342d6af097121",
+      "reviewed_by": "Gemini (editorial); Codex (chat transport diff reverification)",
+      "reviewed_on": "2026-10-12",
+      "evidence_sha256": {
+        "src/modules/features/caa/components/assistant-modal.tsx": "c1e0d427c686c162414f1c12389fba2120e10a084b2cf4ad1cd8e02721711820",
+        "src/modules/features/caa/components/ai-chat-panel.tsx": "cec00a98a3af600f7bc15424bdca9414d61706e01e3ba7a981a19f5a3290bd72",
+        "src/modules/features/caa/components/help-history-menu.tsx": "d5bafd0a54e13a80d055f1be90eae0cea9a37e8f3e7990bc0bf8c9a6440cc1f0",
+        "src/modules/features/caa/actions/help-history.ts": "0e77ba009e84f54693a57373e7246223dffd7ed46e2ee29318aab906fa509221",
+        "docs/2-architecture/modules/pixy-help-chat-history.md": "5f94e8d3ab8e14e38fc97d9b84d4e690ce0ea734af2f5a313fb2ba5b1606735d"
+      },
+      "required_modules": [],
+      "required_permissions": [],
+      "verticals": [],
+      "link_route": null
+    },
+    {
+      "id": "iam.invite-members",
+      "draft_sha256": "cd4d86086ef7ed1928da670347b88c492a095b88f01da01bdbdec42b73938444",
+      "reviewed_by": "Gemini: source verification and editorial review",
+      "reviewed_on": "2026-10-12",
+      "evidence_sha256": {
+        "src/modules/core/settings/actions/team.ts": "f5a1bc89702bb10f7e574ecb93e64e63eb9757edd14786207040d84c8d2987cd",
+        "src/modules/core/settings/team-settings-tab.tsx": "e0bcec52fb4d12c8b03169be9af213e7119aedfdda6c0acc0a6ca63d9d95c751"
+      },
+      "required_modules": [
+        "core_settings"
+      ],
+      "required_permissions": [
+        "org.members.manage"
+      ],
+      "verticals": [],
+      "link_route": "/platform/settings"
+    },
+    {
+      "id": "iam.manage-roles",
+      "draft_sha256": "6b8796f9249c4567ec8c3e84523bea61c7049bf6eae79962f9038a2e1a0d6233",
+      "reviewed_by": "Gemini: source verification and editorial review",
+      "reviewed_on": "2026-10-12",
+      "evidence_sha256": {
+        "src/app/(dashboard)/platform/settings/roles/page.tsx": "a72b604a0d007562e106ccbc90c44f3eb55247a19a7ab8a3f97a333c7aff13d3",
+        "src/modules/core/iam/components/role-manager.tsx": "c078e77bb67a53acc3b0e46bda08911d858ccab8600b1661de4225179feeafcd",
+        "src/modules/core/iam/components/role-editor.tsx": "572c06db8ecc6d27e0e7ea7f001508a6291e02d56b3a742844ed596046e15a00",
+        "src/modules/core/iam/actions/permissions.ts": "68d0525b12e2aeed38175f5dea98e1b44301a3b3bdcccf12e676cd9bbf55a302"
+      },
+      "required_modules": [
+        "core_settings"
+      ],
+      "required_permissions": [
+        "org.roles.manage"
+      ],
+      "verticals": [],
+      "link_route": "/platform/settings/roles"
+    },
+    {
+      "id": "inbox.manage-channels",
+      "draft_sha256": "acc6bcd9c30f456d2c8b8c35ca590923e9b2363aee611c0a5081229848ca21a7",
+      "reviewed_by": "Gemini: source verification and editorial review",
+      "reviewed_on": "2026-10-12",
+      "evidence_sha256": {
+        "src/app/(dashboard)/crm/settings/channels/page.tsx": "ca480cca70308224973c406587be1f1f9cd02315a265546956339278ed212b62",
+        "src/modules/features/channels/components/channels-list.tsx": "ca49204e8c98163975e752de338e19f4317a5e45c47f5037d0c71de8f9a48669",
+        "src/modules/features/channels/components/channel-card.tsx": "7a35e45185bb9c771c8ea39ed959a747aa8ee9a4d121f624d0376404fb8f4d32",
+        "src/modules/features/channels/components/edit-channel-sheet.tsx": "103d964e9fdd527a82a8468031c2293fc116985c5e89ca2abcc00cdf37d936e3",
+        "src/modules/features/channels/actions.ts": "88a5c6ce437d9860099d2c9e131fb3b7eda02bb241b2c5c95024eadf3e0128a3"
+      },
+      "required_modules": [
+        "module_messaging"
+      ],
+      "required_permissions": [
+        "inbox.channels.manage"
+      ],
+      "verticals": [],
+      "link_route": "/crm/settings/channels"
+    },
+    {
+      "id": "inbox.manage-conversations",
+      "draft_sha256": "06f53ec72e965e10ef4e8718498bcf3a30a44303f3def2a73d772d08cd3aea34",
+      "reviewed_by": "Gemini: source verification and editorial review",
+      "reviewed_on": "2026-10-12",
+      "evidence_sha256": {
+        "src/app/(dashboard)/crm/inbox/page.tsx": "f3b7bbe0ee10c98a1e62a1158b1ffbb08e31eeded37b7d725206e712f27f015d",
+        "src/modules/features/messaging/components/inbox-layout.tsx": "9539cd85be4a34ea8bad736619a7146e0b4738eb4e876d46f594411ae92477ac",
+        "src/components/layout/sidebar.tsx": "1aa7151f401dc366929ba1cba03ff3c87b2dcb10b4588a58c914e0342d9f9fe8",
+        "src/modules/features/messaging/components/sidebar/sidebar-conversation-list.tsx": "e14f751636b95e2b2660739e7f3dbf625ba99d03195570e24e862c4907f01ec4",
+        "src/modules/features/messaging/components/chat-area/chat-input.tsx": "18c7bd00e68cec9210a23eabc6d9ad64534185a35408cdb75759c5e74c256100",
+        "src/modules/features/messaging/components/chat-area/chat-header.tsx": "73296c6b07ac0340df9fef945a416006a02785f8cabb1d5c9d803763ad511a2b",
+        "src/modules/features/messaging/components/quick-assign-panel.tsx": "36fbcb3ae8d302c7fa5a8437e65bc32abfe1fbcb998655e19c017a907a784a13",
+        "src/modules/core/iam/utils/inbox-permissions.ts": "5761082a94bb4a2d0333940050b5967064b8da6c5e8f9795a1eabc4e60a25f4e",
+        "src/modules/features/messaging/components/saved-replies-sheet.tsx": "d1949c6fdd5d4d20350565a7d013f66e99d07885cff8aec8de9763d4e9f8667b",
+        "src/modules/features/messaging/components/chat-area/chat-area.tsx": "2a082d0f784caa243da284b1fd3bbbdd021b904d7d11750341dbfa60b22aba6b",
+        "src/modules/features/messaging/hooks/use-chat-actions.ts": "7f92d0db1d374e0165f1c00cf6b3cd7efa62d37e3fb2f633a812f8353460ecd1"
+      },
+      "required_modules": [
+        "module_messaging"
+      ],
+      "required_permissions": [],
+      "verticals": [],
+      "link_route": null
+    },
+    {
+      "id": "inbox.saved-replies-and-templates",
+      "draft_sha256": "3bd222c8cde7b21debf7941fa13575394514cc04461d65a05a0669c6593e6a88",
+      "reviewed_by": "Gemini: source verification and editorial review",
+      "reviewed_on": "2026-10-12",
+      "evidence_sha256": {
+        "src/modules/features/messaging/components/saved-replies-sheet.tsx": "d1949c6fdd5d4d20350565a7d013f66e99d07885cff8aec8de9763d4e9f8667b",
+        "src/modules/features/messaging/components/template-picker-sheet.tsx": "90b4f261c61485ab8387cc6b752770ca5e646c5e545b2d7402c4cf8383fcb611",
+        "src/modules/features/messaging/components/chat-area/chat-input.tsx": "18c7bd00e68cec9210a23eabc6d9ad64534185a35408cdb75759c5e74c256100",
+        "src/modules/features/messaging/actions/templates.ts": "f9b2c34a0033e79560cef425d3ebaf3c1776ba944cdab4d64686563e7d2a66bd",
+        "src/modules/features/messaging/send-template-action.ts": "d2aa0f4c287b8e67a94eabcffbb8fb6b311ed9a265fc2a9b5e7465da9d930fa6"
+      },
+      "required_modules": [
+        "module_messaging"
+      ],
+      "required_permissions": [],
+      "verticals": [],
+      "link_route": "/crm/inbox"
+    },
+    {
+      "id": "pet.manage-pet",
+      "draft_sha256": "bcff52ce8b75bdd3b790b6a8f5d2e2fe81b9d1275eac895e3b8fe0868726c92e",
+      "reviewed_by": "Gemini: source verification and editorial review",
+      "reviewed_on": "2026-10-12",
+      "evidence_sha256": {
+        "src/modules/core/pet/pet-settings-manager.tsx": "2093886690883b51302ae1fe6741260ed2df36667d12340c6ae497eaeb900656",
+        "src/modules/core/pet/config-actions.ts": "b28c11187454bf74f761f5646678be85ea1cdfe453c44e435bcb29dda8a93b4e",
+        "src/modules/core/pet/schema.ts": "3bce8c19729cf36d469ef839dfa6e17ea835e609d62ed6ec1393b7cc953eb752"
+      },
+      "required_modules": [],
+      "required_permissions": [],
+      "verticals": [],
+      "link_route": null
+    },
+    {
+      "id": "pet.pet-interaction",
+      "draft_sha256": "dab83373b97201a49dfad054a0d07b6c5cb1c5990e8c35ba345affeede7f1471",
+      "reviewed_by": "Gemini (editorial); Codex (chat transport diff reverification)",
+      "reviewed_on": "2026-10-12",
+      "evidence_sha256": {
+        "src/modules/core/pet/pet-help-trigger.tsx": "4bf90d9608250199cfa610e76951ee949b93bf50971c640c171be91fa74115c8",
+        "src/modules/core/pet/use-pet-hibernation.ts": "a9ec4562b6c6faea4a704d90f284f1930ecdaca4e9614145b9526ac095193e6d",
+        "src/components/layout/fab-controller.tsx": "22d67be25a63688dc51edd6f783e5be73d2ae85241e83adf35d21b153dd405e6",
+        "src/modules/features/caa/components/ai-chat-panel.tsx": "cec00a98a3af600f7bc15424bdca9414d61706e01e3ba7a981a19f5a3290bd72",
+        "src/modules/core/pet/robot-head-view.tsx": "7c40a31fae947729c28dd5e673c0eb201975a90100f29204c07e6683763328d5",
+        "src/modules/core/pet/pet-provider.tsx": "73aa72c6e7eb32adaf64de5f66d1199820987f333b73ae4a9eb5b0977ea13e30"
+      },
+      "required_modules": [],
+      "required_permissions": [],
+      "verticals": [],
+      "link_route": null
+    },
+    {
+      "id": "quotes.create-quotes",
+      "draft_sha256": "3e8e439bd09471896230b3d755d439ce8e50123f0782c8fe3f8f911b4bc59473",
+      "reviewed_by": "Gemini: source verification and editorial review",
+      "reviewed_on": "2026-10-12",
+      "evidence_sha256": {
+        "src/app/(dashboard)/quotes/page.tsx": "00d314a43eb68a8c1a16923ea91fee8355961b8d916a2a649b22f320566cb203",
+        "src/modules/features/quotes/quotes-actions.ts": "f4c93749cb76f322e8d89d70b94b6fcbe9e5b49811288d9c31e5d303bec1a462"
+      },
+      "required_modules": [
+        "module_quotes"
+      ],
+      "required_permissions": [],
+      "verticals": [],
+      "link_route": "/quotes"
+    },
+    {
+      "id": "resto.manage-menu",
+      "draft_sha256": "7dfefb3455ceda4f68c931ad012a5fa3be02c3158a59b9ab0c9e22027af4d8f5",
+      "reviewed_by": "Gemini: source verification and editorial review",
+      "reviewed_on": "2026-10-12",
+      "evidence_sha256": {
+        "src/app/(dashboard)/menu/page.tsx": "b3025d685a7e8f71b6fbe34f9f44e5ab7b4a555fbafa63f10cab02339ec1e548",
+        "src/modules/features/menu/actions/theme-actions.ts": "90f55801736109f1bcbad6871f52fba377061c8af616db9d3ac53fe91fe07999",
+        "docs/2-architecture/modules/portal-theme-architecture.md": "6a5adbd809d7f20f343c63c114c9b2fb1829db66d19ec86794e069c4355641b6"
+      },
+      "required_modules": [
+        "module_resto_menu"
+      ],
+      "required_permissions": [
+        "operations.resto_menu.view"
+      ],
+      "verticals": [
+        "resto"
+      ],
+      "link_route": "/menu"
+    },
+    {
+      "id": "resto.manage-orders",
+      "draft_sha256": "59417034d1c59531258502fd13e7986a0731c42e90055691cbd4fbd7084a4aaf",
+      "reviewed_by": "Gemini: source verification and editorial review",
+      "reviewed_on": "2026-10-12",
+      "evidence_sha256": {
+        "src/app/(dashboard)/resto-orders/page.tsx": "9ed645d795e988715973113a72a20cea55763d2d8f02d8f21959dfc6805e9be6",
+        "src/modules/core/saas/module-config.ts": "fb94433b332066827eef3304e8eb23c7f0c4a3cb5f9a901b37d078a122e2dbbf",
+        "src/modules/core/iam/actions/permissions.ts": "68d0525b12e2aeed38175f5dea98e1b44301a3b3bdcccf12e676cd9bbf55a302"
+      },
+      "required_modules": [
+        "module_resto_orders"
+      ],
+      "required_permissions": [
+        "operations.resto_orders.view"
+      ],
+      "verticals": [
+        "resto"
+      ],
+      "link_route": "/resto-orders"
+    },
+    {
+      "id": "tasks.manage-tasks",
+      "draft_sha256": "a6f6332ebae65a50a38d53cff0e55b3565a43e86ff01318f7a5bb6aebe73b103",
+      "reviewed_by": "Gemini: source verification and editorial review",
+      "reviewed_on": "2026-10-12",
+      "evidence_sha256": {
+        "src/app/(dashboard)/operations/tasks/page.tsx": "6929b1883c6b27064eb444ab8366c2097b4a0b191ca33ebd202b8207b344cedc",
+        "src/modules/core/saas/module-config.ts": "fb94433b332066827eef3304e8eb23c7f0c4a3cb5f9a901b37d078a122e2dbbf",
+        "src/modules/core/iam/actions/permissions.ts": "68d0525b12e2aeed38175f5dea98e1b44301a3b3bdcccf12e676cd9bbf55a302"
+      },
+      "required_modules": [
+        "module_tasks"
+      ],
+      "required_permissions": [
+        "operations.tasks.view"
+      ],
+      "verticals": [],
+      "link_route": "/operations/tasks"
+    },
+    {
+      "id": "theme.toggle-theme",
+      "draft_sha256": "fc455db409b9b197bf75688249f3f39d83ec49c64289b45b0f56a09c5abe76c4",
+      "reviewed_by": "Gemini: source verification and editorial review",
+      "reviewed_on": "2026-10-12",
+      "evidence_sha256": {
+        "src/components/layout/sidebar-theme-toggle.tsx": "911739d66f8273c13332a1a2eefedacfc4693385d7b77a3c1bada39b33011ba1",
+        "src/components/layout/sidebar-floating-actions.tsx": "afcb030bf884824fdf487023aafe021de8d3b8e8511abec93ce6c7aba9a9fe6e",
+        "docs/2-architecture/modules/pixy-robot-pet-phase-two.md": "253db3b4e8c3eda7b94c1970c1a1e242177ed50abe3ccce093c6259857dae2ea"
+      },
+      "required_modules": [],
+      "required_permissions": [],
+      "verticals": [],
+      "link_route": null
+    },
+    {
+      "id": "tasks-portal.access-and-pin",
+      "draft_sha256": "e8beb2288b451f7679bab2ad631da367c0fe1e1115cacc40d273717ca4fe5106",
+      "reviewed_by": "Gemini: source verification and editorial review",
+      "reviewed_on": "2026-10-12",
+      "evidence_sha256": {
+        "src/app/(public)/portal/tasks/[token]/page.tsx": "731718f27986bba4def234e09d645f7776d4656fd559f6faf29b33bb197e80c0",
+        "src/modules/features/portal-security/actions/portal-security-actions.ts": "3b24cdbc255eeecfc4ef8b9550e78855ffa60394ff1b7d9a5da75aa504a412a2",
+        "src/modules/features/portal-security/components/portal-lockscreen.tsx": "9ae7a5484f728d891490473a7cba9c5f4de604c5b55b02f2d2a34b9cd7335d2c"
+      },
+      "required_modules": [
+        "module_tasks"
+      ],
+      "required_permissions": [],
+      "portal_profiles": [
+        "collaborator",
+        "qa",
+        "lead",
+        "support"
+      ],
+      "required_portal_capabilities": [],
+      "verticals": [],
+      "link_route": null
+    },
+    {
+      "id": "tasks-portal.attachments-and-files",
+      "draft_sha256": "d9654483ec004d4734fbebbb9ae7e3dadf6c66dc1c19f7ad3916d484d906941a",
+      "reviewed_by": "Gemini: source verification and editorial review",
+      "reviewed_on": "2026-10-12",
+      "evidence_sha256": {
+        "src/modules/features/tasks/actions/collaborator-portal-actions.ts": "aefb65fc8a8387d0f4f60c8a690c2a0d4e021cee5f40e1a79cfc8d901913457c",
+        "src/modules/features/tasks/components/detail/task-attachments-section.tsx": "10a1f905661439fda17852e185a9433891b5fc2c1fd337b4d7844f81d48bd2f9"
+      },
+      "required_modules": [
+        "module_tasks"
+      ],
+      "required_permissions": [],
+      "portal_profiles": [
+        "collaborator",
+        "qa",
+        "lead"
+      ],
+      "required_portal_capabilities": [],
+      "verticals": [],
+      "link_route": null
+    },
+    {
+      "id": "tasks-portal.bulk-actions",
+      "draft_sha256": "a0a5db1c6eb106b82b2c57a2f98742ea27f4dc2e2b235b751c97ce9844179a1b",
+      "reviewed_by": "Gemini: source verification and editorial review",
+      "reviewed_on": "2026-10-12",
+      "evidence_sha256": {
+        "src/modules/features/tasks/actions/collaborator-portal-actions.ts": "aefb65fc8a8387d0f4f60c8a690c2a0d4e021cee5f40e1a79cfc8d901913457c",
+        "src/modules/core/ui/components/bulk-actions-floating-bar.tsx": "032b0fddd152d42739d93a6764291c02f2e160e1ccfc07349a99d70931c18476"
+      },
+      "required_modules": [
+        "module_tasks"
+      ],
+      "required_permissions": [],
+      "portal_profiles": [
+        "collaborator",
+        "qa",
+        "lead"
+      ],
+      "required_portal_capabilities": [
+        "bulk_delete"
+      ],
+      "verticals": [],
+      "link_route": null
+    },
+    {
+      "id": "tasks-portal.comments-and-mentions",
+      "draft_sha256": "6db2cef5d02e4088d0221e31a9fc811844ca4a0f4ef0c11e1da55e83255b4e84",
+      "reviewed_by": "Gemini: source verification and editorial review",
+      "reviewed_on": "2026-10-12",
+      "evidence_sha256": {
+        "src/modules/features/tasks/actions/collaborator-portal-actions.ts": "aefb65fc8a8387d0f4f60c8a690c2a0d4e021cee5f40e1a79cfc8d901913457c",
+        "src/modules/features/tasks/components/detail/task-discussion-feed.tsx": "9e506e23c2c36e6052dff886351cf844079503e13ac8bd0a1e12b0e7e3f31ec2"
+      },
+      "required_modules": [
+        "module_tasks"
+      ],
+      "required_permissions": [],
+      "portal_profiles": [
+        "collaborator",
+        "qa",
+        "lead",
+        "support"
+      ],
+      "required_portal_capabilities": [],
+      "verticals": [],
+      "link_route": null
+    },
+    {
+      "id": "tasks-portal.create-task-collaborator",
+      "draft_sha256": "15d4af330d88d97904e2addac8354b8dff29fdf3b924377e1cd17e41de734a79",
+      "reviewed_by": "Gemini: source verification and editorial review",
+      "reviewed_on": "2026-10-12",
+      "evidence_sha256": {
+        "src/modules/features/tasks/actions/collaborator-portal-actions.ts": "aefb65fc8a8387d0f4f60c8a690c2a0d4e021cee5f40e1a79cfc8d901913457c",
+        "src/modules/features/tasks/components/portal/task-collaborator-portal.tsx": "8f183e8347bba0dee9846f52766e4e2f1a3fe9e495d5afa4bb78c1cd764785ad"
+      },
+      "required_modules": [
+        "module_tasks"
+      ],
+      "required_permissions": [],
+      "portal_profiles": [
+        "collaborator",
+        "qa"
+      ],
+      "required_portal_capabilities": [],
+      "verticals": [],
+      "link_route": null
+    },
+    {
+      "id": "tasks-portal.create-task-pm",
+      "draft_sha256": "aa7d56d84db16ce4b9e3386ed5967cb8729d9b956c40917e9aa6b4b3a19f5cda",
+      "reviewed_by": "Gemini: source verification and editorial review",
+      "reviewed_on": "2026-10-12",
+      "evidence_sha256": {
+        "src/modules/features/tasks/actions/collaborator-portal-actions.ts": "aefb65fc8a8387d0f4f60c8a690c2a0d4e021cee5f40e1a79cfc8d901913457c",
+        "src/modules/features/tasks/components/portal/task-collaborator-portal.tsx": "8f183e8347bba0dee9846f52766e4e2f1a3fe9e495d5afa4bb78c1cd764785ad"
+      },
+      "required_modules": [
+        "module_tasks"
+      ],
+      "required_permissions": [],
+      "portal_profiles": [
+        "lead"
+      ],
+      "required_portal_capabilities": [],
+      "verticals": [],
+      "link_route": null
+    },
+    {
+      "id": "tasks-portal.design-figma-preview",
+      "draft_sha256": "46b3baa80f815d4eab1b745fa48b2eb8a1a236d8fc50d4056f26f4de6bb85180",
+      "reviewed_by": "Gemini: source verification and editorial review",
+      "reviewed_on": "2026-10-12",
+      "evidence_sha256": {
+        "src/modules/features/tasks/types.ts": "19fb6a18d0334367841007d9dd4438c94f6982fffac65d35b32e46280f24a69a",
+        "src/modules/features/tasks/components/detail/task-attachments-section.tsx": "10a1f905661439fda17852e185a9433891b5fc2c1fd337b4d7844f81d48bd2f9",
+        "src/modules/features/tasks/components/collaborators/task-collaborators-manager.tsx": "286bb8d78ddf3adf5bc67c75321f1458ff18d87cd002c818e27645919cab87e6"
+      },
+      "required_modules": [
+        "module_tasks"
+      ],
+      "required_permissions": [],
+      "portal_profiles": [
+        "collaborator",
+        "qa",
+        "lead"
+      ],
+      "required_portal_capabilities": [
+        "design_preview"
+      ],
+      "verticals": [],
+      "link_route": null
+    },
+    {
+      "id": "tasks-portal.finance-and-costs",
+      "draft_sha256": "e83ed6238a173e5a311e7537dcaf203ed3b23eaadc32b832a74a0eab7b16848a",
+      "reviewed_by": "Gemini: source verification and editorial review",
+      "reviewed_on": "2026-10-12",
+      "evidence_sha256": {
+        "src/modules/features/tasks/types.ts": "19fb6a18d0334367841007d9dd4438c94f6982fffac65d35b32e46280f24a69a",
+        "src/modules/features/tasks/components/modals/task-detail-modal.tsx": "f10da2626f04b2eadcd7941d769b668a07f11c6b4893fafec3db52ef84bf4258",
+        "src/modules/features/tasks/components/collaborators/task-collaborators-manager.tsx": "286bb8d78ddf3adf5bc67c75321f1458ff18d87cd002c818e27645919cab87e6"
+      },
+      "required_modules": [
+        "module_tasks"
+      ],
+      "required_permissions": [],
+      "portal_profiles": [
+        "lead"
+      ],
+      "required_portal_capabilities": [
+        "finance_costs"
+      ],
+      "verticals": [],
+      "link_route": null
+    },
+    {
+      "id": "tasks-portal.meetings-and-meet",
+      "draft_sha256": "8097e7f211551773510b74cd0e74e5ff2ed9d4511fbd761cf8c970d628b93449",
+      "reviewed_by": "Gemini: source verification and editorial review",
+      "reviewed_on": "2026-10-12",
+      "evidence_sha256": {
+        "src/modules/features/tasks/actions/collaborator-portal-actions.ts": "aefb65fc8a8387d0f4f60c8a690c2a0d4e021cee5f40e1a79cfc8d901913457c",
+        "src/modules/features/tasks/components/meetings/task-meeting-console.tsx": "3ca2e492076fcf4951574ce8725d9e03d016e4087671eed99c1096acdeccdeea",
+        "src/modules/features/tasks/components/meetings/task-meeting-detail-modal.tsx": "1f914a80cd3210cd94c31e73aba6e75e0679d0cd1ef5cef6c907c42d59bf7f4a"
+      },
+      "required_modules": [
+        "module_tasks"
+      ],
+      "required_permissions": [],
+      "portal_profiles": [
+        "collaborator",
+        "qa",
+        "lead"
+      ],
+      "required_portal_capabilities": [],
+      "verticals": [],
+      "link_route": null
+    },
+    {
+      "id": "tasks-portal.monitoring-and-telemetry",
+      "draft_sha256": "5dc920cf14f782469777779bca43d630ad52e464d1c3f9396162621a808ea2ab",
+      "reviewed_by": "Gemini: source verification and editorial review",
+      "reviewed_on": "2026-10-12",
+      "evidence_sha256": {
+        "src/modules/features/tasks/types.ts": "19fb6a18d0334367841007d9dd4438c94f6982fffac65d35b32e46280f24a69a",
+        "src/modules/features/tasks/components/collaborators/task-collaborators-manager.tsx": "286bb8d78ddf3adf5bc67c75321f1458ff18d87cd002c818e27645919cab87e6",
+        "src/modules/features/tasks/components/modals/task-detail-modal.tsx": "f10da2626f04b2eadcd7941d769b668a07f11c6b4893fafec3db52ef84bf4258"
+      },
+      "required_modules": [
+        "module_tasks"
+      ],
+      "required_permissions": [],
+      "portal_profiles": [
+        "collaborator",
+        "qa",
+        "lead"
+      ],
+      "required_portal_capabilities": [
+        "monitoring"
+      ],
+      "verticals": [],
+      "link_route": null
+    },
+    {
+      "id": "tasks-portal.parallel-support-portal",
+      "draft_sha256": "a870e1a3e8551ddd5f17fd81314d50794a0f5516ea211bdbca25e2021e4f9765",
+      "reviewed_by": "Gemini: source verification and editorial review",
+      "reviewed_on": "2026-10-12",
+      "evidence_sha256": {
+        "src/modules/features/tasks/components/portal/task-parallel-support-portal.tsx": "8ae7702d5e417d951b974ae98c7b21a7857708d66cb65989cd24b01c0195914b",
+        "src/modules/features/tasks/components/portal/task-support-ticket-detail-modal.tsx": "4d92914dcd7d7406ddfab9da5e80c375868c0ae5df1db1afabe6573fceb58d1a"
+      },
+      "required_modules": [
+        "module_tasks"
+      ],
+      "required_permissions": [],
+      "portal_profiles": [
+        "support"
+      ],
+      "required_portal_capabilities": [],
+      "verticals": [],
+      "link_route": null
+    },
+    {
+      "id": "tasks-portal.pm-operations-dashboard",
+      "draft_sha256": "d5589c36a58412fa781c6f4a72d2e8f187e806d6c34fe0f621f4e06cf8b7b903",
+      "reviewed_by": "Gemini: source verification and editorial review",
+      "reviewed_on": "2026-10-12",
+      "evidence_sha256": {
+        "src/modules/features/tasks/components/portal/task-pm-operations-dashboard.tsx": "240289821e442c88229bfca9817691ded95151ed340ec5586be407365eae1136",
+        "src/modules/features/tasks/components/portal/task-collaborator-portal.tsx": "8f183e8347bba0dee9846f52766e4e2f1a3fe9e495d5afa4bb78c1cd764785ad"
+      },
+      "required_modules": [
+        "module_tasks"
+      ],
+      "required_permissions": [],
+      "portal_profiles": [
+        "lead"
+      ],
+      "required_portal_capabilities": [],
+      "verticals": [],
+      "link_route": null
+    },
+    {
+      "id": "tasks-portal.pm-weekly-pacing",
+      "draft_sha256": "7ffdc33c0b38a5323795d5c4d42fed2ff9ee11d8268b47a28486fbc4474af3f2",
+      "reviewed_by": "Gemini: source verification and editorial review",
+      "reviewed_on": "2026-10-12",
+      "evidence_sha256": {
+        "src/modules/features/tasks/components/pacing/task-weekly-pacing-matrix.tsx": "aabc1b38b3e804bebf12ea73fba55c5cf0c65747485f8498366012f473924103",
+        "src/modules/features/tasks/types.ts": "19fb6a18d0334367841007d9dd4438c94f6982fffac65d35b32e46280f24a69a"
+      },
+      "required_modules": [
+        "module_tasks"
+      ],
+      "required_permissions": [],
+      "portal_profiles": [
+        "lead"
+      ],
+      "required_portal_capabilities": [],
+      "verticals": [],
+      "link_route": null
+    },
+    {
+      "id": "tasks-portal.qa-review-flow",
+      "draft_sha256": "9607ba1a29eb3ae60a973583133011282a2f2b38ae10fe5280ed40581c56e130",
+      "reviewed_by": "Gemini: source verification and editorial review",
+      "reviewed_on": "2026-10-12",
+      "evidence_sha256": {
+        "src/modules/features/tasks/actions/collaborator-portal-actions.ts": "aefb65fc8a8387d0f4f60c8a690c2a0d4e021cee5f40e1a79cfc8d901913457c",
+        "src/modules/features/tasks/components/portal/task-collaborator-portal.tsx": "8f183e8347bba0dee9846f52766e4e2f1a3fe9e495d5afa4bb78c1cd764785ad"
+      },
+      "required_modules": [
+        "module_tasks"
+      ],
+      "required_permissions": [],
+      "portal_profiles": [
+        "qa",
+        "lead"
+      ],
+      "required_portal_capabilities": [],
+      "verticals": [],
+      "link_route": null
+    },
+    {
+      "id": "tasks-portal.quick-notes",
+      "draft_sha256": "0713b9b662727251d99cb6de6afd0da9add58c72b8804492a78199568357d069",
+      "reviewed_by": "Gemini: source verification and editorial review",
+      "reviewed_on": "2026-10-12",
+      "evidence_sha256": {
+        "src/modules/features/tasks/actions/collaborator-portal-actions.ts": "aefb65fc8a8387d0f4f60c8a690c2a0d4e021cee5f40e1a79cfc8d901913457c",
+        "src/modules/features/tasks/components/shared/task-quick-note-action.tsx": "bb6976c17461dadcf6bf27732cc4d03f95d266fae2d58031606d290703bcc7b6"
+      },
+      "required_modules": [
+        "module_tasks"
+      ],
+      "required_permissions": [],
+      "portal_profiles": [
+        "collaborator",
+        "qa",
+        "lead"
+      ],
+      "required_portal_capabilities": [],
+      "verticals": [],
+      "link_route": null
+    },
+    {
+      "id": "tasks-portal.subtasks-checklist",
+      "draft_sha256": "04b310671aedc379159d141fe0e244b0dd81cb57adb5b8819c6465cb83327f2e",
+      "reviewed_by": "Gemini: source verification and editorial review",
+      "reviewed_on": "2026-10-12",
+      "evidence_sha256": {
+        "src/modules/features/tasks/actions/collaborator-portal-actions.ts": "aefb65fc8a8387d0f4f60c8a690c2a0d4e021cee5f40e1a79cfc8d901913457c",
+        "src/modules/features/tasks/components/detail/task-checklist-editor.tsx": "b9c090f7428aea1b974ffcde88f468b3c33a8f4338825ccb334de35a63c768b0"
+      },
+      "required_modules": [
+        "module_tasks"
+      ],
+      "required_permissions": [],
+      "portal_profiles": [
+        "collaborator",
+        "qa",
+        "lead"
+      ],
+      "required_portal_capabilities": [],
+      "verticals": [],
+      "link_route": null
+    },
+    {
+      "id": "tasks-portal.support-tickets-collaboration",
+      "draft_sha256": "56225d5daa419bec1ff83df60eb05fc9b35334c54cbd8f01cbfdc4009264d2f0",
+      "reviewed_by": "Gemini: source verification and editorial review",
+      "reviewed_on": "2026-10-12",
+      "evidence_sha256": {
+        "src/modules/features/tasks/components/portal/task-collaborator-portal.tsx": "8f183e8347bba0dee9846f52766e4e2f1a3fe9e495d5afa4bb78c1cd764785ad",
+        "src/modules/features/tasks/components/portal/task-support-ticket-detail-modal.tsx": "4d92914dcd7d7406ddfab9da5e80c375868c0ae5df1db1afabe6573fceb58d1a"
+      },
+      "required_modules": [
+        "module_tasks"
+      ],
+      "required_permissions": [],
+      "portal_profiles": [
+        "collaborator",
+        "qa",
+        "lead",
+        "support"
+      ],
+      "required_portal_capabilities": [],
+      "verticals": [],
+      "link_route": null
+    },
+    {
+      "id": "tasks-portal.task-lifecycle-and-status",
+      "draft_sha256": "aafa5b2e9deb410e296c954657304f673f46ca6eef0acd6d92572a2b7582b864",
+      "reviewed_by": "Gemini: source verification and editorial review",
+      "reviewed_on": "2026-10-12",
+      "evidence_sha256": {
+        "src/modules/features/tasks/actions/collaborator-portal-actions.ts": "aefb65fc8a8387d0f4f60c8a690c2a0d4e021cee5f40e1a79cfc8d901913457c",
+        "src/modules/features/tasks/components/shared/task-status-interactive-badge.tsx": "41b4722949b52bdbbdc0ff6b6f42a76c7f19c8ca9c95adc29feab0b06eb35404"
+      },
+      "required_modules": [
+        "module_tasks"
+      ],
+      "required_permissions": [],
+      "portal_profiles": [
+        "collaborator",
+        "qa",
+        "lead"
+      ],
+      "required_portal_capabilities": [],
+      "verticals": [],
+      "link_route": null
+    },
+    {
+      "id": "tasks-portal.task-progress-and-slider",
+      "draft_sha256": "1fc0704ef306b2ff9e16a17ed9d0c97cbf7a9bdcf5784861c83fa13553ac1873",
+      "reviewed_by": "Gemini: source verification and editorial review",
+      "reviewed_on": "2026-10-12",
+      "evidence_sha256": {
+        "src/modules/features/tasks/actions/collaborator-portal-actions.ts": "aefb65fc8a8387d0f4f60c8a690c2a0d4e021cee5f40e1a79cfc8d901913457c",
+        "src/modules/features/tasks/components/portal/task-collaborator-portal.tsx": "8f183e8347bba0dee9846f52766e4e2f1a3fe9e495d5afa4bb78c1cd764785ad"
+      },
+      "required_modules": [
+        "module_tasks"
+      ],
+      "required_permissions": [],
+      "portal_profiles": [
+        "collaborator",
+        "qa",
+        "lead"
+      ],
+      "required_portal_capabilities": [],
+      "verticals": [],
+      "link_route": null
+    },
+    {
+      "id": "tasks-portal.vcs-git-integration",
+      "draft_sha256": "7c5aeb51d8c1122b0466307381c8411a3379e8a3dbb202289d81d22f03106808",
+      "reviewed_by": "Gemini: source verification and editorial review",
+      "reviewed_on": "2026-10-12",
+      "evidence_sha256": {
+        "src/modules/features/tasks/components/detail/task-vcs-container.tsx": "8b78d2a4e5949183045d7ed8b655e90eda6e75b65e6f1a39edaaccef95070655",
+        "src/modules/features/tasks/components/portal/task-portal-detail-modal.tsx": "fd07f195631d66f30c372da7d0387b89cbd9a36b6045c89d5eb2ce24cc6528a0",
+        "src/modules/features/tasks/types.ts": "19fb6a18d0334367841007d9dd4438c94f6982fffac65d35b32e46280f24a69a"
+      },
+      "required_modules": [
+        "module_tasks"
+      ],
+      "required_permissions": [],
+      "portal_profiles": [
+        "collaborator",
+        "qa",
+        "lead"
+      ],
+      "required_portal_capabilities": [
+        "vcs_code"
+      ],
+      "verticals": [],
+      "link_route": null
+    },
+    {
+      "id": "tasks-portal.view-modes-and-filters",
+      "draft_sha256": "0bb99379d85aa5abc173e077082b1a965eb2baf7c053bc902a4f2c7bd64025c9",
+      "reviewed_by": "Gemini: source verification and editorial review",
+      "reviewed_on": "2026-10-12",
+      "evidence_sha256": {
+        "src/modules/features/tasks/components/portal/task-collaborator-portal.tsx": "8f183e8347bba0dee9846f52766e4e2f1a3fe9e495d5afa4bb78c1cd764785ad",
+        "src/modules/core/ui/components/search-filter-bar.tsx": "7a132f0a627ccb8c3a6394f422d8d1324badc5e2333e2dc229ca5705ba3e9270",
+        "src/modules/features/tasks/components/shared/task-meeting-view-toggle.tsx": "7277ed5a5e898aa512baed27b9751ad3c24d6db55463ae4f338d6552bf1edd3e"
+      },
+      "required_modules": [
+        "module_tasks"
+      ],
+      "required_permissions": [],
+      "portal_profiles": [
+        "collaborator",
+        "qa",
+        "lead"
+      ],
+      "required_portal_capabilities": [],
+      "verticals": [],
+      "link_route": null
+    },
+    {
+      "id": "tasks-portal.worklog-and-hours",
+      "draft_sha256": "6a82052c98284ea5651ccffdeee116a78a7e9aa1f4bef44187afea00959de90b",
+      "reviewed_by": "Gemini: source verification and editorial review",
+      "reviewed_on": "2026-10-12",
+      "evidence_sha256": {
+        "src/modules/features/tasks/actions/collaborator-portal-actions.ts": "aefb65fc8a8387d0f4f60c8a690c2a0d4e021cee5f40e1a79cfc8d901913457c",
+        "src/modules/features/tasks/components/shared/task-log-work-modal.tsx": "170e2068fdaf9880d2cd6511949511b80571c84cc4aadcfe93d43a3684a6302d"
+      },
+      "required_modules": [
+        "module_tasks"
+      ],
+      "required_permissions": [],
+      "portal_profiles": [
+        "collaborator",
+        "qa",
+        "lead"
+      ],
+      "required_portal_capabilities": [],
+      "verticals": [],
+      "link_route": null
+    }
+  ]
+}

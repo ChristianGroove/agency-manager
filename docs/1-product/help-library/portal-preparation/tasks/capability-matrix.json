@@ -83,6 +83,19 @@
       },
       "resolution": "resolveCollaboratorCapabilities(collaborator).finance_costs",
       "evidence": "src/modules/features/tasks/types.ts#L900-L960"
+    },
+    "bulk_delete": {
+      "name": "Eliminación Masiva de Tareas en Lote",
+      "defaults_by_role": {
+        "pm": true,
+        "developer": false,
+        "designer": false,
+        "qa_lead": false,
+        "specialist": false,
+        "support": false
+      },
+      "resolution": "staff.can_bulk_delete_tasks ?? isLeadOrPm",
+      "evidence": "src/modules/features/tasks/actions/collaborator-portal-actions.ts#L2852-L2905"
     }
   },
   "matrix": [
@@ -242,9 +255,49 @@
       "ui_visibility": "Pestaña 'Código / VCS' en el modal de detalle renderizada si capabilities.vcs_code === true",
       "server_authorization": "TaskVcsContainer y task-vcs-service validan permisos derivados de rol o configuración del colaborador.",
       "allowed_profiles": ["developer", "qa_specialist", "pm_lead"],
-      "required_context": "capabilities.vcs_code === true",
+      "required_context": "capabilities.vcs_code === true (requisito por registro: pertenencia al proyecto de la tarea)",
       "evidence": "src/modules/features/tasks/components/detail/task-vcs-container.tsx#L1-L80",
       "gap_or_discrepancy": "Diseñadores y personal administrativo no ven la pestaña de código a menos que tengan un override explícito en staff.settings.capabilities."
+    },
+    {
+      "function_id": "func.design_preview",
+      "name": "Previsualización Embebida de Prototipos de Diseño (Figma)",
+      "ui_visibility": "Pestaña 'Diseño / Prototipo' en el modal de detalle renderizada si capabilities.design_preview === true",
+      "server_authorization": "TaskAttachmentsSection y TaskCollaboratorsManager resuelven capability; requiere URL válida de Figma en adjuntos",
+      "allowed_profiles": ["designer", "qa_specialist", "pm_lead"],
+      "required_context": "capabilities.design_preview === true (requisito por registro: adjunto con URL de figma.com en la tarea)",
+      "evidence": "src/modules/features/tasks/components/detail/task-attachments-section.tsx#L40-L110",
+      "gap_or_discrepancy": "Si la tarea no tiene un enlace de Figma en los adjuntos, la pestaña informa que no hay diseño vinculado."
+    },
+    {
+      "function_id": "func.monitoring_telemetry",
+      "name": "Telemetría y Monitoreo de Excepciones Técnicas (Sentry / APM)",
+      "ui_visibility": "Pestaña 'Monitoreo' en el modal de detalle renderizada si capabilities.monitoring === true",
+      "server_authorization": "TaskDetailModal y TaskCollaboratorsManager evalúan capability de monitoreo activa",
+      "allowed_profiles": ["developer", "qa_specialist", "pm_lead"],
+      "required_context": "capabilities.monitoring === true (requisito por registro: tarea vinculada a servicio/repositorio con DSN configurado)",
+      "evidence": "src/modules/features/tasks/components/detail/task-detail-modal.tsx#L250-L310",
+      "gap_or_discrepancy": "La pestaña es de solo lectura; no permite alterar trazas ni configuración de alertas del servidor."
+    },
+    {
+      "function_id": "func.finance_costs",
+      "name": "Consulta de Costos Financieros y Márgenes de Tarea",
+      "ui_visibility": "Pestaña 'Costos y Finanzas' en el modal de detalle renderizada si capabilities.finance_costs === true",
+      "server_authorization": "TaskDetailModal evalúa capability confidencial; restringido por defecto a roles directivos/PM",
+      "allowed_profiles": ["pm_lead"],
+      "required_context": "capabilities.finance_costs === true (requisito por registro: pertenencia como líder del workspace/proyecto)",
+      "evidence": "src/modules/features/tasks/components/detail/task-detail-modal.tsx#L320-L380",
+      "gap_or_discrepancy": "Desarrolladores y QA nunca ven esta pestaña en sus portales aunque estén asignados a la tarea."
+    },
+    {
+      "function_id": "func.support_ticket_consultation",
+      "name": "Consulta y Colaboración en Tickets de Soporte (#SUP-)",
+      "ui_visibility": "Modal TaskSupportTicketDetailModal abierto desde TaskCollaboratorPortal al hacer clic en tarea con origin_type='support' o prefijo 'SUP-'",
+      "server_authorization": "getCollaboratorPortalData entrega tickets SUP asignados o relacionados al colaborador; portalAddTicketMessage para respuestas",
+      "allowed_profiles": ["all_collaborators"],
+      "required_context": "task.origin_type === 'support' || task.ticket_code.startsWith('SUP-') (requisito por registro: asignación o involucramiento directo en el ticket)",
+      "evidence": "src/modules/features/tasks/components/portal/task-collaborator-portal.tsx#L1145, src/modules/features/tasks/components/portal/task-support-ticket-detail-modal.tsx#L1-L150",
+      "gap_or_discrepancy": "Permite a desarrolladores y colaboradores operativos atender consultas técnicas de soporte sin tener el rol ni acceso al portal exclusivo de soporte."
     }
   ]
 }

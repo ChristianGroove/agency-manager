@@ -31,6 +31,8 @@ Este informe documenta con exactitud de línea y símbolo las contradicciones de
 | **GAP-06** | Gobernanza Forzada en Creación | Campos de horas estimadas y fecha límite visibles en UI compartida | Forzado en backend: `status='backlog'`, `estimated_hours=0`, `due_date=null` para no-PMs | **Baja (Expectativa UX)** | Guías separadas (`create-task-collaborator` vs `create-task-pm`) explicitando que las horas y fechas requieren aprobación de PM. |
 | **GAP-07** | Desvío Silencioso de 'done' con Subtareas Incompletas | El usuario selecciona estado "Completada" (`done`) | Backend intercepta y desvía forzosamente a `status='in_review'` con progreso al 95% | **Media (Confusión UX)** | Explicar explícitamente en guías que cualquier subtarea pendiente impedirá sellar la tarea en `done`. |
 | **GAP-08** | Ciclo de Vida de Tokens y Expiración | El colaborador percibe una sesión permanente mientras tenga el enlace | No existe expiración por TTL temporal en `organization_staff.access_token` (solo revocación manual o `is_active=false`) | **Informativa (Arquitectura)** | Aclarar que el enlace es privado y permanente hasta que el administrador lo revoque o desactive la cuenta. |
+| **GAP-09** | Consulta de Tickets SUP por Colaboradores Operativos | Colaboradores ven tickets con prefijo `SUP-` y abren `TaskSupportTicketDetailModal` al hacer clic | Backend autoriza lectura/mensajes vía `portalAddTicketMessage`; la vista exclusiva `TaskParallelSupportPortal` se reserva a rol `support` | **Baja (Claridad de Perfiles)** | Guía dedicada `tasks-portal.support-tickets-collaboration` para todos los colaboradores; no ampliar la guía del portal de soporte exclusivo (caso Q045). |
+| **GAP-10** | Perfiles del Bot vs Requisitos de Mutación por Registro | El perfil de ayuda (`developer`, `lead`, etc.) autoriza qué guías mostrar en el chat | Las mutaciones en backend exigen pertenencia por registro (`assigned_staff_id`, `qa_staff_id`, workspace de la tarea) | **Alta (Gobernanza)** | Separar problemas de ayuda de vulnerabilidades de producto; explicitar en cada procedimiento los requisitos por registro. |
 
 ---
 
@@ -233,8 +235,50 @@ Este informe documenta con exactitud de línea y símbolo las contradicciones de
 
 ---
 
+### GAP-09: Separación entre Consulta Colaborativa de Tickets SUP y Portal Exclusivo de Soporte (Caso Q045)
+- **Archivos y líneas de evidencia:**
+  - Redirección en portal operativo: `src/modules/features/tasks/components/portal/task-collaborator-portal.tsx#L1145` (`setSelectedSupportTicketForConsultation(task)` si `task.origin_type === "support" || task.ticket_code?.startsWith("SUP-")`).
+  - Modal de consulta: `src/modules/features/tasks/components/portal/task-support-ticket-detail-modal.tsx#L1-L150`.
+  - Portal de soporte dedicado: `src/modules/features/tasks/components/portal/task-parallel-support-portal.tsx#L1-L120`.
+- **Análisis de código:**
+  ```tsx
+  // task-collaborator-portal.tsx (L1144-L1150)
+  const isSup = task.origin_type === "support" || task.ticket_code?.startsWith("SUP-");
+  if (isSup) {
+    setSelectedSupportTicketForConsultation(task);
+    return;
+  }
+  setSelectedTaskForModal(task);
+  ```
+- **Problema evaluado (Caso Q045):** El caso de prueba 045 está marcado para `all_collaborators` y pregunta `¿Qué significa el prefijo SUP en un ticket?`, esperando originalmente la guía de soporte exclusiva `tasks-portal.parallel-support-portal`. Sin embargo, `tasks-portal.parallel-support-portal` exige estrictamente el perfil `portal_profiles: ["support"]`. Ampliar el acceso a esa guía abriría procedimientos internos de triaje y atención a clientes a desarrolladores o diseñadores ordinarios, lo cual es conceptualmente erróneo. Por otro lado, cualquier colaborador que tenga un ticket derivado de soporte (`#SUP-`) en su tablero de tareas puede hacer clic en él y abrir `TaskSupportTicketDetailModal` para consultar la descripción del cliente y enviar notas técnicas.
+- **Decisión editorial:**
+  1. Se creó una guía general dedicada: `tasks-portal.support-tickets-collaboration.md`, con `portal_profiles: ["collaborator", "qa", "lead", "support"]`, documentando la consulta de requerimientos `#SUP-` desde el portal operativo.
+  2. Se reservó `tasks-portal.parallel-support-portal.md` exclusivamente para el perfil `support`.
+  3. Se actualizó el caso 045 en `questions.json` para apuntar a `tasks-portal.support-tickets-collaboration`, resolviendo la contradicción sin distorsionar los perfiles de seguridad.
+
+---
+
+### GAP-10: Distinción entre Perfiles del Asistente de Ayuda y Reglas de Autorización por Registro (Backend)
+- **Archivos y líneas de evidencia:**
+  - Resolución de capacidades de ayuda: `src/modules/features/caa/library/retrieval.ts#L45-L65` (`portal_profiles`, `required_portal_capabilities`).
+  - Autorización en base de datos: `src/modules/features/tasks/actions/collaborator-portal-actions.ts#L1000-L1015`, `#L1315-L1330`, `#L2645-L2660`.
+- **Análisis de diseño:**
+  - Los perfiles de ayuda (`developer`, `qa_specialist`, `pm_lead`, `designer`, `specialist`, `support`) determinan **qué artículos o explicaciones puede recuperar y mostrar el asistente en el chat**.
+  - Sin embargo, las acciones del producto en Supabase requieren comprobaciones **por registro** (*per-record guards*):
+    - Mover progreso de tarea: exige `assigned_staff_id === staff.id` o rol directivo.
+    - Marcar subtarea: exige `checklist_item.assigned_staff_id === staff.id` o ser dueño de la tarea principal / PM.
+    - Mover a `done`: bloqueado si hay subtareas incompletas (desvío a `in_review` 95%), y requiere que el flujo del proyecto autorice sellado sin QA o que el usuario sea el QA asignado.
+    - Consultar rama Git o prototipo Figma: exige pertenencia al proyecto o workspace donde reside la tarea.
+- **Separación de responsabilidades:**
+  - **Problemas de Ayuda (Editorial):** Se resolvieron haciendo explícitos los requisitos por registro en el cuerpo de cada procedimiento (ej. "Requisitos por registro: debes figurar como responsable de la subtarea para marcarla", "Requisitos: la tarea debe tener un enlace figma.com en adjuntos"). Los perfiles del bot no autorizan mutaciones del producto; el bot es puramente consultivo.
+  - **Vulnerabilidades de Producto (Backend):** Identificadas en GAP-01 (`portalUpdateTaskPriority` sin validación de rol) y GAP-02 (`portalAssignTask` sin validación de rol). Deben ser corregidas en código por el equipo de backend, no enmascaradas en la documentación.
+
+---
+
 ## 4. Conclusiones y Guía para Integración
 
-1. **Blindaje de Server Actions:** El equipo de desarrollo backend debe priorizar la incorporación de la guarda `isLeadOrPm` en `portalUpdateTaskPriority` y `portalAssignTask` para evitar que peticiones forjadas desde clientes HTTP modifiquen asignaciones y prioridades.
-2. **Claridad Editorial:** Las 18 guías generadas en `docs/1-product/help-library/portal-preparation/tasks/articles/` se alinean a la experiencia visual y a las reglas de negocio verificadas, previniendo falsas expectativas operativas.
-3. **No regresión:** No se modificó ningún archivo de código fuente del repositorio, respetando de forma estricta las instrucciones del encargo editorial.
+1. **Separación Estricta:** Queda formalmente disociada la gobernanza documental (asistente de ayuda puramente explicativo y gobernado por perfiles de lectura) de la autorización transaccional de la base de datos (gobernada por tokens de sesión y asignaciones por registro).
+2. **Blindaje de Server Actions:** El equipo de desarrollo backend debe priorizar la incorporación de la guarda `isLeadOrPm` en `portalUpdateTaskPriority` y `portalAssignTask` (GAP-01 y GAP-02) para evitar que peticiones forjadas desde clientes HTTP modifiquen asignaciones y prioridades.
+3. **División de Capacidades Técnicas:** La partición de `tasks-portal.technical-capabilities` en 4 guías independientes (`vcs-git-integration`, `design-figma-preview`, `monitoring-and-telemetry`, `finance-and-costs`) garantiza el principio de mínimo privilegio: un desarrollador consulta Git y Sentry sin necesidad de acceso a costos confidenciales, y un diseñador consulta Figma sin requerir herramientas de servidor.
+4. **Claridad Editorial y Cobertura:** Las 22 guías del portal de tareas se alinean a la experiencia visual y a las reglas de negocio verificadas, previniendo falsas expectativas operativas.
+5. **No regresión:** No se modificó ningún archivo de código fuente del repositorio, respetando de forma estricta las instrucciones del encargo editorial.

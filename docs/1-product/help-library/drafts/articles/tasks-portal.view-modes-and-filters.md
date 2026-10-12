@@ -18,8 +18,17 @@ keywords:
   - kanban
   - calendario
   - filtros
+  - filtro
+  - filtrar
+  - proyecto
+  - proyectos
   - reuniones
   - buscador
+  - buscar
+  - busco
+  - codigo
+  - ticket
+  - tk
 requirements:
   - 'Acceso al portal de tareas en modo operaciones (`portalMode: ''operations''`)'
 evidence:

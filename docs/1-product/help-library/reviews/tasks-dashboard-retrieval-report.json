@@ -1,0 +1,661 @@
+{
+  "corpus_revision": "b4d8246f80785623dda03822d5bb7a9ad045c149b685ff413095d1ddb2b2fcea",
+  "dashboard_tasks_articles": 6,
+  "total_cases": 55,
+  "answer_cases": 35,
+  "retrieval_hits": 35,
+  "retrieval_misses": 0,
+  "clarify_cases": 10,
+  "abstain_cases": 10,
+  "management_filter_checks": 5,
+  "note": "Retrieval uses a synthetic authorized manager. Runtime permissions, factual correctness, model answers, latency and cost require separate verification. Clarify/abstain remain separate.",
+  "cases": [
+    {
+      "id": "q.dashboard.tasks.001",
+      "expected_behavior": "answer",
+      "expected_article_ids": [
+        "tasks.meetings-and-calendar"
+      ],
+      "retrieved": [
+        "tasks.meetings-and-calendar",
+        "tasks.manage-tasks",
+        "tasks.import-data"
+      ],
+      "status": "retrieval_hit"
+    },
+    {
+      "id": "q.dashboard.tasks.002",
+      "expected_behavior": "answer",
+      "expected_article_ids": [
+        "tasks.manage-tasks"
+      ],
+      "retrieved": [
+        "tasks.manage-tasks",
+        "tasks.collaborators-and-portals",
+        "tasks.import-data"
+      ],
+      "status": "retrieval_hit"
+    },
+    {
+      "id": "q.dashboard.tasks.003",
+      "expected_behavior": "answer",
+      "expected_article_ids": [
+        "tasks.meetings-and-calendar"
+      ],
+      "retrieved": [
+        "tasks.meetings-and-calendar"
+      ],
+      "status": "retrieval_hit"
+    },
+    {
+      "id": "q.dashboard.tasks.004",
+      "expected_behavior": "answer",
+      "expected_article_ids": [
+        "tasks.meetings-and-calendar"
+      ],
+      "retrieved": [
+        "tasks.meetings-and-calendar",
+        "tasks.manage-tasks",
+        "tasks.import-data"
+      ],
+      "status": "retrieval_hit"
+    },
+    {
+      "id": "q.dashboard.tasks.005",
+      "expected_behavior": "answer",
+      "expected_article_ids": [
+        "tasks.meetings-and-calendar"
+      ],
+      "retrieved": [
+        "tasks.meetings-and-calendar"
+      ],
+      "status": "retrieval_hit"
+    },
+    {
+      "id": "q.dashboard.tasks.006",
+      "expected_behavior": "answer",
+      "expected_article_ids": [
+        "tasks.meetings-and-calendar"
+      ],
+      "retrieved": [
+        "tasks.meetings-and-calendar",
+        "tasks.manage-tasks"
+      ],
+      "status": "retrieval_hit"
+    },
+    {
+      "id": "q.dashboard.tasks.007",
+      "expected_behavior": "answer",
+      "expected_article_ids": [
+        "tasks.meetings-and-calendar"
+      ],
+      "retrieved": [
+        "tasks.meetings-and-calendar"
+      ],
+      "status": "retrieval_hit"
+    },
+    {
+      "id": "q.dashboard.tasks.008",
+      "expected_behavior": "answer",
+      "expected_article_ids": [
+        "tasks.meetings-and-calendar",
+        "tasks.manage-tasks"
+      ],
+      "retrieved": [
+        "tasks.meetings-and-calendar"
+      ],
+      "status": "retrieval_hit"
+    },
+    {
+      "id": "q.dashboard.tasks.009",
+      "expected_behavior": "answer",
+      "expected_article_ids": [
+        "tasks.meetings-and-calendar"
+      ],
+      "retrieved": [
+        "tasks.meetings-and-calendar"
+      ],
+      "status": "retrieval_hit"
+    },
+    {
+      "id": "q.dashboard.tasks.010",
+      "expected_behavior": "answer",
+      "expected_article_ids": [
+        "tasks.meetings-and-calendar",
+        "tasks.sprint-planning-and-pacing"
+      ],
+      "retrieved": [
+        "tasks.manage-tasks",
+        "tasks.meetings-and-calendar"
+      ],
+      "status": "retrieval_hit"
+    },
+    {
+      "id": "q.dashboard.tasks.011",
+      "expected_behavior": "answer",
+      "expected_article_ids": [
+        "tasks.manage-tasks",
+        "tasks.task-lifecycle-and-views"
+      ],
+      "retrieved": [
+        "tasks.meetings-and-calendar",
+        "tasks.manage-tasks"
+      ],
+      "status": "retrieval_hit"
+    },
+    {
+      "id": "q.dashboard.tasks.012",
+      "expected_behavior": "answer",
+      "expected_article_ids": [
+        "tasks.task-lifecycle-and-views"
+      ],
+      "retrieved": [
+        "tasks.task-lifecycle-and-views",
+        "tasks.manage-tasks"
+      ],
+      "status": "retrieval_hit"
+    },
+    {
+      "id": "q.dashboard.tasks.013",
+      "expected_behavior": "answer",
+      "expected_article_ids": [
+        "tasks.task-lifecycle-and-views"
+      ],
+      "retrieved": [
+        "tasks.task-lifecycle-and-views",
+        "pet.pet-interaction"
+      ],
+      "status": "retrieval_hit"
+    },
+    {
+      "id": "q.dashboard.tasks.014",
+      "expected_behavior": "answer",
+      "expected_article_ids": [
+        "tasks.task-lifecycle-and-views"
+      ],
+      "retrieved": [
+        "tasks.task-lifecycle-and-views"
+      ],
+      "status": "retrieval_hit"
+    },
+    {
+      "id": "q.dashboard.tasks.015",
+      "expected_behavior": "answer",
+      "expected_article_ids": [
+        "tasks.task-lifecycle-and-views"
+      ],
+      "retrieved": [
+        "tasks.task-lifecycle-and-views"
+      ],
+      "status": "retrieval_hit"
+    },
+    {
+      "id": "q.dashboard.tasks.016",
+      "expected_behavior": "answer",
+      "expected_article_ids": [
+        "tasks.manage-tasks",
+        "tasks.task-lifecycle-and-views"
+      ],
+      "retrieved": [
+        "tasks.task-lifecycle-and-views",
+        "tasks.manage-tasks",
+        "tasks.import-data"
+      ],
+      "status": "retrieval_hit"
+    },
+    {
+      "id": "q.dashboard.tasks.017",
+      "expected_behavior": "answer",
+      "expected_article_ids": [
+        "tasks.manage-tasks"
+      ],
+      "retrieved": [
+        "tasks.manage-tasks",
+        "tasks.sprint-planning-and-pacing",
+        "tasks.task-lifecycle-and-views"
+      ],
+      "status": "retrieval_hit"
+    },
+    {
+      "id": "q.dashboard.tasks.018",
+      "expected_behavior": "answer",
+      "expected_article_ids": [
+        "tasks.manage-tasks"
+      ],
+      "retrieved": [
+        "tasks.manage-tasks",
+        "tasks.collaborators-and-portals",
+        "tasks.task-lifecycle-and-views"
+      ],
+      "status": "retrieval_hit"
+    },
+    {
+      "id": "q.dashboard.tasks.019",
+      "expected_behavior": "answer",
+      "expected_article_ids": [
+        "tasks.manage-tasks"
+      ],
+      "retrieved": [
+        "tasks.manage-tasks",
+        "tasks.collaborators-and-portals",
+        "tasks.import-data"
+      ],
+      "status": "retrieval_hit"
+    },
+    {
+      "id": "q.dashboard.tasks.020",
+      "expected_behavior": "answer",
+      "expected_article_ids": [
+        "tasks.manage-tasks"
+      ],
+      "retrieved": [
+        "tasks.manage-tasks",
+        "tasks.task-lifecycle-and-views",
+        "tasks.collaborators-and-portals"
+      ],
+      "status": "retrieval_hit"
+    },
+    {
+      "id": "q.dashboard.tasks.021",
+      "expected_behavior": "answer",
+      "expected_article_ids": [
+        "tasks.collaborators-and-portals"
+      ],
+      "retrieved": [
+        "tasks.collaborators-and-portals",
+        "tasks.manage-tasks"
+      ],
+      "status": "retrieval_hit"
+    },
+    {
+      "id": "q.dashboard.tasks.022",
+      "expected_behavior": "answer",
+      "expected_article_ids": [
+        "tasks.collaborators-and-portals"
+      ],
+      "retrieved": [
+        "tasks.collaborators-and-portals"
+      ],
+      "status": "retrieval_hit"
+    },
+    {
+      "id": "q.dashboard.tasks.023",
+      "expected_behavior": "answer",
+      "expected_article_ids": [
+        "tasks.collaborators-and-portals"
+      ],
+      "retrieved": [
+        "tasks.collaborators-and-portals",
+        "tasks.meetings-and-calendar"
+      ],
+      "status": "retrieval_hit"
+    },
+    {
+      "id": "q.dashboard.tasks.024",
+      "expected_behavior": "answer",
+      "expected_article_ids": [
+        "tasks.collaborators-and-portals"
+      ],
+      "retrieved": [
+        "tasks.collaborators-and-portals",
+        "tasks.manage-tasks",
+        "tasks.sprint-planning-and-pacing"
+      ],
+      "status": "retrieval_hit"
+    },
+    {
+      "id": "q.dashboard.tasks.025",
+      "expected_behavior": "answer",
+      "expected_article_ids": [
+        "tasks.collaborators-and-portals"
+      ],
+      "retrieved": [
+        "tasks.collaborators-and-portals"
+      ],
+      "status": "retrieval_hit"
+    },
+    {
+      "id": "q.dashboard.tasks.026",
+      "expected_behavior": "answer",
+      "expected_article_ids": [
+        "tasks.sprint-planning-and-pacing"
+      ],
+      "retrieved": [
+        "tasks.manage-tasks",
+        "tasks.sprint-planning-and-pacing",
+        "tasks.collaborators-and-portals"
+      ],
+      "status": "retrieval_hit"
+    },
+    {
+      "id": "q.dashboard.tasks.027",
+      "expected_behavior": "answer",
+      "expected_article_ids": [
+        "tasks.sprint-planning-and-pacing"
+      ],
+      "retrieved": [
+        "tasks.sprint-planning-and-pacing",
+        "tasks.manage-tasks"
+      ],
+      "status": "retrieval_hit"
+    },
+    {
+      "id": "q.dashboard.tasks.028",
+      "expected_behavior": "answer",
+      "expected_article_ids": [
+        "tasks.sprint-planning-and-pacing"
+      ],
+      "retrieved": [
+        "tasks.sprint-planning-and-pacing",
+        "tasks.manage-tasks"
+      ],
+      "status": "retrieval_hit"
+    },
+    {
+      "id": "q.dashboard.tasks.029",
+      "expected_behavior": "answer",
+      "expected_article_ids": [
+        "tasks.sprint-planning-and-pacing"
+      ],
+      "retrieved": [
+        "tasks.sprint-planning-and-pacing",
+        "tasks.manage-tasks"
+      ],
+      "status": "retrieval_hit"
+    },
+    {
+      "id": "q.dashboard.tasks.030",
+      "expected_behavior": "answer",
+      "expected_article_ids": [
+        "tasks.sprint-planning-and-pacing"
+      ],
+      "retrieved": [
+        "tasks.manage-tasks",
+        "tasks.sprint-planning-and-pacing",
+        "tasks.task-lifecycle-and-views"
+      ],
+      "status": "retrieval_hit"
+    },
+    {
+      "id": "q.dashboard.tasks.031",
+      "expected_behavior": "answer",
+      "expected_article_ids": [
+        "tasks.import-data"
+      ],
+      "retrieved": [
+        "tasks.import-data",
+        "tasks.manage-tasks",
+        "tasks.task-lifecycle-and-views"
+      ],
+      "status": "retrieval_hit"
+    },
+    {
+      "id": "q.dashboard.tasks.032",
+      "expected_behavior": "answer",
+      "expected_article_ids": [
+        "tasks.import-data"
+      ],
+      "retrieved": [
+        "tasks.import-data",
+        "tasks.manage-tasks"
+      ],
+      "status": "retrieval_hit"
+    },
+    {
+      "id": "q.dashboard.tasks.033",
+      "expected_behavior": "answer",
+      "expected_article_ids": [
+        "tasks.import-data"
+      ],
+      "retrieved": [
+        "tasks.import-data",
+        "tasks.manage-tasks"
+      ],
+      "status": "retrieval_hit"
+    },
+    {
+      "id": "q.dashboard.tasks.034",
+      "expected_behavior": "answer",
+      "expected_article_ids": [
+        "tasks.manage-tasks",
+        "tasks.meetings-and-calendar"
+      ],
+      "retrieved": [
+        "tasks.meetings-and-calendar",
+        "tasks.task-lifecycle-and-views"
+      ],
+      "status": "retrieval_hit"
+    },
+    {
+      "id": "q.dashboard.tasks.035",
+      "expected_behavior": "answer",
+      "expected_article_ids": [
+        "tasks.manage-tasks",
+        "tasks.task-lifecycle-and-views"
+      ],
+      "retrieved": [
+        "tasks.task-lifecycle-and-views",
+        "tasks.manage-tasks"
+      ],
+      "status": "retrieval_hit"
+    },
+    {
+      "id": "q.dashboard.tasks.036",
+      "expected_behavior": "clarify",
+      "expected_article_ids": [
+        "tasks.meetings-and-calendar"
+      ],
+      "retrieved": [
+        "tasks.meetings-and-calendar",
+        "tasks.manage-tasks"
+      ],
+      "status": "requires_model_or_manual_boundary_check"
+    },
+    {
+      "id": "q.dashboard.tasks.037",
+      "expected_behavior": "clarify",
+      "expected_article_ids": [
+        "tasks.task-lifecycle-and-views"
+      ],
+      "retrieved": [
+        "tasks.task-lifecycle-and-views",
+        "pet.pet-interaction",
+        "tasks.import-data"
+      ],
+      "status": "requires_model_or_manual_boundary_check"
+    },
+    {
+      "id": "q.dashboard.tasks.038",
+      "expected_behavior": "clarify",
+      "expected_article_ids": [
+        "tasks.task-lifecycle-and-views"
+      ],
+      "retrieved": [
+        "tasks.manage-tasks",
+        "tasks.task-lifecycle-and-views"
+      ],
+      "status": "requires_model_or_manual_boundary_check"
+    },
+    {
+      "id": "q.dashboard.tasks.039",
+      "expected_behavior": "clarify",
+      "expected_article_ids": [
+        "tasks.task-lifecycle-and-views",
+        "tasks.meetings-and-calendar"
+      ],
+      "retrieved": [
+        "tasks.task-lifecycle-and-views",
+        "tasks.import-data"
+      ],
+      "status": "requires_model_or_manual_boundary_check"
+    },
+    {
+      "id": "q.dashboard.tasks.040",
+      "expected_behavior": "clarify",
+      "expected_article_ids": [
+        "tasks.meetings-and-calendar"
+      ],
+      "retrieved": [
+        "tasks.meetings-and-calendar",
+        "tasks.collaborators-and-portals"
+      ],
+      "status": "requires_model_or_manual_boundary_check"
+    },
+    {
+      "id": "q.dashboard.tasks.041",
+      "expected_behavior": "clarify",
+      "expected_article_ids": [
+        "tasks.collaborators-and-portals"
+      ],
+      "retrieved": [
+        "tasks.collaborators-and-portals",
+        "tasks.meetings-and-calendar",
+        "dashboard.overview"
+      ],
+      "status": "requires_model_or_manual_boundary_check"
+    },
+    {
+      "id": "q.dashboard.tasks.042",
+      "expected_behavior": "clarify",
+      "expected_article_ids": [
+        "tasks.manage-tasks",
+        "tasks.task-lifecycle-and-views"
+      ],
+      "retrieved": [
+        "tasks.manage-tasks",
+        "tasks.task-lifecycle-and-views"
+      ],
+      "status": "requires_model_or_manual_boundary_check"
+    },
+    {
+      "id": "q.dashboard.tasks.043",
+      "expected_behavior": "clarify",
+      "expected_article_ids": [
+        "tasks.task-lifecycle-and-views",
+        "tasks.sprint-planning-and-pacing"
+      ],
+      "retrieved": [
+        "tasks.manage-tasks",
+        "tasks.meetings-and-calendar"
+      ],
+      "status": "requires_model_or_manual_boundary_check"
+    },
+    {
+      "id": "q.dashboard.tasks.044",
+      "expected_behavior": "clarify",
+      "expected_article_ids": [
+        "tasks.manage-tasks"
+      ],
+      "retrieved": [],
+      "status": "requires_model_or_manual_boundary_check"
+    },
+    {
+      "id": "q.dashboard.tasks.045",
+      "expected_behavior": "clarify",
+      "expected_article_ids": [
+        "tasks.sprint-planning-and-pacing"
+      ],
+      "retrieved": [
+        "tasks.manage-tasks"
+      ],
+      "status": "requires_model_or_manual_boundary_check"
+    },
+    {
+      "id": "q.dashboard.tasks.046",
+      "expected_behavior": "abstain",
+      "expected_article_ids": [],
+      "retrieved": [
+        "tasks.manage-tasks",
+        "tasks.import-data",
+        "tasks.meetings-and-calendar"
+      ],
+      "status": "requires_model_or_manual_boundary_check"
+    },
+    {
+      "id": "q.dashboard.tasks.047",
+      "expected_behavior": "abstain",
+      "expected_article_ids": [],
+      "retrieved": [
+        "tasks.collaborators-and-portals",
+        "tasks.task-lifecycle-and-views"
+      ],
+      "status": "requires_model_or_manual_boundary_check"
+    },
+    {
+      "id": "q.dashboard.tasks.048",
+      "expected_behavior": "abstain",
+      "expected_article_ids": [],
+      "retrieved": [
+        "tasks.collaborators-and-portals",
+        "tasks.manage-tasks",
+        "tasks.import-data"
+      ],
+      "status": "requires_model_or_manual_boundary_check"
+    },
+    {
+      "id": "q.dashboard.tasks.049",
+      "expected_behavior": "abstain",
+      "expected_article_ids": [],
+      "retrieved": [
+        "help.chat-and-history",
+        "tasks.collaborators-and-portals",
+        "tasks.import-data"
+      ],
+      "status": "requires_model_or_manual_boundary_check"
+    },
+    {
+      "id": "q.dashboard.tasks.050",
+      "expected_behavior": "abstain",
+      "expected_article_ids": [],
+      "retrieved": [],
+      "status": "requires_model_or_manual_boundary_check"
+    },
+    {
+      "id": "q.dashboard.tasks.051",
+      "expected_behavior": "abstain",
+      "expected_article_ids": [],
+      "retrieved": [
+        "tasks.meetings-and-calendar"
+      ],
+      "status": "requires_model_or_manual_boundary_check"
+    },
+    {
+      "id": "q.dashboard.tasks.052",
+      "expected_behavior": "abstain",
+      "expected_article_ids": [],
+      "retrieved": [
+        "theme.toggle-theme"
+      ],
+      "status": "requires_model_or_manual_boundary_check"
+    },
+    {
+      "id": "q.dashboard.tasks.053",
+      "expected_behavior": "abstain",
+      "expected_article_ids": [],
+      "retrieved": [
+        "tasks.collaborators-and-portals",
+        "tasks.import-data",
+        "dashboard.overview"
+      ],
+      "status": "requires_model_or_manual_boundary_check"
+    },
+    {
+      "id": "q.dashboard.tasks.054",
+      "expected_behavior": "abstain",
+      "expected_article_ids": [],
+      "retrieved": [
+        "tasks.collaborators-and-portals"
+      ],
+      "status": "requires_model_or_manual_boundary_check"
+    },
+    {
+      "id": "q.dashboard.tasks.055",
+      "expected_behavior": "abstain",
+      "expected_article_ids": [],
+      "retrieved": [
+        "tasks.meetings-and-calendar"
+      ],
+      "status": "requires_model_or_manual_boundary_check"
+    }
+  ]
+}

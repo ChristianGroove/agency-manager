@@ -21,6 +21,11 @@ it('requires every technical capability even for leads and honors explicit remov
     expect(canReadArticle(restricted, { ...portal, portalProfiles: ['lead'], platformAdmin: true })).toBe(false)
 })
 
+it('retrieves the existing bulk-delete question from the expanded dashboard corpus', () => {
+    const access = { ...dashboard, permissions: ['operations.tasks.view', 'operations.tasks.manage'] }
+    expect(retrieveHelp(published.articles as HelpArticle[], '¿Cómo elimino varias tareas al mismo tiempo en la lista?', access).map(article => article.id)).toContain('tasks.manage-tasks')
+})
+
 it('does not grant a dashboard admin access to a portal guide', () => {
     expect(canReadArticle(base, dashboard)).toBe(false)
     expect(retrieveHelp([base], 'tareas portal', dashboard)).toEqual([])

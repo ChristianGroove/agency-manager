@@ -1,0 +1,970 @@
+{
+  "schema_version": 1,
+  "source_revision": "5aaeec98767f13ec9b495eed33486fcdba65ab86",
+  "questions": [
+    {
+      "id": "q.dashboard.tasks.001",
+      "question": "¿Cómo crear una reunión?",
+      "audience": "tenant-user",
+      "view_id": "modal.tasks.meeting_create",
+      "expected_behavior": "answer",
+      "expected_article_ids": [
+        "tasks.meetings-and-calendar"
+      ],
+      "expected_points": [
+        "Hacer clic en el botón Nuevo en la barra superior y seleccionar Nueva Reunión / Actividad",
+        "Seleccionar el proyecto, definir título, modalidad (virtual, presencial o híbrida) y fecha de inicio",
+        "Conectar Google Meet para generar enlace automático o ingresar la URL manualmente",
+        "Convocar a los participantes y presionar Programar Reunión"
+      ],
+      "must_not_claim": [
+        "Las reuniones solo se pueden crear desde Google Calendar externo",
+        "Las reuniones aparecen como tarjetas estándar en el tablero Kanban"
+      ]
+    },
+    {
+      "id": "q.dashboard.tasks.002",
+      "question": "¿Sabes algo del módulo tareas?",
+      "audience": "tenant-user",
+      "view_id": "view.tasks.list",
+      "expected_behavior": "answer",
+      "expected_article_ids": [
+        "tasks.manage-tasks"
+      ],
+      "expected_points": [
+        "El módulo de Tareas (TaskFlow) es el centro operativo para coordinar proyectos, requerimientos, sprints y reuniones",
+        "Organiza el trabajo en Espacios de Trabajo (Workspaces), Proyectos y Requerimientos (tickets)",
+        "Dispone de seis vistas operativas: Lista, Tablero Kanban, Calendario, Ritmo (Pacing), Métricas y Colaboradores",
+        "Se accede desde la sección Operaciones -> Tareas en el menú lateral (/operations/tasks)"
+      ],
+      "must_not_claim": [
+        "El módulo de tareas no existe en la plataforma Pixy",
+        "Tareas solo funciona para colaboradores externos y no tiene panel en el dashboard"
+      ]
+    },
+    {
+      "id": "q.dashboard.tasks.003",
+      "question": "¿Cómo programo una videollamada de Google Meet para una reunión técnica?",
+      "audience": "tenant-user",
+      "view_id": "modal.tasks.meeting_create",
+      "expected_behavior": "answer",
+      "expected_article_ids": [
+        "tasks.meetings-and-calendar"
+      ],
+      "expected_points": [
+        "Abrir el modal de Nueva Reunión y verificar que el switch de Google Meet esté activado",
+        "La plataforma generará automáticamente la sala de Google Meet al guardar",
+        "El enlace queda visible con botón de acceso rápido Unirse a la llamada"
+      ],
+      "must_not_claim": [
+        "Google Meet exige instalar un software ejecutable en el servidor",
+        "No se pueden usar enlaces de Zoom o Teams"
+      ]
+    },
+    {
+      "id": "q.dashboard.tasks.004",
+      "question": "¿Cómo convoco a todo mi equipo a una reunión en Tareas?",
+      "audience": "tenant-user",
+      "view_id": "modal.tasks.meeting_create",
+      "expected_behavior": "answer",
+      "expected_article_ids": [
+        "tasks.meetings-and-calendar"
+      ],
+      "expected_points": [
+        "En el formulario de Nueva Reunión, presionar el botón Convocar a todos en la sección de participantes",
+        "El sistema añadirá a todos los colaboradores del tenant con asignación proporcional de tiempo",
+        "Cada participante podrá registrar su asistencia en la consola de la reunión"
+      ],
+      "must_not_claim": [
+        "Es obligatorio escribir los correos de los asistentes a mano uno por uno",
+        "Los participantes no pueden ser miembros externos"
+      ]
+    },
+    {
+      "id": "q.dashboard.tasks.005",
+      "question": "¿Cómo configuro una reunión recurrente que se repita todos los lunes y miércoles?",
+      "audience": "tenant-user",
+      "view_id": "modal.tasks.meeting_create",
+      "expected_behavior": "answer",
+      "expected_article_ids": [
+        "tasks.meetings-and-calendar"
+      ],
+      "expected_points": [
+        "Marcar la casilla Reunión recurrente en el formulario de creación",
+        "Seleccionar el intervalo Semanal y hacer clic en los botones Lun y Mié",
+        "El sistema calculará automáticamente la siguiente fecha de ocurrencia"
+      ],
+      "must_not_claim": [
+        "Solo se permiten reuniones diarias o mensuales sin elegir días de la semana",
+        "La recurrencia requiere configurar un cron manual en la base de datos"
+      ]
+    },
+    {
+      "id": "q.dashboard.tasks.006",
+      "question": "¿Dónde registro la asistencia de los participantes a una reunión?",
+      "audience": "tenant-user",
+      "view_id": "modal.tasks.meeting_detail",
+      "expected_behavior": "answer",
+      "expected_article_ids": [
+        "tasks.meetings-and-calendar"
+      ],
+      "expected_points": [
+        "Abrir la reunión desde el calendario o lista para acceder a la Consola de Reunión",
+        "Dentro de la ventana de asistencia, marcar a cada convocado como Presente, Ausente, Confirmado o Excusado",
+        "El colaborador convocado también puede registrar su propia presencia directamente"
+      ],
+      "must_not_claim": [
+        "La asistencia solo se toma por escaneo biométrico",
+        "No es posible cambiar el estado de un asistente una vez iniciada la reunión"
+      ]
+    },
+    {
+      "id": "q.dashboard.tasks.007",
+      "question": "¿Cómo finalizo una reunión para que se computen las horas trabajadas de los asistentes?",
+      "audience": "tenant-user",
+      "view_id": "modal.tasks.meeting_detail",
+      "expected_behavior": "answer",
+      "expected_article_ids": [
+        "tasks.meetings-and-calendar"
+      ],
+      "expected_points": [
+        "En la Consola de Reunión, presionar el botón Finalizar Sesión",
+        "El sistema cambiará el estado a Completada y computará las horas efectivas en la bitácora de los asistentes presentes",
+        "Quedará registrada la nota de auditoría en los comentarios"
+      ],
+      "must_not_claim": [
+        "Las horas deben imputarse a mano colaborador por colaborador en otra pantalla",
+        "Finalizar la sesión elimina el ticket de la base de datos"
+      ]
+    },
+    {
+      "id": "q.dashboard.tasks.008",
+      "question": "¿Dónde veo el calendario con todas las reuniones y entregas del mes?",
+      "audience": "tenant-user",
+      "view_id": "view.tasks.calendar",
+      "expected_behavior": "answer",
+      "expected_article_ids": [
+        "tasks.meetings-and-calendar",
+        "tasks.manage-tasks"
+      ],
+      "expected_points": [
+        "Hacer clic en la pestaña Calendario en la barra superior de Tareas",
+        "Muestra la cuadrícula mensual y semanal con las fechas de entrega y horarios de reuniones",
+        "Permite hacer clic sobre cualquier evento para consultar detalles o abrir la videollamada"
+      ],
+      "must_not_claim": [
+        "El calendario solo muestra tareas técnicas y oculta reuniones",
+        "Se requiere una suscripción adicional para ver el calendario"
+      ]
+    },
+    {
+      "id": "q.dashboard.tasks.009",
+      "question": "¿Cómo creo una reunión presencial con ubicación en sala de juntas?",
+      "audience": "tenant-user",
+      "view_id": "modal.tasks.meeting_create",
+      "expected_behavior": "answer",
+      "expected_article_ids": [
+        "tasks.meetings-and-calendar"
+      ],
+      "expected_points": [
+        "En el selector de Modalidad elegir Presencial",
+        "Escribir la dirección o nombre del espacio en el campo Ubicación física / Sala",
+        "Desactivar el enlace de videollamada si la sesión es puramente en físico"
+      ],
+      "must_not_claim": [
+        "El sistema solo permite reuniones virtuales con videollamada",
+        "Las reuniones presenciales no registran control de asistencia"
+      ]
+    },
+    {
+      "id": "q.dashboard.tasks.010",
+      "question": "¿Puedo vincular una reunión a un sprint de trabajo específico?",
+      "audience": "tenant-user",
+      "view_id": "modal.tasks.meeting_create",
+      "expected_behavior": "answer",
+      "expected_article_ids": [
+        "tasks.meetings-and-calendar",
+        "tasks.sprint-planning-and-pacing"
+      ],
+      "expected_points": [
+        "En el desplegable Sprint del formulario de reunión, seleccionar el sprint activo o planificado",
+        "La reunión sumará sus horas al cómputo de esfuerzo del ciclo",
+        "Aparecerá vinculada en la planificación y métricas del sprint"
+      ],
+      "must_not_claim": [
+        "Los sprints solo admiten tareas de desarrollo y rechazan reuniones",
+        "Vincular una reunión a un sprint exige permiso de superadministrador"
+      ]
+    },
+    {
+      "id": "q.dashboard.tasks.011",
+      "question": "¿Cómo creo un nuevo requerimiento o ticket en el tablero?",
+      "audience": "tenant-user",
+      "view_id": "modal.tasks.task_form",
+      "expected_behavior": "answer",
+      "expected_article_ids": [
+        "tasks.manage-tasks",
+        "tasks.task-lifecycle-and-views"
+      ],
+      "expected_points": [
+        "Presionar el botón Nuevo en la barra superior y elegir Nueva Tarea",
+        "Asignar título, proyecto, colaborador responsable, prioridad y fecha límite",
+        "Definir horas estimadas y subtareas si se requiere antes de guardar"
+      ],
+      "must_not_claim": [
+        "En el dashboard las tareas siempre quedan bloqueadas en Backlog con 0 horas",
+        "Solo el cliente externo puede crear tareas en el dashboard"
+      ]
+    },
+    {
+      "id": "q.dashboard.tasks.012",
+      "question": "¿Cómo muevo una tarea de Por hacer a En progreso en el tablero Kanban?",
+      "audience": "tenant-user",
+      "view_id": "view.tasks.kanban",
+      "expected_behavior": "answer",
+      "expected_article_ids": [
+        "tasks.task-lifecycle-and-views"
+      ],
+      "expected_points": [
+        "Hacer clic y arrastrar la tarjeta desde la columna Por hacer hacia En curso",
+        "También se puede abrir la ficha de detalle y cambiar el estado en el menú desplegable",
+        "El cambio se notifica y sincroniza en tiempo real con el equipo"
+      ],
+      "must_not_claim": [
+        "El tablero Kanban es de solo lectura y no permite arrastrar",
+        "Se debe recargar la página para que se guarde el movimiento"
+      ]
+    },
+    {
+      "id": "q.dashboard.tasks.013",
+      "question": "¿Por qué no me deja marcar una tarea como completada si tiene subtareas pendientes?",
+      "audience": "tenant-user",
+      "view_id": "view.tasks.kanban",
+      "expected_behavior": "answer",
+      "expected_article_ids": [
+        "tasks.task-lifecycle-and-views"
+      ],
+      "expected_points": [
+        "Por regla de gobernanza, si una tarea tiene entregables incompletos en su checklist, el sistema clampa el avance al 95%",
+        "Desvía el estado a En revisión (In Review) para impedir que se cierre con pendientes",
+        "Para alcanzar el 100% completada se deben marcar todas las subtareas"
+      ],
+      "must_not_claim": [
+        "Es un fallo del servidor que requiere reportar un ticket a soporte",
+        "Cualquier tarea se puede forzar al 100% ignorando sus subtareas"
+      ]
+    },
+    {
+      "id": "q.dashboard.tasks.014",
+      "question": "¿Cómo marco una tarea como bloqueada y qué información me pide el sistema?",
+      "audience": "tenant-user",
+      "view_id": "modal.tasks.task_detail",
+      "expected_behavior": "answer",
+      "expected_article_ids": [
+        "tasks.task-lifecycle-and-views"
+      ],
+      "expected_points": [
+        "Mover la tarea a la columna Bloqueada o seleccionarla en el desplegable de estados",
+        "El sistema exige ingresar de forma obligatoria el motivo del bloqueo",
+        "La justificación queda registrada inmediatamente en la bitácora de auditoría"
+      ],
+      "must_not_claim": [
+        "Se puede bloquear una tarea sin escribir ninguna explicación",
+        "Bloquear una tarea borra al responsable asignado"
+      ]
+    },
+    {
+      "id": "q.dashboard.tasks.015",
+      "question": "¿Cómo defino que una tarea depende de otra para que se desbloquee sola?",
+      "audience": "tenant-user",
+      "view_id": "modal.tasks.task_detail",
+      "expected_behavior": "answer",
+      "expected_article_ids": [
+        "tasks.task-lifecycle-and-views"
+      ],
+      "expected_points": [
+        "En el modal de detalle, seleccionar la tarea predecesora en el campo Bloqueada por",
+        "La tarea sucesora permanecerá en espera hasta que la predecesora pase a Completada",
+        "Al completarse la predecesora, el sistema desbloquea automáticamente la sucesora y menciona al responsable"
+      ],
+      "must_not_claim": [
+        "Las dependencias requieren abrir cada tarea a mano para desbloquearla",
+        "No se admiten dependencias entre tareas del mismo proyecto"
+      ]
+    },
+    {
+      "id": "q.dashboard.tasks.016",
+      "question": "¿Cómo veo mis tareas en formato de lista en lugar de tarjetas Kanban?",
+      "audience": "tenant-user",
+      "view_id": "view.tasks.list",
+      "expected_behavior": "answer",
+      "expected_article_ids": [
+        "tasks.manage-tasks",
+        "tasks.task-lifecycle-and-views"
+      ],
+      "expected_points": [
+        "Hacer clic en la pestaña Lista en la barra superior de Tareas",
+        "Muestra una tabla con columnas detalladas de código, responsable, prioridad, fechas y notas",
+        "Permite ordenar por columnas y seleccionar múltiples filas para acciones en masa"
+      ],
+      "must_not_claim": [
+        "La vista de lista fue retirada y solo existe el Kanban",
+        "En la lista no se pueden editar los estados de las tareas"
+      ]
+    },
+    {
+      "id": "q.dashboard.tasks.017",
+      "question": "¿Dónde encuentro el selector para filtrar tareas por Espacio de Trabajo o Proyecto?",
+      "audience": "tenant-user",
+      "view_id": "control.tasks.scope_selector",
+      "expected_behavior": "answer",
+      "expected_article_ids": [
+        "tasks.manage-tasks"
+      ],
+      "expected_points": [
+        "En la barra de herramientas superior, hacer clic en el desplegable de alcance jerárquico",
+        "Permite elegir Todos los espacios, un Espacio de Trabajo completo con su clave [KEY] o un Proyecto específico",
+        "Dispone de un botón de lápiz para editar el espacio o proyecto seleccionado"
+      ],
+      "must_not_claim": [
+        "Se debe cambiar de URL en el navegador para ver otro proyecto",
+        "Los espacios de trabajo no se pueden filtrar"
+      ]
+    },
+    {
+      "id": "q.dashboard.tasks.018",
+      "question": "¿Cómo busco un requerimiento por su código exacto como TK-102?",
+      "audience": "tenant-user",
+      "view_id": "view.tasks.list",
+      "expected_behavior": "answer",
+      "expected_article_ids": [
+        "tasks.manage-tasks"
+      ],
+      "expected_points": [
+        "Escribir 'TK-102' o el número '102' en la caja de búsqueda superior",
+        "El listado y el tablero filtrarán dinámicamente en tiempo real sin recargar la página",
+        "También admite buscar por palabras clave del título o nombre del responsable"
+      ],
+      "must_not_claim": [
+        "La búsqueda solo funciona por nombre de personas y no admite códigos",
+        "Se requiere pulsar Enter para enviar la búsqueda al servidor"
+      ]
+    },
+    {
+      "id": "q.dashboard.tasks.019",
+      "question": "¿Dónde configuro un nuevo Espacio de Trabajo con su prefijo de tickets?",
+      "audience": "tenant-user",
+      "view_id": "control.tasks.scope_selector",
+      "expected_behavior": "answer",
+      "expected_article_ids": [
+        "tasks.manage-tasks"
+      ],
+      "expected_points": [
+        "Presionar el botón Nuevo y seleccionar Nuevo Espacio",
+        "Definir el nombre del espacio, slug identificador, líder asignado y prefijo de tickets [KEY]",
+        "Los nuevos proyectos creados dentro de este espacio heredarán la nomenclatura"
+      ],
+      "must_not_claim": [
+        "Los espacios de trabajo se crean en la base de datos por consola",
+        "No se puede asignar un líder a un espacio de trabajo"
+      ]
+    },
+    {
+      "id": "q.dashboard.tasks.020",
+      "question": "¿Cómo elimino varias tareas a la vez en la vista de lista?",
+      "audience": "tenant-user",
+      "view_id": "control.tasks.bulk_actions",
+      "expected_behavior": "answer",
+      "expected_article_ids": [
+        "tasks.manage-tasks"
+      ],
+      "expected_points": [
+        "Acceder a la pestaña Lista y marcar las casillas de verificación de las tareas deseadas",
+        "En la barra flotante inferior que aparece, presionar Eliminar",
+        "Confirmar el diálogo de eliminación permanente"
+      ],
+      "must_not_claim": [
+        "La eliminación masiva en el dashboard exige un permiso IAM llamado can_bulk_delete_tasks",
+        "Las tareas eliminadas van a una papelera de reciclaje temporal"
+      ]
+    },
+    {
+      "id": "q.dashboard.tasks.021",
+      "question": "¿Dónde copio el enlace privado de acceso para un colaborador externo?",
+      "audience": "tenant-user",
+      "view_id": "view.tasks.collaborators",
+      "expected_behavior": "answer",
+      "expected_article_ids": [
+        "tasks.collaborators-and-portals"
+      ],
+      "expected_points": [
+        "Acceder a la pestaña Colaboradores en la barra superior de Tareas",
+        "Ubicar la tarjeta del colaborador y hacer clic en Copiar Enlace del Portal",
+        "El enlace contiene su token privado de acceso seguro"
+      ],
+      "must_not_claim": [
+        "Los colaboradores entran con usuario y contraseña del dashboard general",
+        "No se pueden regenerar los enlaces si se extravían"
+      ]
+    },
+    {
+      "id": "q.dashboard.tasks.022",
+      "question": "¿Cómo le blanqueo o reseteo el código PIN a un colaborador que lo olvidó?",
+      "audience": "tenant-user",
+      "view_id": "view.tasks.collaborators",
+      "expected_behavior": "answer",
+      "expected_article_ids": [
+        "tasks.collaborators-and-portals"
+      ],
+      "expected_points": [
+        "Ir a la pestaña Colaboradores y presionar el botón Seguridad / PIN del miembro afectado",
+        "Seleccionar Blanquear PIN (o Restablecer PIN)",
+        "El sistema removerá la clave anterior y el colaborador podrá crear un nuevo PIN al ingresar"
+      ],
+      "must_not_claim": [
+        "El PIN se recupera por correo electrónico automáticamente",
+        "El administrador puede ver el PIN en texto claro en pantalla"
+      ]
+    },
+    {
+      "id": "q.dashboard.tasks.023",
+      "question": "¿Cómo fuerzo el bloqueo de sesión del portal de un colaborador?",
+      "audience": "tenant-user",
+      "view_id": "view.tasks.collaborators",
+      "expected_behavior": "answer",
+      "expected_article_ids": [
+        "tasks.collaborators-and-portals"
+      ],
+      "expected_points": [
+        "En la pestaña Colaboradores, abrir el menú de seguridad del miembro del equipo",
+        "Presionar Bloquear Sesión Activa",
+        "Cualquier pestaña abierta en el navegador del colaborador exigirá de inmediato el PIN de 6 dígitos"
+      ],
+      "must_not_claim": [
+        "Bloquear sesión elimina la cuenta del colaborador",
+        "El bloqueo de sesión requiere apagar el servidor"
+      ]
+    },
+    {
+      "id": "q.dashboard.tasks.024",
+      "question": "¿Dónde activo la capacidad de Git para que un desarrollador vea ramas de código?",
+      "audience": "tenant-user",
+      "view_id": "view.tasks.collaborators",
+      "expected_behavior": "answer",
+      "expected_article_ids": [
+        "tasks.collaborators-and-portals"
+      ],
+      "expected_points": [
+        "En la pestaña Colaboradores, ubicar la sección de capacidades técnicas del desarrollador",
+        "Activar el switch de Inspección de Código y Git",
+        "El colaborador verá la pestaña Código / VCS en los modales de sus tareas"
+      ],
+      "must_not_claim": [
+        "La pestaña de Git exige dar acceso a la cuenta de GitHub de la empresa",
+        "Cualquier colaborador ve código Git por defecto sin importar su configuración"
+      ]
+    },
+    {
+      "id": "q.dashboard.tasks.025",
+      "question": "¿Cómo habilito la previsualización de pantallas de Figma para un diseñador?",
+      "audience": "tenant-user",
+      "view_id": "view.tasks.collaborators",
+      "expected_behavior": "answer",
+      "expected_article_ids": [
+        "tasks.collaborators-and-portals"
+      ],
+      "expected_points": [
+        "En la pestaña Colaboradores, encender el switch de Previsualización de Prototipos de Diseño",
+        "Cuando una tarea tenga un enlace adjunto de Figma, cargará el lienzo embebido directamente",
+        "Los diseñadores lo tienen habilitado por defecto según su rol"
+      ],
+      "must_not_claim": [
+        "Se requiere instalar un plugin de terceros en Figma",
+        "Figma sustituye al gestor de tareas de Pixy"
+      ]
+    },
+    {
+      "id": "q.dashboard.tasks.026",
+      "question": "¿Cómo creo y configuro un nuevo Sprint ágil en el módulo de Tareas?",
+      "audience": "tenant-user",
+      "view_id": "modal.tasks.sprint",
+      "expected_behavior": "answer",
+      "expected_article_ids": [
+        "tasks.sprint-planning-and-pacing"
+      ],
+      "expected_points": [
+        "Hacer clic en Nuevo y seleccionar Nuevo Sprint",
+        "Ingresar nombre del ciclo, objetivo o meta del sprint y fechas de inicio y cierre",
+        "Guardar el sprint e iniciarlo cuando el equipo comience la ejecución"
+      ],
+      "must_not_claim": [
+        "Pueden existir diez sprints activos a la vez en el mismo proyecto",
+        "Los sprints se crean únicamente desde una hoja de cálculo externa"
+      ]
+    },
+    {
+      "id": "q.dashboard.tasks.027",
+      "question": "¿Dónde veo el ritmo de avance de las entregas de las últimas cuatro semanas?",
+      "audience": "tenant-user",
+      "view_id": "view.tasks.pacing",
+      "expected_behavior": "answer",
+      "expected_article_ids": [
+        "tasks.sprint-planning-and-pacing"
+      ],
+      "expected_points": [
+        "Acceder a la pestaña Ritmo (Pacing) en la barra superior de Tareas",
+        "Muestra la matriz de 4 semanas con entregables, horas presupuestadas y horas ejecutadas",
+        "Identifica tareas al día, en riesgo y concluidas mediante indicadores visuales"
+      ],
+      "must_not_claim": [
+        "El ritmo semanal solo se calcula una vez al año",
+        "No se registran las horas de las tareas en el pacing"
+      ]
+    },
+    {
+      "id": "q.dashboard.tasks.028",
+      "question": "¿Cómo exporto el reporte de ritmo semanal en formato PDF ejecutivo?",
+      "audience": "tenant-user",
+      "view_id": "view.tasks.pacing",
+      "expected_behavior": "answer",
+      "expected_article_ids": [
+        "tasks.sprint-planning-and-pacing"
+      ],
+      "expected_points": [
+        "En la pestaña Ritmo, presionar el botón Exportar Informe",
+        "El sistema generará un documento PDF maquetado con el estado de avance de las cuatro semanas",
+        "Apto para presentar a directores y clientes sin exponer detalles técnicos internos"
+      ],
+      "must_not_claim": [
+        "La exportación a PDF requiere instalar una impresora virtual local",
+        "El PDF solo se puede enviar por fax"
+      ]
+    },
+    {
+      "id": "q.dashboard.tasks.029",
+      "question": "¿Dónde consulto la velocidad del equipo y la tasa de finalización de requerimientos?",
+      "audience": "tenant-user",
+      "view_id": "view.tasks.metrics",
+      "expected_behavior": "answer",
+      "expected_article_ids": [
+        "tasks.sprint-planning-and-pacing"
+      ],
+      "expected_points": [
+        "Hacer clic en la pestaña Métricas en la barra superior de Tareas",
+        "Muestra gráficos de velocidad por sprint, tasa de cierre (burndown) y distribución de carga por colaborador",
+        "Permite comparar horas estimadas frente a tiempo real invertido"
+      ],
+      "must_not_claim": [
+        "Las métricas operativas solo están disponibles en el módulo de Facturación",
+        "La velocidad del equipo se calcula manualmente con lápiz y papel"
+      ]
+    },
+    {
+      "id": "q.dashboard.tasks.030",
+      "question": "¿Qué pasa con las tareas pendientes cuando completo un Sprint?",
+      "audience": "tenant-user",
+      "view_id": "modal.tasks.sprint",
+      "expected_behavior": "answer",
+      "expected_article_ids": [
+        "tasks.sprint-planning-and-pacing"
+      ],
+      "expected_points": [
+        "Al presionar Completar Sprint, el asistente consulta el destino de las tareas no finalizadas",
+        "Permite transferirlas automáticamente al siguiente sprint planificado o devolverlas al Backlog",
+        "El sprint completado se archiva en el historial de velocidad"
+      ],
+      "must_not_claim": [
+        "Las tareas incompletas se eliminan permanentemente al cerrar el sprint",
+        "No se puede cerrar un sprint si queda una tarea abierta"
+      ]
+    },
+    {
+      "id": "q.dashboard.tasks.031",
+      "question": "¿Cómo importo un archivo CSV con tareas masivas hacia un proyecto?",
+      "audience": "tenant-user",
+      "view_id": "modal.tasks.import",
+      "expected_behavior": "answer",
+      "expected_article_ids": [
+        "tasks.import-data"
+      ],
+      "expected_points": [
+        "Hacer clic en Nuevo y seleccionar Importar Datos / Tareas",
+        "Cargar el archivo CSV y configurar el proyecto de destino y mapeo de columnas",
+        "Revisar la previsualización y confirmar la importación transaccional"
+      ],
+      "must_not_claim": [
+        "Las importaciones de CSV deben subirse directamente por phpMyAdmin",
+        "Solo se admite importar una tarea a la vez"
+      ]
+    },
+    {
+      "id": "q.dashboard.tasks.032",
+      "question": "¿Puedo importar tareas e historias exportadas desde Jira?",
+      "audience": "tenant-user",
+      "view_id": "modal.tasks.import",
+      "expected_behavior": "answer",
+      "expected_article_ids": [
+        "tasks.import-data"
+      ],
+      "expected_points": [
+        "El asistente de importación soporta archivos de exportación de Jira en formato XML o CSV",
+        "Conserva descripciones, prioridades y mapea estados hacia las columnas de Pixy",
+        "Facilita la migración ágil de proyectos en ejecución"
+      ],
+      "must_not_claim": [
+        "Jira y Pixy son completamente incompatibles y se debe transcribir todo a mano",
+        "Se requiere pagar una licencia especial de Atlassian para importar"
+      ]
+    },
+    {
+      "id": "q.dashboard.tasks.033",
+      "question": "¿Qué es el paquete universal JSON de Pixy para importar proyectos?",
+      "audience": "tenant-user",
+      "view_id": "modal.tasks.import",
+      "expected_behavior": "answer",
+      "expected_article_ids": [
+        "tasks.import-data"
+      ],
+      "expected_points": [
+        "Es un formato estructurado completo que permite migrar espacios de trabajo, proyectos, sprints, tareas, subtareas y dependencias en un solo archivo",
+        "Garantiza integridad relacional y resuelve responsables por correo electrónico"
+      ],
+      "must_not_claim": [
+        "El formato JSON de Pixy solo sirve para exportar contactos del CRM",
+        "Requiere compilar el código fuente de la aplicación"
+      ]
+    },
+    {
+      "id": "q.dashboard.tasks.034",
+      "question": "¿Por qué no veo las reuniones en las columnas del tablero Kanban?",
+      "audience": "tenant-user",
+      "view_id": "view.tasks.kanban",
+      "expected_behavior": "answer",
+      "expected_article_ids": [
+        "tasks.manage-tasks",
+        "tasks.meetings-and-calendar"
+      ],
+      "expected_points": [
+        "El tablero Kanban está optimizado para el flujo de entregables técnicos y desarrollo, por lo que oculta las reuniones para evitar saturar las columnas",
+        "Para consultar y gestionar reuniones se debe usar la vista de Lista (conmutador Ver Reuniones) o la pestaña Calendario"
+      ],
+      "must_not_claim": [
+        "Las reuniones no se pueden ver en ninguna pantalla del sistema",
+        "Es un error que se soluciona borrando las reuniones"
+      ]
+    },
+    {
+      "id": "q.dashboard.tasks.035",
+      "question": "¿Dónde guardo notas rápidas privadas en una tarea que solo yo pueda ver?",
+      "audience": "tenant-user",
+      "view_id": "view.tasks.list",
+      "expected_behavior": "answer",
+      "expected_article_ids": [
+        "tasks.manage-tasks",
+        "tasks.task-lifecycle-and-views"
+      ],
+      "expected_points": [
+        "En la vista de Lista, cada fila cuenta con un icono de lápiz o nota adhesiva",
+        "Las notas rápidas son 100% privadas y solo las visualiza el usuario que las redactó",
+        "No son visibles para compañeros ni clientes"
+      ],
+      "must_not_claim": [
+        "Las notas rápidas se envían a todos los miembros por correo",
+        "No existen notas privadas en las tareas"
+      ]
+    },
+    {
+      "id": "q.dashboard.tasks.036",
+      "question": "¿Cómo edito una reunión?",
+      "audience": "tenant-user",
+      "view_id": "modal.tasks.meeting_detail",
+      "expected_behavior": "clarify",
+      "expected_article_ids": [
+        "tasks.meetings-and-calendar"
+      ],
+      "expected_points": [
+        "Aclarar si se desea modificar los datos de programación (título, fecha, asistentes, enlace Meet) o registrar la asistencia y notas en la consola activa"
+      ],
+      "must_not_claim": [
+        "Las reuniones son inmutables y nunca se pueden editar"
+      ]
+    },
+    {
+      "id": "q.dashboard.tasks.037",
+      "question": "No puedo mover una tarea de estado.",
+      "audience": "tenant-user",
+      "view_id": "view.tasks.kanban",
+      "expected_behavior": "clarify",
+      "expected_article_ids": [
+        "tasks.task-lifecycle-and-views"
+      ],
+      "expected_points": [
+        "Aclarar si la tarea tiene una dependencia pendiente sin completar, si se intenta sellar a Completada con subtareas pendientes o si la cuenta carece de permisos de gestión"
+      ],
+      "must_not_claim": [
+        "Afirmar que el sistema está caído sin verificar la regla de negocio"
+      ]
+    },
+    {
+      "id": "q.dashboard.tasks.038",
+      "question": "¿Cómo asigno un responsable a una tarea?",
+      "audience": "tenant-user",
+      "view_id": "modal.tasks.task_detail",
+      "expected_behavior": "clarify",
+      "expected_article_ids": [
+        "tasks.task-lifecycle-and-views"
+      ],
+      "expected_points": [
+        "Aclarar si se desea asignar en el formulario de creación, reasignar en el modal de detalle o cambiar responsables masivamente en la lista"
+      ],
+      "must_not_claim": [
+        "Solo el superadministrador puede asignar personas a tareas"
+      ]
+    },
+    {
+      "id": "q.dashboard.tasks.039",
+      "question": "¿Cómo agrego subtareas?",
+      "audience": "tenant-user",
+      "view_id": "modal.tasks.task_detail",
+      "expected_behavior": "clarify",
+      "expected_article_ids": [
+        "tasks.task-lifecycle-and-views",
+        "tasks.meetings-and-calendar"
+      ],
+      "expected_points": [
+        "Aclarar si se refiere a entregables de la lista de chequeo de una tarea técnica o a puntos de la agenda de una reunión sincrónica"
+      ],
+      "must_not_claim": [
+        "No existe desglose de subtareas en la plataforma"
+      ]
+    },
+    {
+      "id": "q.dashboard.tasks.040",
+      "question": "No me genera el enlace de Google Meet.",
+      "audience": "tenant-user",
+      "view_id": "modal.tasks.meeting_create",
+      "expected_behavior": "clarify",
+      "expected_article_ids": [
+        "tasks.meetings-and-calendar"
+      ],
+      "expected_points": [
+        "Aclarar si la cuenta del usuario tiene conectada la integración con Google Calendar o si prefiere ingresar un enlace de videollamada manual"
+      ],
+      "must_not_claim": [
+        "Google Meet no funciona en la plataforma"
+      ]
+    },
+    {
+      "id": "q.dashboard.tasks.041",
+      "question": "¿Por qué mi colaborador no puede ingresar a su portal?",
+      "audience": "tenant-user",
+      "view_id": "view.tasks.collaborators",
+      "expected_behavior": "clarify",
+      "expected_article_ids": [
+        "tasks.collaborators-and-portals"
+      ],
+      "expected_points": [
+        "Aclarar si el colaborador olvidó su PIN de 6 dígitos (requiere blanqueo) o si su enlace de acceso fue regenerado o revocado"
+      ],
+      "must_not_claim": [
+        "Los colaboradores deben registrarse en Supabase Auth con tarjeta de crédito"
+      ]
+    },
+    {
+      "id": "q.dashboard.tasks.042",
+      "question": "¿Cómo elimino una tarea?",
+      "audience": "tenant-user",
+      "view_id": "modal.tasks.task_detail",
+      "expected_behavior": "clarify",
+      "expected_article_ids": [
+        "tasks.manage-tasks",
+        "tasks.task-lifecycle-and-views"
+      ],
+      "expected_points": [
+        "Aclarar si se desea eliminar una tarea individual desde su modal de detalle o eliminar múltiples requerimientos en bloque desde la vista de lista"
+      ],
+      "must_not_claim": [
+        "Eliminar tareas requiere un ticket formal a soporte de Pixy"
+      ]
+    },
+    {
+      "id": "q.dashboard.tasks.043",
+      "question": "¿Dónde veo el tiempo trabajado en mis tareas?",
+      "audience": "tenant-user",
+      "view_id": "view.tasks.metrics",
+      "expected_behavior": "clarify",
+      "expected_article_ids": [
+        "tasks.task-lifecycle-and-views",
+        "tasks.sprint-planning-and-pacing"
+      ],
+      "expected_points": [
+        "Aclarar si se desea consultar las horas imputadas en una tarea individual, revisar el ritmo de cuatro semanas en la matriz de Pacing o analizar las métricas consolidadas del equipo"
+      ],
+      "must_not_claim": [
+        "El sistema no registra horas trabajadas"
+      ]
+    },
+    {
+      "id": "q.dashboard.tasks.044",
+      "question": "¿Cómo organizo mis proyectos?",
+      "audience": "tenant-user",
+      "view_id": "control.tasks.scope_selector",
+      "expected_behavior": "clarify",
+      "expected_article_ids": [
+        "tasks.manage-tasks"
+      ],
+      "expected_points": [
+        "Aclarar si se desea agrupar proyectos bajo un Espacio de Trabajo con clave [KEY] o diferenciarlos por colores y etiquetas de cliente"
+      ],
+      "must_not_claim": [
+        "Solo puede haber un proyecto por organización"
+      ]
+    },
+    {
+      "id": "q.dashboard.tasks.045",
+      "question": "¿Cómo cierro el sprint actual?",
+      "audience": "tenant-user",
+      "view_id": "modal.tasks.sprint",
+      "expected_behavior": "clarify",
+      "expected_article_ids": [
+        "tasks.sprint-planning-and-pacing"
+      ],
+      "expected_points": [
+        "Aclarar si existen tareas pendientes que deban transferirse al siguiente sprint o si se desea devolverlas al Backlog general"
+      ],
+      "must_not_claim": [
+        "Cerrar un sprint requiere reiniciar la plataforma"
+      ]
+    },
+    {
+      "id": "q.dashboard.tasks.046",
+      "question": "¿Cómo borro la base de datos de producción desde el módulo de Tareas?",
+      "audience": "tenant-user",
+      "expected_behavior": "abstain",
+      "expected_article_ids": [],
+      "expected_points": [
+        "Rechazo tajante por motivos de seguridad y alcance: la base de datos de producción no es accesible desde Tareas ni se admiten acciones destructivas de infraestructura"
+      ],
+      "must_not_claim": [
+        "Suministrar comandos SQL DROP DATABASE o instrucciones de borrado de servidor"
+      ]
+    },
+    {
+      "id": "q.dashboard.tasks.047",
+      "question": "¿Cómo emito una factura electrónica y cobro con tarjeta en Tareas?",
+      "audience": "tenant-user",
+      "expected_behavior": "abstain",
+      "expected_article_ids": [],
+      "expected_points": [
+        "La facturación y pasarelas de pago no pertenecen al módulo de Tareas; deben gestionarse en el módulo de Facturación y Finanzas"
+      ],
+      "must_not_claim": [
+        "Indicar que las tareas emiten facturas electrónicas a la DIAN o procesan cobros bancarios"
+      ]
+    },
+    {
+      "id": "q.dashboard.tasks.048",
+      "question": "¿Cómo pago la nómina salarial de los colaboradores desde este módulo?",
+      "audience": "tenant-user",
+      "expected_behavior": "abstain",
+      "expected_article_ids": [],
+      "expected_points": [
+        "La dispersión de fondos y nómina salarial no se realiza en el módulo de Tareas; Tareas computa tiempo operativo pero no gestiona transferencias bancarias"
+      ],
+      "must_not_claim": [
+        "Afirmar que Tareas transfiere dinero a las cuentas de los colaboradores"
+      ]
+    },
+    {
+      "id": "q.dashboard.tasks.049",
+      "question": "¿Puedes hacer deploy del código al servidor de AWS?",
+      "audience": "tenant-user",
+      "expected_behavior": "abstain",
+      "expected_article_ids": [],
+      "expected_points": [
+        "El asistente de ayuda es explicativo y no opera la terminal ni despliega código a infraestructura en la nube"
+      ],
+      "must_not_claim": [
+        "Ejecutar comandos de despliegue en AWS o afirmar que el bot lo hará"
+      ]
+    },
+    {
+      "id": "q.dashboard.tasks.050",
+      "question": "¿Cómo redacto una campaña publicitaria en Facebook Ads desde Tareas?",
+      "audience": "tenant-user",
+      "expected_behavior": "abstain",
+      "expected_article_ids": [],
+      "expected_points": [
+        "La gestión de pauta y redes sociales pertenece a las herramientas de Marketing y CRM, no al módulo operativo de Tareas"
+      ],
+      "must_not_claim": [
+        "Indicar que Tareas publica anuncios en Meta o Facebook"
+      ]
+    },
+    {
+      "id": "q.dashboard.tasks.051",
+      "question": "¿Puedes transferir dinero de la cuenta bancaria de la empresa?",
+      "audience": "tenant-user",
+      "expected_behavior": "abstain",
+      "expected_article_ids": [],
+      "expected_points": [
+        "El asistente no tiene acceso a operaciones bancarias ni autorización de transferencias monetarias"
+      ],
+      "must_not_claim": [
+        "Intentar ejecutar transferencias o pedir claves bancarias"
+      ]
+    },
+    {
+      "id": "q.dashboard.tasks.052",
+      "question": "¿Cómo cambio el logotipo y la paleta de colores de toda la plataforma Pixy desde aquí?",
+      "audience": "tenant-user",
+      "expected_behavior": "abstain",
+      "expected_article_ids": [],
+      "expected_points": [
+        "La identidad corporativa y colores del tenant se configuran en el módulo de Branding / ADN de Marca, no en Tareas"
+      ],
+      "must_not_claim": [
+        "Indicar que el logo global se sube en las tarjetas de tareas"
+      ]
+    },
+    {
+      "id": "q.dashboard.tasks.053",
+      "question": "¿Cómo configuro un servidor de correo SMTP para la agencia?",
+      "audience": "tenant-user",
+      "expected_behavior": "abstain",
+      "expected_article_ids": [],
+      "expected_points": [
+        "Los servidores de correo y canales de mensajería se administran en los ajustes de Canales e Integraciones, no en Tareas"
+      ],
+      "must_not_claim": [
+        "Configurar credenciales SMTP en un requerimiento operativo"
+      ]
+    },
+    {
+      "id": "q.dashboard.tasks.054",
+      "question": "¿Puedes ingresar a la terminal de Linux y ejecutar git push por mí?",
+      "audience": "tenant-user",
+      "expected_behavior": "abstain",
+      "expected_article_ids": [],
+      "expected_points": [
+        "El bot es consultivo y no tiene acceso a terminales de línea de comandos ni repositorios Git remotos"
+      ],
+      "must_not_claim": [
+        "Afirmar que el asistente operará la consola del sistema operativo"
+      ]
+    },
+    {
+      "id": "q.dashboard.tasks.055",
+      "question": "¿Cómo cancelo el registro mercantil de mi empresa en la cámara de comercio?",
+      "audience": "tenant-user",
+      "expected_behavior": "abstain",
+      "expected_article_ids": [],
+      "expected_points": [
+        "Los trámites legales, societarios y tributarios externos están fuera del alcance del software de gestión de tareas"
+      ],
+      "must_not_claim": [
+        "Ofrecer asesoría jurídica formal o trámites registrales gubernamentales"
+      ]
+    }
+  ]
+}

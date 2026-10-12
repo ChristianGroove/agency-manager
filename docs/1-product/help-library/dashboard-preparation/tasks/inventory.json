@@ -1,0 +1,215 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "name": "pixy-tasks-dashboard-inventory",
+  "version": "1.0.0",
+  "generated_at": "2026-10-12",
+  "source_revision": "5aaeec98767f13ec9b495eed33486fcdba65ab86",
+  "surface": "dashboard",
+  "route": "/operations/tasks",
+  "modules": ["module_tasks"],
+  "views_and_controls": [
+    {
+      "id": "view.tasks.list",
+      "name": "Vista de Lista Tabular de Tareas",
+      "component": "TaskListView",
+      "source_path": "src/modules/features/tasks/components/list/task-list-view.tsx",
+      "status": "implemented",
+      "description": "Tabla interactiva de requerimientos con columnas de ticket, proyecto, responsable, prioridad, fecha limite, notas rapidas privadas y casillas de seleccion multiple para acciones masivas.",
+      "conditions": "activeTab === 'list'"
+    },
+    {
+      "id": "view.tasks.kanban",
+      "name": "Tablero Kanban de Flujo Agil",
+      "component": "TaskKanbanBoard",
+      "source_path": "src/modules/features/tasks/components/kanban/task-kanban-board.tsx",
+      "status": "implemented",
+      "description": "Tablero visual de columnas por estado (Backlog, Por hacer, En curso, En revision/QA, Completada, Bloqueada) con arrastrar y soltar. Oculta reuniones sincronicas para centrarse en desarrollo.",
+      "conditions": "activeTab === 'kanban'"
+    },
+    {
+      "id": "view.tasks.calendar",
+      "name": "Calendario Mensual y Semanal",
+      "component": "TaskCalendarView",
+      "source_path": "src/modules/features/tasks/components/calendar/task-calendar-view.tsx",
+      "status": "implemented",
+      "description": "Grilla temporal que ubica vencimientos de tareas tecnicas y sesiones de reuniones programadas con distintivos visuales.",
+      "conditions": "activeTab === 'calendar'"
+    },
+    {
+      "id": "view.tasks.pacing",
+      "name": "Matriz de Ritmo Semanal (Weekly Pacing)",
+      "component": "TaskWeeklyPacingMatrix",
+      "source_path": "src/modules/features/tasks/components/pacing/task-weekly-pacing-matrix.tsx",
+      "status": "implemented",
+      "description": "Matriz de cuatro semanas que calcula el ritmo de ejecucion, balance de horas presupuestadas frente a ejecutadas y permite exportar informes ejecutivos a PDF.",
+      "conditions": "activeTab === 'pacing'"
+    },
+    {
+      "id": "view.tasks.metrics",
+      "name": "Panel de Telemetria y Metricas Operativas",
+      "component": "TaskMetricsView",
+      "source_path": "src/modules/features/tasks/components/metrics/task-metrics-view.tsx",
+      "status": "implemented",
+      "description": "Graficos de velocidad de entrega de sprints, tasa de finalizacion de requerimientos, balance de carga de trabajo por colaborador y desviacion de estimaciones.",
+      "conditions": "activeTab === 'metrics'"
+    },
+    {
+      "id": "view.tasks.collaborators",
+      "name": "Directorio de Colaboradores y Enlaces de Portal",
+      "component": "TaskCollaboratorsManager",
+      "source_path": "src/modules/features/tasks/components/collaborators/task-collaborators-manager.tsx",
+      "status": "implemented",
+      "description": "Panel de gestion de personal operativo, copia y regeneracion de enlaces de portal privado (/portal/tasks/[token]), blanqueo de PIN y asignacion de capacidades tecnicas.",
+      "conditions": "activeTab === 'collaborators'"
+    },
+    {
+      "id": "control.tasks.scope_selector",
+      "name": "Selector Jerarquico de Espacios y Proyectos",
+      "component": "TaskManagerView (handleScopeFilterChange)",
+      "source_path": "src/modules/features/tasks/components/task-manager-view.tsx",
+      "status": "implemented",
+      "description": "Arbol desplegable que unifica Todos los espacios, Espacios de Trabajo con prefijo [KEY] y Proyectos identificados con su color corporativo. Incluye boton de edicion rapida (lapiz).",
+      "conditions": "Visible en vistas Kanban, Lista y Calendario"
+    },
+    {
+      "id": "control.tasks.meeting_toggle",
+      "name": "Alternador de Vista de Reuniones",
+      "component": "TaskMeetingViewToggle",
+      "source_path": "src/modules/features/tasks/components/shared/task-meeting-view-toggle.tsx",
+      "status": "implemented",
+      "description": "Boton animado para alternar entre ver tareas ordinarias de desarrollo o incluir/aislar sesiones sincronicas de reunion (actividades MTG).",
+      "conditions": "meetingCount > 0 || includeMeetings === true"
+    },
+    {
+      "id": "control.tasks.bulk_actions",
+      "name": "Barra Flotante de Acciones en Lote",
+      "component": "BulkActionsFloatingBar",
+      "source_path": "src/modules/core/ui/components/bulk-actions-floating-bar.tsx",
+      "status": "implemented",
+      "description": "Barra inferior emergente en vista de lista cuando selectedTaskIds.size > 0 para eliminar requerimientos seleccionados de forma definitiva.",
+      "conditions": "activeTab === 'list' && selectedTaskIds.size > 0"
+    },
+    {
+      "id": "modal.tasks.meeting_create",
+      "name": "Modal de Creacion de Reunion / Actividad",
+      "component": "TaskMeetingModal",
+      "source_path": "src/modules/features/tasks/components/meetings/task-meeting-modal.tsx",
+      "status": "implemented",
+      "description": "Formulario para programar sesiones sincronicas con modalidad (virtual, presencial, hibrida), autogeneracion de Google Meet o enlace manual, convocatoria de participantes con imputacion de horas, recurrencia configurable y agenda.",
+      "conditions": "isMeetingModalOpen === true"
+    },
+    {
+      "id": "modal.tasks.meeting_detail",
+      "name": "Modal de Detalle y Consola de Reunion",
+      "component": "TaskMeetingDetailModal & TaskMeetingConsole",
+      "source_path": "src/modules/features/tasks/components/meetings/task-meeting-detail-modal.tsx",
+      "status": "implemented",
+      "description": "Consola interactiva con boton para unirse a la videollamada, ventana contextual de asistencia, toma de presencia individual o grupal, minutas en comentarios y cierre de sesion con computo de horas.",
+      "conditions": "selectedMeetingForDetail !== null"
+    },
+    {
+      "id": "modal.tasks.task_form",
+      "name": "Modal de Creacion y Edicion de Requerimientos",
+      "component": "TaskFormModal",
+      "source_path": "src/modules/features/tasks/components/modals/task-form-modal.tsx",
+      "status": "implemented",
+      "description": "Formulario de tickets tecnicos para fijar titulos, plazos limite, horas presupuestadas, asignacion de responsable y QA, prioridad y lista de entregables.",
+      "conditions": "isTaskModalOpen === true"
+    },
+    {
+      "id": "modal.tasks.task_detail",
+      "name": "Ficha de Detalle de Tarea con Pestanas Especializadas",
+      "component": "TaskDetailModal",
+      "source_path": "src/modules/features/tasks/components/modals/task-detail-modal.tsx",
+      "status": "implemented",
+      "description": "Ventana completa de gestion de tarea con barra de progreso porcentual, subtareas, notas rapidas, dependencias (bloqueada por), pestanas de codigo Git, prototipo Figma, telemetria de errores y costos financieros.",
+      "conditions": "isDetailModalOpen === true"
+    },
+    {
+      "id": "modal.tasks.sprint",
+      "name": "Modal de Gestion de Sprints Agiles",
+      "component": "TaskSprintModal",
+      "source_path": "src/modules/features/tasks/components/modals/task-sprint-modal.tsx",
+      "status": "implemented",
+      "description": "Asistente para definir metas, fechas de inicio y cierre de ciclos de trabajo, activacion de sprints y transferencia de tareas pendientes al completar.",
+      "conditions": "sprintModalState.isOpen === true"
+    },
+    {
+      "id": "modal.tasks.import",
+      "name": "Asistente de Importacion Masiva de Tareas",
+      "component": "TaskImportModal",
+      "source_path": "src/modules/features/tasks/components/modals/task-import-modal.tsx",
+      "status": "implemented",
+      "description": "Carga de archivos estructurados en formato Pixy Universal Bundle (JSON), CSV y exportaciones de Jira con validacion y mapeo de campos previo.",
+      "conditions": "isImportModalOpen === true"
+    },
+    {
+      "id": "modal.tasks.workspace_form",
+      "name": "Modal de Creacion y Edicion de Espacios",
+      "component": "WorkspaceFormModal",
+      "source_path": "src/modules/features/tasks/components/modals/workspace-form-modal.tsx",
+      "status": "implemented",
+      "description": "Configurador de divisiones organizativas superiores con nombre, slug, lider de espacio y prefijo alfanumerico de tickets [KEY].",
+      "conditions": "isWorkspaceModalOpen === true"
+    },
+    {
+      "id": "modal.tasks.project_form",
+      "name": "Modal de Creacion y Edicion de Proyectos",
+      "component": "ProjectFormModal",
+      "source_path": "src/modules/features/tasks/components/modals/project-form-modal.tsx",
+      "status": "implemented",
+      "description": "Configurador de proyectos especificos asociados a un espacio de trabajo con color distintivo, descripcion y vinculacion de clientes.",
+      "conditions": "isProjectModalOpen === true"
+    }
+  ],
+  "server_actions": [
+    {
+      "name": "createTask",
+      "module": "src/modules/features/tasks/actions/task-actions.ts",
+      "symbol": "createTask",
+      "purpose": "Creacion de requerimientos y actividades sincronicas (con prefijo MTG), gestion de autogeneracion Google Meet mediante Google Calendar y persistencia en task_items."
+    },
+    {
+      "name": "updateTaskStatus",
+      "module": "src/modules/features/tasks/actions/task-actions.ts",
+      "symbol": "updateTaskStatus",
+      "purpose": "Transicion de estado tecnico, exigencia de motivo de bloqueo (blockedReason), tope al 95% si hay subtareas incompletas y ejecucion de desbloqueo automatico de tareas dependientes."
+    },
+    {
+      "name": "deleteTask",
+      "module": "src/modules/features/tasks/actions/task-actions.ts",
+      "symbol": "deleteTask",
+      "purpose": "Eliminacion de tarea unitaria y cancelacion automatica de evento en Google Calendar si correspondia a una reunion vinculada."
+    },
+    {
+      "name": "deleteTasks",
+      "module": "src/modules/features/tasks/actions/task-actions.ts",
+      "symbol": "deleteTasks",
+      "purpose": "Eliminacion masiva de tareas en lotes de 100 y cancelacion de reuniones en Google Calendar asociadas a los IDs eliminados."
+    },
+    {
+      "name": "completeMeetingSession",
+      "module": "src/modules/features/tasks/actions/task-actions.ts",
+      "symbol": "completeMeetingSession",
+      "purpose": "Cierre de actividad sincronica, transicion a completada y computo automatico de horas efectivas en la bitacora de los participantes presentes."
+    },
+    {
+      "name": "executeUniversalImport",
+      "module": "src/modules/features/tasks/actions/task-import-actions.ts",
+      "symbol": "executeUniversalImport",
+      "purpose": "Procesamiento transaccional de paquetes JSON, CSV o Jira, resolucion de entidades y carga masiva de tareas."
+    },
+    {
+      "name": "getSprints / completeSprint",
+      "module": "src/modules/features/tasks/actions/task-sprint-actions.ts",
+      "symbol": "getSprints",
+      "purpose": "Consulta y cierre de ciclos de trabajo con transferencia de tareas pendientes al siguiente ciclo o devolucion al backlog."
+    },
+    {
+      "name": "setupPortalPinAction / removePortalPinAction",
+      "module": "src/modules/features/portal-security/actions/portal-security-actions.ts",
+      "symbol": "setupPortalPinAction",
+      "purpose": "Configuracion, revocacion y blanqueo de codigos PIN de seguridad para colaboradores del portal."
+    }
+  ]
+}

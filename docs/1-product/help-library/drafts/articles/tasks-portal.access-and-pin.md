@@ -19,6 +19,16 @@ keywords:
   - seguridad
   - sesion
   - token
+  - salir
+  - salgo
+  - forma segura
+  - segura
+  - computador compartido
+  - computador
+  - compartido
+  - bloquear pantalla
+  - bloqueo manual
+  - cerrar ventana
 requirements:
   - Enlace de acceso personal activo proporcionado por la organización
   - Navegador web moderno con cookies y almacenamiento seguro habilitados
@@ -37,15 +47,17 @@ evidence:
 # Acceder al portal de tareas y configurar protección con código PIN
 
 ## Propósito
-Explicar el procedimiento para ingresar al portal ágil de tareas de la empresa mediante tu enlace personal seguro y configurar un código PIN de 6 dígitos que proteja la visualización de tus proyectos y requerimientos frente a terceros.
+Explicar el procedimiento para ingresar al portal ágil de tareas de la empresa mediante tu enlace personal seguro, configurar un código PIN de 6 dígitos que proteja la visualización de tus proyectos y aprender a salir de forma segura cuando utilices un computador compartido.
 
 ## Requisitos y perfiles
+Los perfiles de usuario del bot de ayuda no otorgan acceso a enlaces de terceros. Para acceder al portal se validan las siguientes condiciones por registro:
+- **Token único por colaborador:** Cada enlace web está asociado a un registro individual activo en `organization_staff`. El token es privado, no caduca por simple cierre de pestaña y pertenece exclusivamente al colaborador.
 - **Perfiles aplicables:** Todos los colaboradores con token de acceso activo (Desarrolladores, Diseñadores, Especialistas, QA, PMs y Soporte).
-- **Condición requerida:** Que tu registro en el equipo (`organization_staff`) esté marcado como activo y cuentes con el enlace web asignado.
+- **Aislamiento de sesión:** La cookie de desbloqueo de PIN se emite de forma estricta (`HttpOnly`) para el navegador y dispositivo en uso.
 
 ## Ubicación en pantalla
 - **Ruta web:** `/portal/tasks/[token]` (tu URL privada única).
-- **Menú de seguridad:** Haz clic sobre tu avatar en la esquina superior derecha del portal para desplegar las opciones de seguridad y PIN.
+- **Menú de seguridad:** Haz clic sobre tu avatar en la esquina superior derecha del portal para desplegar las opciones de seguridad, PIN y bloqueo de pantalla.
 
 ## Procedimiento paso a paso
 
@@ -56,7 +68,7 @@ Explicar el procedimiento para ingresar al portal ágil de tareas de la empresa 
 
 ### 2. Desbloquear el portal con tu PIN
 1. En el teclado numérico en pantalla (o utilizando el teclado físico de tu dispositivo), ingresa los 6 dígitos de tu clave.
-2. Si deseas mantener la sesión abierta en ese equipo por 30 días, marca la casilla **Recordar en este dispositivo**.
+2. Si deseas mantener la sesión abierta en ese equipo por 30 días, marca la casilla **Recordar en este dispositivo**. *Nota:* No marques esta casilla si estás en un computador compartido.
 3. El sistema verificará la clave y desbloqueará el acceso al tablero operativo.
 
 ### 3. Configurar o cambiar tu código PIN por primera vez
@@ -65,16 +77,20 @@ Explicar el procedimiento para ingresar al portal ágil de tareas de la empresa 
 3. Se abrirá la ventana modal de configuración:
    - Si vas a crear un PIN nuevo: ingresa los 6 dígitos deseados y confírmalos en el segundo campo.
    - Si vas a cambiar un PIN existente: introduce primero tu PIN actual y luego el nuevo PIN de 6 dígitos.
-4. Presiona **Guardar PIN**. La sesión quedará protegida y vinculada a tu navegador.
+4. Presiona **Guardar PIN**. La sesión quedará protegida con cifrado PBKDF2.
 
-### 4. Bloquear la sesión manualmente
-- Si te ausentas temporalmente de tu puesto de trabajo, abre el menú de tu avatar y presiona **Bloquear Pantalla**. El portal se sellará al instante requiriendo el PIN para volver a ver los datos.
+### 4. ¿Cómo salgo de mi portal de forma segura si estoy en un computador compartido?
+Si trabajas desde un equipo público, compartido o de un cliente, sigue este protocolo obligatorio de seguridad:
+1. Haz clic sobre tu **avatar** en la esquina superior derecha del portal.
+2. En el menú desplegable, selecciona **Bloquear Pantalla**. El portal sellará inmediatamente el acceso y volverá a mostrar la pantalla de bloqueo por PIN numérico.
+3. A continuación, **cierra la ventana del navegador** para limpiar la memoria de sesión.
+4. *Advertencia de seguridad:* El enlace privado de acceso **no se autodestruye al cerrar la pestaña**; por lo tanto, bloquear la pantalla manualmente es indispensable, aun cuando la computadora disponga de contraseña del sistema operativo.
 
 ## Resultado esperado
-Acceso directo, seguro y protegido a tus entregables, impidiendo que personas no autorizadas con acceso a tu pantalla o historial puedan consultar información confidencial del proyecto.
+Acceso directo, seguro y protegido a tus entregables, impidiendo que personas no autorizadas con acceso al historial del navegador puedan consultar información confidencial del proyecto.
 
 ## Errores y límites conocidos
-- **Error "Enlace Inválido o Expirado":** Ocurre si el administrador desactivó tu usuario en la plataforma o si se generó un nuevo token de acceso para tu cuenta. Debes solicitar un nuevo enlace a tu líder de proyecto.
+- **Error "Enlace Inválido o Expirado":** Ocurre si el administrador desactivó tu usuario en la plataforma o si se revocó el token de acceso. Debes solicitar un nuevo enlace a tu líder de proyecto.
 - **PIN olvidado:** El portal no dispone de botón de recuperación por correo para el colaborador externo. Si olvidas tu PIN, debes contactar a tu Project Manager o Administrador para que realice un blanqueo de PIN desde la consola del sistema.
 - **Formato estricto:** El PIN debe contener exactamente 6 dígitos numéricos; no se permiten letras, símbolos ni longitudes distintas.
 

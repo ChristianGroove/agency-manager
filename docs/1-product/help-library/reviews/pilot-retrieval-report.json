@@ -1,6 +1,6 @@
 {
-  "corpus_revision": "d8087e56463250941608b26de25018aa1d5de1e1270801276650446b2050c65b",
-  "articles": 39,
+  "corpus_revision": "b4d8246f80785623dda03822d5bb7a9ad045c149b685ff413095d1ddb2b2fcea",
+  "articles": 48,
   "questions": 65,
   "covered_answer_cases": 56,
   "retrieval_hits": 56,
@@ -32,10 +32,9 @@
         "theme.toggle-theme"
       ],
       "retrieved": [
+        "tasks.manage-tasks",
         "theme.toggle-theme",
-        "billing.manage-invoices",
-        "crm.manage-contacts",
-        "crm.manage-pipeline"
+        "billing.manage-invoices"
       ],
       "status": "boundary_requires_action_or_model_check"
     },
@@ -51,7 +50,8 @@
       ],
       "retrieved": [
         "help.chat-and-history",
-        "pet.pet-interaction"
+        "pet.pet-interaction",
+        "tasks.import-data"
       ],
       "status": "retrieval_hit"
     },
@@ -223,7 +223,8 @@
       "retrieved": [
         "iam.invite-members",
         "dashboard.overview",
-        "branding.brand-center"
+        "branding.brand-center",
+        "tasks.import-data"
       ],
       "status": "retrieval_hit"
     },
@@ -364,8 +365,9 @@
       ],
       "retrieved": [
         "crm.manage-contacts",
+        "tasks.import-data",
         "billing.manage-invoices",
-        "inbox.manage-conversations"
+        "quotes.create-quotes"
       ],
       "status": "retrieval_hit"
     },
@@ -472,7 +474,8 @@
         "tasks.manage-tasks"
       ],
       "retrieved": [
-        "tasks.manage-tasks"
+        "tasks.manage-tasks",
+        "tasks.task-lifecycle-and-views"
       ],
       "status": "retrieval_hit"
     },
@@ -486,9 +489,9 @@
         "tasks.manage-tasks"
       ],
       "retrieved": [
-        "help.chat-and-history",
         "tasks.manage-tasks",
-        "inbox.manage-conversations"
+        "tasks.task-lifecycle-and-views",
+        "tasks.collaborators-and-portals"
       ],
       "status": "retrieval_hit"
     },
@@ -642,6 +645,7 @@
       ],
       "published_expected": [],
       "retrieved": [
+        "tasks.manage-tasks",
         "inbox.saved-replies-and-templates"
       ],
       "status": "boundary_requires_action_or_model_check"
@@ -693,6 +697,7 @@
       ],
       "published_expected": [],
       "retrieved": [
+        "tasks.manage-tasks",
         "inbox.saved-replies-and-templates"
       ],
       "status": "boundary_requires_action_or_model_check"
@@ -803,6 +808,7 @@
       ],
       "retrieved": [
         "theme.toggle-theme",
+        "tasks.manage-tasks",
         "dashboard.overview"
       ],
       "status": "retrieval_hit"
@@ -893,8 +899,8 @@
       ],
       "retrieved": [
         "iam.invite-members",
-        "help.chat-and-history",
-        "iam.manage-roles"
+        "tasks.task-lifecycle-and-views",
+        "tasks.manage-tasks"
       ],
       "status": "retrieval_hit"
     },

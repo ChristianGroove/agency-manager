@@ -1,0 +1,80 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "name": "pixy-tasks-dashboard-capability-matrix",
+  "version": "1.0.0",
+  "generated_at": "2026-10-12",
+  "source_revision": "5aaeec98767f13ec9b495eed33486fcdba65ab86",
+  "surface": "dashboard",
+  "matrix": [
+    {
+      "function_id": "func.tasks_dashboard_access",
+      "name": "Acceso y Navegacion General del Modulo Tareas",
+      "canonical_iam_permission": "operations.tasks.view",
+      "module_key": "module_tasks",
+      "ui_controls": "Opcion Tareas en el menu lateral de Operaciones (/operations/tasks); selector de pestanas Lista, Kanban, Calendario, Ritmo, Metricas y Colaboradores.",
+      "server_authorization": "TasksPage resuelve getCurrentOrganizationId; la ruta /operations/tasks esta protegida por middleware y MODULE_ROUTES con operations.tasks.view.",
+      "per_record_conditions": "Membresia activa en la organizacion. Si el usuario tiene acceso global ve todos los espacios y proyectos; de lo contrario se acota a los proyectos asignados.",
+      "portal_differences": "El dashboard opera con sesion de Supabase Auth en contexto de tenant. El portal (/portal/tasks/[token]) opera con token anonimo de personal, cookie HMAC y pantalla de bloqueo con PIN de 6 digitos."
+    },
+    {
+      "function_id": "func.task_creation_mutation",
+      "name": "Creacion y Modificacion de Tareas y Requerimientos",
+      "canonical_iam_permission": "operations.tasks.manage",
+      "module_key": "module_tasks",
+      "ui_controls": "Boton '+ Nuevo' -> 'Nueva Tarea' (TaskFormModal), arrastre entre columnas en Kanban y edicion en TaskDetailModal.",
+      "server_authorization": "createTask, updateTask, updateTaskStatus en task-actions.ts.",
+      "per_record_conditions": "Pertenencia a la organizacion. Si la tarea tiene predecesora pendiente (blocked_by_task_id), refleja advertencia; si tiene subtareas incompletas, se clampa el avance al 95% al intentar cerrar.",
+      "portal_differences": "En el portal, los colaboradores ordinarios ven sus creaciones forzadas a Backlog con 0 horas y fecha nula. En el dashboard, el gestor asigna estado inicial libremente, plazos contractuales, QA y presupuesto de horas."
+    },
+    {
+      "function_id": "func.meeting_scheduling_management",
+      "name": "Programacion y Ejecucion de Reuniones Sincronicas",
+      "canonical_iam_permission": "operations.tasks.manage",
+      "module_key": "module_tasks",
+      "ui_controls": "Boton '+ Nuevo' -> 'Nueva Reunion / Actividad' (TaskMeetingModal), conmutador TaskMeetingViewToggle y consola TaskMeetingDetailModal / TaskMeetingConsole.",
+      "server_authorization": "createTask (con prefijo MTG), completeMeetingSession, registerMeetingAttendance y sincronizacion con Google Calendar API.",
+      "per_record_conditions": "Pertenencia a la organizacion. Para autogenerar Google Meet, el usuario autenticado del dashboard debe tener vinculada la integracion con Google Calendar; en caso contrario, se admite enlace manual.",
+      "portal_differences": "En el portal, los colaboradores externos suelen carecer de cuenta en auth.users (user_id nulo), provocando que la generacion de Meet falle y requiera enlace manual. En el dashboard, la sesion autenticada cuenta con credencial OAuth directa y convoca a cualquier miembro del tenant."
+    },
+    {
+      "function_id": "func.bulk_delete_tasks",
+      "name": "Eliminacion Masiva de Tareas en Lista",
+      "canonical_iam_permission": "operations.tasks.manage",
+      "module_key": "module_tasks",
+      "ui_controls": "Casillas de seleccion multiple en TaskListView y boton 'Eliminar' en la barra flotante BulkActionsFloatingBar.",
+      "server_authorization": "deleteTasks en task-actions.ts elimina en lotes de 100 y cancela eventos asociados en Google Calendar. Discrepancia tecnica: la accion de servidor no valida un rol especifico mas alla del tenant.",
+      "per_record_conditions": "Los IDs seleccionados deben pertenecer a la organizacion activa.",
+      "portal_differences": "Discrepancia critica: en el portal la eliminacion masiva valida estrictamente el flag staff.can_bulk_delete_tasks o rol de PM. En el dashboard no existe la clave IAM can_bulk_delete_tasks; la autorizacion recae en operations.tasks.manage a nivel de UI."
+    },
+    {
+      "function_id": "func.sprint_planning",
+      "name": "Gestion y Planificacion de Sprints Agiles",
+      "canonical_iam_permission": "operations.tasks.manage",
+      "module_key": "module_tasks",
+      "ui_controls": "Boton '+ Nuevo' -> 'Nuevo Sprint' (TaskSprintModal), selector de ciclo activo y asistente de cierre de sprint.",
+      "server_authorization": "getSprints, createSprint, updateSprint, completeSprint y deleteSprint en task-sprint-actions.ts.",
+      "per_record_conditions": "Solo puede existir un Sprint en estado 'active' por proyecto u organizacion.",
+      "portal_differences": "Los colaboradores del portal no pueden crear ni cerrar sprints; solo ven el filtro de sprint asignado a sus tickets."
+    },
+    {
+      "function_id": "func.collaborators_portal_administration",
+      "name": "Administracion de Colaboradores, PIN y Capacidades",
+      "canonical_iam_permission": "operations.tasks.manage",
+      "module_key": "module_tasks",
+      "ui_controls": "Pestana Colaboradores (TaskCollaboratorsManager), modal de seguridad PIN, botones de copia de enlace y switches de capacidades.",
+      "server_authorization": "Acciones en portal-security-actions.ts (setupPortalPinAction, removePortalPinAction, lockPortalSessionAction) y actualizacion de organization_staff.",
+      "per_record_conditions": "El colaborador debe pertenecer a organization_staff de la organizacion activa.",
+      "portal_differences": "Los colaboradores externos en el portal no tienen acceso a esta pestana; unicamente pueden autogestionar su propio PIN desde su menu de perfil o solicitar el blanqueo al administrador del dashboard si lo olvidan."
+    },
+    {
+      "function_id": "func.universal_import",
+      "name": "Importacion Masiva de Tareas (JSON, CSV, Jira)",
+      "canonical_iam_permission": "operations.tasks.manage",
+      "module_key": "module_tasks",
+      "ui_controls": "Boton '+ Nuevo' -> 'Importar Datos / Tareas' (TaskImportModal) con previsualizacion y mapeo de campos.",
+      "server_authorization": "executeUniversalImport en task-import-actions.ts.",
+      "per_record_conditions": "Archivo con cabeceras validas; mapeo hacia proyectos y colaboradores del tenant.",
+      "portal_differences": "Completamente inexistente en el portal de colaboradores externos."
+    }
+  ]
+}

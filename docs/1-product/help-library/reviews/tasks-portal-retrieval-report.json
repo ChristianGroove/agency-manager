@@ -1,11 +1,11 @@
 {
-  "corpus_revision": "d8087e56463250941608b26de25018aa1d5de1e1270801276650446b2050c65b",
-  "portal_articles": 18,
+  "corpus_revision": "b4d8246f80785623dda03822d5bb7a9ad045c149b685ff413095d1ddb2b2fcea",
+  "portal_articles": 22,
   "total_cases": 70,
   "answer_cases": 47,
-  "retrieval_hits": 35,
-  "retrieval_misses": 8,
-  "access_blocked": 3,
+  "retrieval_hits": 46,
+  "retrieval_misses": 0,
+  "access_blocked": 0,
   "local_policy_cases": 1,
   "clarify_cases": 12,
   "abstain_cases": 11,
@@ -24,8 +24,7 @@
       "retrieved": [
         "tasks-portal.access-and-pin",
         "tasks-portal.view-modes-and-filters",
-        "tasks-portal.task-lifecycle-and-status",
-        "tasks-portal.quick-notes"
+        "tasks-portal.task-lifecycle-and-status"
       ],
       "status": "retrieval_hit"
     },
@@ -41,7 +40,8 @@
       ],
       "retrieved": [
         "tasks-portal.access-and-pin",
-        "tasks-portal.quick-notes"
+        "tasks-portal.quick-notes",
+        "tasks-portal.task-lifecycle-and-status"
       ],
       "status": "retrieval_hit"
     },
@@ -93,8 +93,8 @@
       "retrieved": [
         "tasks-portal.view-modes-and-filters",
         "tasks-portal.meetings-and-meet",
-        "tasks-portal.comments-and-mentions",
-        "tasks-portal.task-lifecycle-and-status"
+        "tasks-portal.support-tickets-collaboration",
+        "tasks-portal.comments-and-mentions"
       ],
       "status": "retrieval_hit"
     },
@@ -109,10 +109,10 @@
         "tasks-portal.view-modes-and-filters"
       ],
       "retrieved": [
-        "tasks-portal.access-and-pin",
         "tasks-portal.view-modes-and-filters",
-        "tasks-portal.attachments-and-files",
-        "tasks-portal.comments-and-mentions"
+        "tasks-portal.access-and-pin",
+        "tasks-portal.design-figma-preview",
+        "tasks-portal.attachments-and-files"
       ],
       "status": "retrieval_hit"
     },
@@ -131,7 +131,6 @@
       "retrieved": [
         "tasks-portal.task-progress-and-slider",
         "tasks-portal.task-lifecycle-and-status",
-        "tasks-portal.meetings-and-meet",
         "tasks-portal.access-and-pin"
       ],
       "status": "retrieval_hit"
@@ -167,8 +166,7 @@
       "retrieved": [
         "tasks-portal.task-lifecycle-and-status",
         "tasks-portal.create-task-collaborator",
-        "tasks-portal.task-progress-and-slider",
-        "tasks-portal.attachments-and-files"
+        "tasks-portal.task-progress-and-slider"
       ],
       "status": "retrieval_hit"
     },
@@ -183,10 +181,11 @@
         "tasks-portal.task-lifecycle-and-status"
       ],
       "retrieved": [
+        "tasks-portal.task-lifecycle-and-status",
         "tasks-portal.quick-notes",
         "tasks-portal.attachments-and-files"
       ],
-      "status": "retrieval_miss"
+      "status": "retrieval_hit"
     },
     {
       "id": "q.portal.011",
@@ -201,8 +200,7 @@
       "retrieved": [
         "tasks-portal.task-lifecycle-and-status",
         "tasks-portal.create-task-collaborator",
-        "tasks-portal.quick-notes",
-        "tasks-portal.comments-and-mentions"
+        "tasks-portal.quick-notes"
       ],
       "status": "retrieval_hit"
     },
@@ -217,6 +215,7 @@
         "tasks-portal.subtasks-checklist"
       ],
       "retrieved": [
+        "tasks-portal.task-lifecycle-and-status",
         "tasks-portal.subtasks-checklist",
         "tasks-portal.worklog-and-hours"
       ],
@@ -236,7 +235,7 @@
         "tasks-portal.subtasks-checklist",
         "tasks-portal.access-and-pin",
         "tasks-portal.task-progress-and-slider",
-        "tasks-portal.task-lifecycle-and-status"
+        "tasks-portal.worklog-and-hours"
       ],
       "status": "retrieval_hit"
     },
@@ -266,8 +265,10 @@
       "readable_expected": [
         "tasks-portal.comments-and-mentions"
       ],
-      "retrieved": [],
-      "status": "retrieval_miss"
+      "retrieved": [
+        "tasks-portal.comments-and-mentions"
+      ],
+      "status": "retrieval_hit"
     },
     {
       "id": "q.portal.016",
@@ -279,8 +280,10 @@
       "readable_expected": [
         "tasks-portal.comments-and-mentions"
       ],
-      "retrieved": [],
-      "status": "retrieval_miss"
+      "retrieved": [
+        "tasks-portal.comments-and-mentions"
+      ],
+      "status": "retrieval_hit"
     },
     {
       "id": "q.portal.017",
@@ -293,10 +296,10 @@
         "tasks-portal.attachments-and-files"
       ],
       "retrieved": [
-        "tasks-portal.attachments-and-files",
-        "tasks-portal.comments-and-mentions",
-        "tasks-portal.create-task-collaborator",
-        "tasks-portal.meetings-and-meet"
+        "tasks-portal.design-figma-preview",
+        "tasks-portal.support-tickets-collaboration",
+        "tasks-portal.view-modes-and-filters",
+        "tasks-portal.attachments-and-files"
       ],
       "status": "retrieval_hit"
     },
@@ -306,16 +309,17 @@
       "expected_behavior": "answer",
       "expected_guides": [
         "tasks-portal.attachments-and-files",
-        "tasks-portal.technical-capabilities"
+        "tasks-portal.design-figma-preview"
       ],
       "readable_expected": [
-        "tasks-portal.attachments-and-files"
+        "tasks-portal.attachments-and-files",
+        "tasks-portal.design-figma-preview"
       ],
       "retrieved": [
         "tasks-portal.attachments-and-files",
+        "tasks-portal.design-figma-preview",
         "tasks-portal.access-and-pin",
-        "tasks-portal.quick-notes",
-        "tasks-portal.task-lifecycle-and-status"
+        "tasks-portal.quick-notes"
       ],
       "status": "retrieval_hit"
     },
@@ -332,7 +336,7 @@
       "retrieved": [
         "tasks-portal.create-task-collaborator",
         "tasks-portal.worklog-and-hours",
-        "tasks-portal.task-lifecycle-and-status"
+        "tasks-portal.comments-and-mentions"
       ],
       "status": "retrieval_hit"
     },
@@ -347,10 +351,9 @@
         "tasks-portal.worklog-and-hours"
       ],
       "retrieved": [
-        "tasks-portal.worklog-and-hours",
         "tasks-portal.task-lifecycle-and-status",
-        "tasks-portal.create-task-collaborator",
-        "tasks-portal.quick-notes"
+        "tasks-portal.worklog-and-hours",
+        "tasks-portal.create-task-collaborator"
       ],
       "status": "retrieval_hit"
     },
@@ -381,9 +384,10 @@
         "tasks-portal.create-task-collaborator"
       ],
       "retrieved": [
+        "tasks-portal.create-task-collaborator",
         "tasks-portal.attachments-and-files",
         "tasks-portal.quick-notes",
-        "tasks-portal.create-task-collaborator"
+        "tasks-portal.vcs-git-integration"
       ],
       "status": "retrieval_hit"
     },
@@ -399,10 +403,9 @@
       ],
       "retrieved": [
         "tasks-portal.create-task-pm",
+        "tasks-portal.finance-and-costs",
         "tasks-portal.worklog-and-hours",
-        "tasks-portal.pm-weekly-pacing",
-        "tasks-portal.quick-notes",
-        "tasks-portal.attachments-and-files"
+        "tasks-portal.pm-weekly-pacing"
       ],
       "status": "retrieval_hit"
     },
@@ -437,8 +440,8 @@
       "retrieved": [
         "tasks-portal.meetings-and-meet",
         "tasks-portal.pm-weekly-pacing",
-        "tasks-portal.bulk-actions",
-        "tasks-portal.comments-and-mentions"
+        "tasks-portal.access-and-pin",
+        "tasks-portal.bulk-actions"
       ],
       "status": "retrieval_hit"
     },
@@ -455,7 +458,8 @@
       "retrieved": [
         "tasks-portal.qa-review-flow",
         "tasks-portal.create-task-collaborator",
-        "tasks-portal.task-lifecycle-and-status"
+        "tasks-portal.design-figma-preview",
+        "tasks-portal.monitoring-and-telemetry"
       ],
       "status": "retrieval_hit"
     },
@@ -474,8 +478,8 @@
       "retrieved": [
         "tasks-portal.qa-review-flow",
         "tasks-portal.attachments-and-files",
-        "tasks-portal.create-task-collaborator",
-        "tasks-portal.comments-and-mentions"
+        "tasks-portal.task-lifecycle-and-status",
+        "tasks-portal.monitoring-and-telemetry"
       ],
       "status": "retrieval_hit"
     },
@@ -492,7 +496,8 @@
       "retrieved": [
         "tasks-portal.pm-operations-dashboard",
         "tasks-portal.worklog-and-hours",
-        "tasks-portal.attachments-and-files"
+        "tasks-portal.attachments-and-files",
+        "tasks-portal.vcs-git-integration"
       ],
       "status": "retrieval_hit"
     },
@@ -508,7 +513,9 @@
       ],
       "retrieved": [
         "tasks-portal.create-task-pm",
-        "tasks-portal.pm-operations-dashboard"
+        "tasks-portal.pm-operations-dashboard",
+        "tasks-portal.finance-and-costs",
+        "tasks-portal.support-tickets-collaboration"
       ],
       "status": "retrieval_hit"
     },
@@ -538,7 +545,9 @@
         "tasks-portal.parallel-support-portal"
       ],
       "retrieved": [
-        "tasks-portal.parallel-support-portal"
+        "tasks-portal.support-tickets-collaboration",
+        "tasks-portal.parallel-support-portal",
+        "tasks-portal.comments-and-mentions"
       ],
       "status": "retrieval_hit"
     },
@@ -551,9 +560,11 @@
         "tasks-portal.comments-and-mentions"
       ],
       "readable_expected": [
-        "tasks-portal.parallel-support-portal"
+        "tasks-portal.parallel-support-portal",
+        "tasks-portal.comments-and-mentions"
       ],
       "retrieved": [
+        "tasks-portal.support-tickets-collaboration",
         "tasks-portal.parallel-support-portal"
       ],
       "status": "retrieval_hit"
@@ -581,32 +592,35 @@
       "profile": "developer",
       "expected_behavior": "answer",
       "expected_guides": [
-        "tasks-portal.technical-capabilities"
+        "tasks-portal.vcs-git-integration"
       ],
-      "readable_expected": [],
+      "readable_expected": [
+        "tasks-portal.vcs-git-integration"
+      ],
       "retrieved": [
+        "tasks-portal.vcs-git-integration",
         "tasks-portal.create-task-collaborator",
         "tasks-portal.quick-notes"
       ],
-      "status": "capability_or_profile_blocked"
+      "status": "retrieval_hit"
     },
     {
       "id": "q.portal.035",
       "profile": "designer",
       "expected_behavior": "answer",
       "expected_guides": [
-        "tasks-portal.technical-capabilities",
+        "tasks-portal.design-figma-preview",
         "tasks-portal.attachments-and-files"
       ],
       "readable_expected": [
+        "tasks-portal.design-figma-preview",
         "tasks-portal.attachments-and-files"
       ],
       "retrieved": [
         "tasks-portal.attachments-and-files",
+        "tasks-portal.design-figma-preview",
         "tasks-portal.create-task-collaborator",
-        "tasks-portal.quick-notes",
-        "tasks-portal.comments-and-mentions",
-        "tasks-portal.subtasks-checklist"
+        "tasks-portal.access-and-pin"
       ],
       "status": "retrieval_hit"
     },
@@ -615,31 +629,36 @@
       "profile": "developer",
       "expected_behavior": "answer",
       "expected_guides": [
-        "tasks-portal.technical-capabilities"
+        "tasks-portal.monitoring-and-telemetry"
       ],
-      "readable_expected": [],
+      "readable_expected": [
+        "tasks-portal.monitoring-and-telemetry"
+      ],
       "retrieved": [
-        "tasks-portal.meetings-and-meet",
-        "tasks-portal.view-modes-and-filters"
+        "tasks-portal.monitoring-and-telemetry",
+        "tasks-portal.view-modes-and-filters",
+        "tasks-portal.support-tickets-collaboration",
+        "tasks-portal.comments-and-mentions"
       ],
-      "status": "capability_or_profile_blocked"
+      "status": "retrieval_hit"
     },
     {
       "id": "q.portal.037",
       "profile": "pm_lead",
       "expected_behavior": "answer",
       "expected_guides": [
-        "tasks-portal.technical-capabilities"
+        "tasks-portal.finance-and-costs"
       ],
       "readable_expected": [
-        "tasks-portal.technical-capabilities"
+        "tasks-portal.finance-and-costs"
       ],
       "retrieved": [
+        "tasks-portal.finance-and-costs",
         "tasks-portal.worklog-and-hours",
         "tasks-portal.create-task-pm",
         "tasks-portal.qa-review-flow"
       ],
-      "status": "retrieval_miss"
+      "status": "retrieval_hit"
     },
     {
       "id": "q.portal.038",
@@ -671,10 +690,11 @@
         "tasks-portal.task-lifecycle-and-status"
       ],
       "retrieved": [
+        "tasks-portal.task-lifecycle-and-status",
         "tasks-portal.create-task-collaborator",
         "tasks-portal.quick-notes"
       ],
-      "status": "retrieval_miss"
+      "status": "retrieval_hit"
     },
     {
       "id": "q.portal.040",
@@ -689,10 +709,11 @@
         "tasks-portal.comments-and-mentions"
       ],
       "retrieved": [
-        "tasks-portal.quick-notes",
-        "tasks-portal.create-task-collaborator"
+        "tasks-portal.task-lifecycle-and-status",
+        "tasks-portal.create-task-collaborator",
+        "tasks-portal.quick-notes"
       ],
-      "status": "retrieval_miss"
+      "status": "retrieval_hit"
     },
     {
       "id": "q.portal.041",
@@ -705,10 +726,10 @@
         "tasks-portal.view-modes-and-filters"
       ],
       "retrieved": [
+        "tasks-portal.view-modes-and-filters",
         "tasks-portal.create-task-collaborator",
-        "tasks-portal.attachments-and-files",
-        "tasks-portal.quick-notes",
-        "tasks-portal.view-modes-and-filters"
+        "tasks-portal.support-tickets-collaboration",
+        "tasks-portal.attachments-and-files"
       ],
       "status": "retrieval_hit"
     },
@@ -724,12 +745,11 @@
         "tasks-portal.create-task-collaborator"
       ],
       "retrieved": [
-        "tasks-portal.attachments-and-files",
-        "tasks-portal.quick-notes",
+        "tasks-portal.create-task-collaborator",
         "tasks-portal.task-lifecycle-and-status",
-        "tasks-portal.subtasks-checklist"
+        "tasks-portal.attachments-and-files"
       ],
-      "status": "retrieval_miss"
+      "status": "retrieval_hit"
     },
     {
       "id": "q.portal.043",
@@ -759,6 +779,7 @@
         "tasks-portal.meetings-and-meet"
       ],
       "retrieved": [
+        "tasks-portal.support-tickets-collaboration",
         "tasks-portal.meetings-and-meet"
       ],
       "status": "retrieval_hit"
@@ -768,13 +789,16 @@
       "profile": "all_collaborators",
       "expected_behavior": "answer",
       "expected_guides": [
-        "tasks-portal.parallel-support-portal"
+        "tasks-portal.support-tickets-collaboration"
       ],
-      "readable_expected": [],
+      "readable_expected": [
+        "tasks-portal.support-tickets-collaboration"
+      ],
       "retrieved": [
+        "tasks-portal.support-tickets-collaboration",
         "tasks-portal.meetings-and-meet"
       ],
-      "status": "capability_or_profile_blocked"
+      "status": "retrieval_hit"
     },
     {
       "id": "q.portal.046",
@@ -787,10 +811,11 @@
         "tasks-portal.access-and-pin"
       ],
       "retrieved": [
+        "tasks-portal.access-and-pin",
         "tasks-portal.task-progress-and-slider",
         "tasks-portal.view-modes-and-filters"
       ],
-      "status": "retrieval_miss"
+      "status": "retrieval_hit"
     },
     {
       "id": "q.portal.047",
@@ -805,8 +830,7 @@
         "tasks-portal.attachments-and-files",
         "tasks-portal.create-task-collaborator",
         "tasks-portal.quick-notes",
-        "tasks-portal.comments-and-mentions",
-        "tasks-portal.subtasks-checklist"
+        "tasks-portal.comments-and-mentions"
       ],
       "status": "requires_model_or_manual_boundary_check"
     },
@@ -823,6 +847,7 @@
       ],
       "retrieved": [
         "tasks-portal.access-and-pin",
+        "tasks-portal.comments-and-mentions",
         "tasks-portal.parallel-support-portal"
       ],
       "status": "requires_model_or_manual_boundary_check"
@@ -853,10 +878,10 @@
         "tasks-portal.task-lifecycle-and-status"
       ],
       "retrieved": [
+        "tasks-portal.task-lifecycle-and-status",
         "tasks-portal.attachments-and-files",
         "tasks-portal.quick-notes",
-        "tasks-portal.task-lifecycle-and-status",
-        "tasks-portal.create-task-collaborator"
+        "tasks-portal.subtasks-checklist"
       ],
       "status": "requires_model_or_manual_boundary_check"
     },
@@ -865,15 +890,14 @@
       "profile": "designer",
       "expected_behavior": "clarify",
       "expected_guides": [
-        "tasks-portal.technical-capabilities"
+        "tasks-portal.vcs-git-integration"
       ],
       "readable_expected": [],
       "retrieved": [
+        "tasks-portal.access-and-pin",
         "tasks-portal.quick-notes",
         "tasks-portal.create-task-collaborator",
-        "tasks-portal.access-and-pin",
-        "tasks-portal.attachments-and-files",
-        "tasks-portal.subtasks-checklist"
+        "tasks-portal.view-modes-and-filters"
       ],
       "status": "requires_model_or_manual_boundary_check"
     },
@@ -919,10 +943,10 @@
         "tasks-portal.worklog-and-hours"
       ],
       "retrieved": [
+        "tasks-portal.view-modes-and-filters",
         "tasks-portal.worklog-and-hours",
-        "tasks-portal.comments-and-mentions",
-        "tasks-portal.create-task-collaborator",
-        "tasks-portal.task-lifecycle-and-status"
+        "tasks-portal.support-tickets-collaboration",
+        "tasks-portal.comments-and-mentions"
       ],
       "status": "requires_model_or_manual_boundary_check"
     },
@@ -939,10 +963,10 @@
         "tasks-portal.access-and-pin"
       ],
       "retrieved": [
-        "tasks-portal.quick-notes",
+        "tasks-portal.access-and-pin",
         "tasks-portal.comments-and-mentions",
-        "tasks-portal.meetings-and-meet",
-        "tasks-portal.subtasks-checklist"
+        "tasks-portal.monitoring-and-telemetry",
+        "tasks-portal.quick-notes"
       ],
       "status": "requires_model_or_manual_boundary_check"
     },
@@ -1009,9 +1033,9 @@
       "expected_guides": [],
       "readable_expected": [],
       "retrieved": [
+        "tasks-portal.create-task-collaborator",
         "tasks-portal.access-and-pin",
-        "tasks-portal.comments-and-mentions",
-        "tasks-portal.task-progress-and-slider"
+        "tasks-portal.comments-and-mentions"
       ],
       "status": "requires_model_or_manual_boundary_check"
     },
@@ -1057,7 +1081,9 @@
       "expected_behavior": "abstain",
       "expected_guides": [],
       "readable_expected": [],
-      "retrieved": [],
+      "retrieved": [
+        "tasks-portal.create-task-collaborator"
+      ],
       "status": "requires_model_or_manual_boundary_check"
     },
     {
@@ -1083,10 +1109,15 @@
       "profile": "developer",
       "expected_behavior": "abstain",
       "expected_guides": [
-        "tasks-portal.technical-capabilities"
+        "tasks-portal.vcs-git-integration"
       ],
-      "readable_expected": [],
-      "retrieved": [],
+      "readable_expected": [
+        "tasks-portal.vcs-git-integration"
+      ],
+      "retrieved": [
+        "tasks-portal.vcs-git-integration",
+        "tasks-portal.access-and-pin"
+      ],
       "status": "requires_model_or_manual_boundary_check"
     },
     {
@@ -1096,7 +1127,7 @@
       "expected_guides": [],
       "readable_expected": [],
       "retrieved": [
-        "tasks-portal.access-and-pin",
+        "tasks-portal.monitoring-and-telemetry",
         "tasks-portal.create-task-collaborator",
         "tasks-portal.quick-notes",
         "tasks-portal.task-progress-and-slider"

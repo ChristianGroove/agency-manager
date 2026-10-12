@@ -2,6 +2,8 @@
 
 Fecha: 2026-10-12. Rama: `pixyrobotpet`. Esta entrega sucede a la [base técnica](pixy-help-tasks-portal-foundation.md) y concreta el [plan](pixy-help-tasks-portal-plan.md). No se ha desplegado ni migrado la base remota. La validación visual y de respuestas reales corresponde al usuario.
 
+Actualización de biblioteca: las dos entregas siguientes de Gemini ya están integradas en 48 artículos (26 dashboard y 22 portal). Snapshot vigente `tasks-combined-reviewed-20261012.json`; ver [cierre combinado](../../1-product/help-library/reviews/tasks-combined-integration-20261012.md) para filtros, métricas y pendientes. Las cifras de la entrega inicial descrita abajo se conservan como antecedente de la arquitectura de acceso/historial.
+
 ## Estado y activación
 
 Biblioteca compilada: 39 artículos, 21 del dashboard y 18 exclusivos de `portal.tasks`. Gemini realizó la revisión editorial `source-only`; Codex adaptó formato, acceso y transporte. Los originales permanecen en `docs/1-product/help-library/portal-preparation/tasks/`. Las copias publicables están en `drafts/articles/`; snapshot completo vigente: `reviews/public-language-reviewed-20261012.json`, sucesor del snapshot Tasks con los mismos artículos/filtros y reverificación del pequeño diff de presentación del historial.

@@ -324,7 +324,7 @@
       "profile": "designer",
       "view": "portal.tasks.detail_modal",
       "expected_behavior": "answer",
-      "expected_guides": ["tasks-portal.attachments-and-files", "tasks-portal.technical-capabilities"],
+      "expected_guides": ["tasks-portal.attachments-and-files", "tasks-portal.design-figma-preview"],
       "required_points": [
         "Ir a la sección Archivos y Enlaces en el modal de detalle",
         "Presionar Añadir Enlace y pegar la URL de Figma con un título descriptivo",
@@ -612,7 +612,7 @@
       "profile": "developer",
       "view": "portal.tasks.detail_modal",
       "expected_behavior": "answer",
-      "expected_guides": ["tasks-portal.technical-capabilities"],
+      "expected_guides": ["tasks-portal.vcs-git-integration"],
       "required_points": [
         "Abrir el modal de detalle y hacer clic en la pestaña Código / VCS",
         "Consultar el nombre de rama sugerido (ej. feature/TK-101-slug)",
@@ -630,7 +630,7 @@
       "profile": "designer",
       "view": "portal.tasks.detail_modal",
       "expected_behavior": "answer",
-      "expected_guides": ["tasks-portal.technical-capabilities", "tasks-portal.attachments-and-files"],
+      "expected_guides": ["tasks-portal.design-figma-preview", "tasks-portal.attachments-and-files"],
       "required_points": [
         "Verificar que la tarea tenga un enlace válido de Figma en sus adjuntos",
         "Hacer clic en la pestaña Diseño / Prototipo dentro del modal",
@@ -648,7 +648,7 @@
       "profile": "developer",
       "view": "portal.tasks.detail_modal",
       "expected_behavior": "answer",
-      "expected_guides": ["tasks-portal.technical-capabilities"],
+      "expected_guides": ["tasks-portal.monitoring-and-telemetry"],
       "required_points": [
         "Acceder a la pestaña Monitoreo en el modal de detalle",
         "Revisar los eventos de excepción técnica y trazas reportadas",
@@ -666,7 +666,7 @@
       "profile": "pm_lead",
       "view": "portal.tasks.detail_modal",
       "expected_behavior": "answer",
-      "expected_guides": ["tasks-portal.technical-capabilities"],
+      "expected_guides": ["tasks-portal.finance-and-costs"],
       "required_points": [
         "Disponible exclusivamente para Project Managers en la pestaña Costos y Finanzas",
         "Multiplica las horas reales de cada colaborador por su tarifa horaria configurada",
@@ -809,7 +809,7 @@
       "profile": "all_collaborators",
       "view": "portal.tasks.general",
       "expected_behavior": "answer",
-      "expected_guides": ["tasks-portal.parallel-support-portal"],
+      "expected_guides": ["tasks-portal.support-tickets-collaboration"],
       "required_points": [
         "Indica que el requerimiento fue originado en el canal de soporte paralelo",
         "Proviene de una incidencia de atención al cliente o reporte de usuario",
@@ -920,7 +920,7 @@
       "profile": "designer",
       "view": "portal.tasks.detail_modal",
       "expected_behavior": "clarify",
-      "expected_guides": ["tasks-portal.technical-capabilities"],
+      "expected_guides": ["tasks-portal.vcs-git-integration"],
       "required_points": [
         "Aclarar cuál es tu rol en la organización",
         "La pestaña Código/VCS se habilita por defecto para Desarrolladores, QA y PMs",
@@ -1212,7 +1212,7 @@
       "profile": "developer",
       "view": "portal.tasks.detail_modal",
       "expected_behavior": "abstain",
-      "expected_guides": ["tasks-portal.technical-capabilities"],
+      "expected_guides": ["tasks-portal.vcs-git-integration"],
       "required_points": [
         "El asistente de ayuda es puramente explicativo y no opera la terminal ni ejecuta acciones sobre repositorios",
         "El colaborador debe realizar el commit y push desde su entorno local Git"
