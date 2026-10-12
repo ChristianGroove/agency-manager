@@ -32,7 +32,7 @@ evidence:
     claim: Menú popover superior izquierdo con listado paginado de conversaciones previas y opción de nueva conversación.
   - path: src/modules/features/caa/actions/help-history.ts
     symbol: listHelpThreads
-    claim: Carga hilos paginados de 20 en 20 filtrando por user_id y organization_id bajo RLS estricto.
+    claim: Carga hilos paginados de 20 en 20 filtrando por user_id y organization_id bajo RLS estricto, ordenados por fecha de creación (created_at DESC).
   - path: docs/2-architecture/modules/pixy-help-chat-history.md
     symbol: "Private help chat history"
     claim: Documenta persistencia duradera, aislamiento por tenant y usuario, límite de 200 mensajes y navegación visual.
@@ -46,7 +46,7 @@ Permitir a los usuarios formular preguntas sobre el funcionamiento de Pixy, reci
 ## Requisitos y permisos
 - Usuario autenticado con sesión válida en una organización activa.
 - Disponible para todos los niveles de usuario (miembros, administradores y dueños).
-- El historial de conversaciones es estrictamente privado y confidencial: cada usuario solo tiene acceso a sus propias conversaciones dentro de la organización activa. Las políticas de seguridad a nivel de fila (RLS) impiden que otros miembros o administradores lean tus hilos de ayuda.
+- El historial de ayuda permite consultar solo tus conversaciones dentro de la organización activa. Los administradores y superadministradores tampoco pueden abrir los historiales de otras personas mediante esta función. La persistencia depende de la disponibilidad del servicio y de que las tablas de historial estén instaladas en ese entorno.
 
 ## Ubicación en pantalla
 - **Acceso:** Clic en la mascota robot Pixy (o en el botón circular de ayuda con icono de mensaje) en la esquina inferior derecha del panel principal.
@@ -64,7 +64,7 @@ Permitir a los usuarios formular preguntas sobre el funcionamiento de Pixy, reci
 ## Pasos para consultar conversaciones anteriores
 1. Abre el diálogo de ayuda.
 2. Haz clic en el botón de **Historial** (icono de reloj en la parte superior izquierda).
-3. Se desplegará un menú con tus conversaciones anteriores ordenadas por fecha reciente, tituladas según tu primera pregunta.
+3. Se desplegará un menú con tus conversaciones anteriores ordenadas por la fecha de creación del hilo (las más recientes primero, según `created_at`), tituladas según tu primera pregunta.
 4. Haz clic sobre cualquier conversación de la lista para cargar sus mensajes de inmediato.
 5. Si tienes más de 20 conversaciones, haz clic en **Ver más conversaciones** al final de la lista para cargar la siguiente página.
 
@@ -74,18 +74,18 @@ Permitir a los usuarios formular preguntas sobre el funcionamiento de Pixy, reci
 - **Desplazamiento fluido:** Las barras de desplazamiento visuales se ocultan deliberadamente para una lectura limpia, pero puedes desplazarte con la rueda del ratón, teclado (teclas arriba/abajo, RePág/AvPág) o deslizamiento táctil en móviles.
 
 ## Resultado esperado
-Respuestas claras sobre los procedimientos vigentes en Pixy, con persistencia duradera de tus preguntas para consultarlas posteriormente incluso si cierras la ventana o recargas la página.
+Con el historial disponible, las preguntas y respuestas guardadas se conservan en la conversación privada. Si falla la creación de una nueva conversación, el sistema puede continuar con ayuda transitoria y muestra un aviso de que los mensajes podrían perderse al cerrar. Si no puede verificar o cargar una conversación existente, rechaza continuar ese hilo; puedes intentar nuevamente o iniciar una conversación nueva. Si falla el guardado de una pregunta en un hilo existente, debes reintentar; no se garantiza que todo fallo de persistencia permita continuar.
 
 ## Problemas habituales y causas comprobadas
 - **Mensaje de advertencia "Esta conversación está completa":**
-  *Causa comprobada:* Cada hilo de ayuda tiene una capacidad máxima de 200 mensajes para garantizar un rendimiento óptimo de la base de datos. Debes abrir el menú de historial y hacer clic en **Nueva conversación**.
+  *Causa comprobada:* Cada hilo tiene una capacidad máxima de 200 mensajes para acotar su tamaño. Abre el menú de historial y selecciona **Nueva conversación**.
 - **Aparece un aviso en amarillo "El historial no está disponible":**
-  *Causa comprobada:* La migración del esquema de historial no está disponible temporalmente o hubo un corte de red. Puedes seguir formulando preguntas en modo transitorio durante la sesión activa.
+  *Causas posibles:* El servicio de historial no está disponible, faltan las tablas en ese entorno o falló una solicitud. El aviso no identifica por sí solo la causa exacta. Una conversación nueva puede continuar de manera transitoria si falla su creación, con advertencia de guardado; un hilo existente que no pueda verificarse no continúa hasta que se recupere el acceso o se inicie otro hilo.
 - **El asistente responde que no puede procesar la pregunta:**
   *Causa comprobada:* Ocurre si la organización tiene los servicios de IA suspendidos o si la pregunta excede los 500 caracteres. También ocurre si se formulan preguntas fuera de tema (off-topic) como poesía, política o código malicioso, las cuales son bloqueadas por los filtros de seguridad de Pixy.
 
 ## Limitaciones conocidas
-- La memoria de contexto inmediato enviada al modelo de IA abarca los 4 mensajes más recientes de la conversación; hilos muy extensos no transfieren la totalidad de mensajes previos a la generación de la respuesta.
+- En la versión estándar activa de la ayuda, la memoria conversacional enviada al modelo abarca los últimos 4 mensajes del hilo. La variante v2 (diseñada para transferir hasta 12 mensajes completos bajo un presupuesto de 10.000 caracteres) corresponde a una tarea en evaluación restringida al piloto y no está habilitada de manera general en el entorno base. Los hilos extensos no transfieren la totalidad del historial a cada nueva consulta.
 - No existe sincronización bidireccional en tiempo real entre dos pestañas del navegador que tengan abierta la misma conversación simultáneamente: los mensajes nuevos se cargan al reabrir el hilo.
 
 ## Temas relacionados

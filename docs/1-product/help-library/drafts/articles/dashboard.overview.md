@@ -28,6 +28,9 @@ evidence:
   - path: src/components/layout/sidebar.tsx
     symbol: SidebarContent
     claim: Menú lateral con navegación por categorías (Principal, CRM, Operaciones, Herramientas, Finanzas, Plataforma) filtrado por roles y módulos activos.
+  - path: src/modules/core/organizations/capabilities-registry.ts
+    symbol: UICapability
+    claim: Define las capacidades atómicas de organización (como billing.management o crm.core) diferenciadas de los permisos IAM individuales.
 ---
 
 # Navegación y vista general del panel principal
@@ -37,7 +40,12 @@ El panel principal de Pixy proporciona una panorámica instantánea de la salud 
 
 ## Requisitos y permisos
 - Contar con una cuenta de usuario activa y pertenecer a una organización.
-- No requiere permisos administrativos especiales para visualizar el dashboard general; no obstante, el contenido específico de las métricas respeta las políticas de acceso del rol asignado.
+- No requiere permisos administrativos especiales para acceder a la ruta general `/dashboard`.
+- La visibilidad de módulos, métricas y accesos responde a tres niveles diferenciados:
+  1. **Módulos contratados:** Módulos de alto nivel activados para el tenant (como `module_crm` o `module_billing`).
+  2. **Capacidades de organización:** Banderas atómicas en `capabilities-registry.ts` (como `billing.management` o `crm.core`) que habilitan áreas funcionales según la industria del tenant.
+  3. **Permisos IAM del usuario:** Permisos granulares asignados al rol en `permissions.ts` (como `crm.leads.view`).
+- *Nota de verificación:* La visualización de la página no certifica automáticamente que cada tarjeta o widget individual filtre métricas por permisos específicos de usuario sin revisar la consulta y acción de servidor de cada componente.
 - Si la organización tiene su suscripción en estado `canceled` o `unpaid` y el usuario no es superadministrador, el panel se bloquea mostrando una pantalla de suspensión.
 
 ## Ubicación en pantalla
@@ -59,8 +67,8 @@ Visualizar los datos consolidados actualizados de la organización activa sin er
 ## Problemas habituales y causas comprobadas
 - **Aparece pantalla de organización suspendida:**
   *Causa comprobada:* La suscripción del tenant se encuentra vencida o impaga (`subscription.status === 'canceled' || subscription.status === 'unpaid'`). El acceso solo puede restablecerse actualizando el método de pago o mediante intervención de un superadministrador.
-- **No aparecen módulos esperados en el menú lateral:**
-  *Causa comprobada:* El módulo no está contratado o habilitado para esa organización en `capabilities-registry`, o tu rol carece del permiso granular requerido (por ejemplo, `crm.leads.view` o `billing.management`).
+- **No aparecen módulos u opciones esperadas en el menú lateral o en el panel:**
+  *Causa comprobada:* Debe verificarse la restricción en su nivel correspondiente: el módulo principal no está contratado para el tenant, la organización carece de la capacidad correspondiente en `capabilities-registry.ts` (como la capacidad `billing.management` para herramientas financieras o `crm.quotes` para cotizaciones), o el rol del usuario carece del permiso granular IAM requerido (como `crm.leads.view`).
 - **El menú lateral se ve muy estrecho con solo iconos:**
   *Causa comprobada:* El sidebar está en modo colapsado. Puedes pulsar el botón circular rosa con flecha situado en el borde derecho del sidebar superior para expandirlo.
 

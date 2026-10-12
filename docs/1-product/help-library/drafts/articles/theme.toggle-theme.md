@@ -34,7 +34,7 @@ evidence:
 # Cambiar entre tema claro y tema oscuro
 
 ## Propósito
-Permitir a los usuarios alternar cómodamente entre la apariencia visual clara (diseñada para entornos iluminados) y la apariencia oscura (diseñada para reducir la fatiga visual en ambientes con poca luz).
+Permitir a los usuarios alternar cómodamente entre la apariencia visual clara (diseñada para entornos iluminados) y la apariencia oscura (diseñada para ambientes con poca luz).
 
 ## Requisitos y permisos
 - Disponible para cualquier usuario autenticado en la plataforma.
@@ -51,18 +51,18 @@ Permitir a los usuarios alternar cómodamente entre la apariencia visual clara (
 1. Dirige el cursor al menú lateral izquierdo de Pixy.
 2. Localiza la sección de acciones flotantes en la parte inferior derecha del contenedor del menú (junto a los accesos de Perfil y Notificaciones).
 3. Haz clic sobre el botón circular de **Luna** (para activar el modo oscuro) o sobre el botón de **Sol** (para regresar al modo claro).
-4. El cambio se aplica de inmediato en toda la interfaz sin necesidad de recargar la página ni pulsar ningún botón de confirmación.
+4. El cambio se aplica de inmediato, sin recargar la página ni pulsar confirmación.
 
 ## Resultado esperado
-Los fondos, tarjetas con efecto vidrio (glassmorphism), paneles y textos adaptan su contraste y paleta de colores de forma instantánea y fluida. La elección permanece activa en futuras visitas desde el mismo navegador.
+Los componentes compatibles con el tema adaptan su contraste y colores. Algunas vistas pueden conservar colores fijos. La elección permanece guardada en el mismo navegador para futuras visitas.
 
 ## Problemas habituales y causas comprobadas
 - **Al abrir la aplicación en otra computadora o ventana de incógnito, el tema no se conserva:**
   *Causa comprobada:* La preferencia se gestiona mediante almacenamiento local en el navegador del cliente (`localStorage` a través de `next-themes`) y no se guarda en el registro de usuario en el servidor.
 - **Buscar la opción en "Configuración > Preferencias":**
   *Causa comprobada:* El cambio de tema no reside en el panel de configuración de la organización ni en menús desplegables; se encuentra accesible en todo momento desde el botón fijo del borde del menú lateral.
-- **La interfaz parece no cambiar tras hacer clic:**
-  *Causa comprobada:* Si el navegador tiene extensiones de forzado de modo oscuro (como Dark Reader), estas pueden anular las clases dinámicas de Tailwind aplicadas por la aplicación.
+- **Algún componente o estilo específico no altera su color tras conmutar:**
+  *Causa comprobada:* Si un componente secundario o elemento de terceros cuenta con estilos en línea o colores fijos no parametrizados con clases temáticas, mantendrá su apariencia constante. (Nota: interferencias por extensiones externas de modificación de estilos en el navegador constituyen hipótesis generales no comprobadas por las pruebas del sistema).
 
 ## Limitaciones conocidas
 - La sincronización automática con el esquema de color del sistema operativo no se selecciona desde este control; el botón alterna exclusivamente de manera binaria entre `light` y `dark`.

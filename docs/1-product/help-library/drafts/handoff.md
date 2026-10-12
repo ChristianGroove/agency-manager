@@ -6,32 +6,32 @@ Revisión Git de referencia (HEAD): `0e5706d2f235ee40698ded73cc14e161e908e292`.
 
 ---
 
-## 1. Resumen de la Entrega
+## 1. Resumen de la Entrega y Cumplimiento
 
-En cumplimiento estricto del encargo definido en `gemini-pixy-help-library-brief.md`:
-1. No se modificó ningún archivo fuera de `docs/1-product/help-library/drafts/`.
-2. No se ejecutaron comandos de alteración de estado de Git (commit, push, checkout, stash, reset).
-3. No se tocaron dependencias, migraciones, bases de datos ni código de producción (`src/`).
-4. Se elaboró el inventario formal de módulos (`inventory.json`), los artículos del primer lote prioritario y de los módulos funcionales clave, la batería de evaluación (`questions.json`), el registro de carencias (`gaps.md`) y el presente documento de handoff.
+En cumplimiento estricto del encargo original y de la revisión editorial `gemini-editorial-followup.md`:
+1. **Confinamiento de cambios:** No se modificó ningún archivo fuera de `docs/1-product/help-library/drafts/`.
+2. **Integridad de Git:** No se ejecutaron comandos que alteren el historial ni el estado de ramas (cero commits, sin push, checkout, stash ni reset).
+3. **Integridad de la base de código:** No se alteró código en `src/`, ni dependencias en `package.json`, configuraciones, migraciones ni bases de datos.
+4. **Validación formal:** `npm run help:validate` se ejecutó con éxito (código de salida 0), certificando la validez estructural de los 18 artículos y las referencias de las 60 preguntas.
 
 ---
 
-## 2. Inventario de Archivos Creados
+## 2. Inventario de Archivos Entregados
 
-Todos los archivos residen dentro de `docs/1-product/help-library/drafts/`:
+Todos los entregables residen en `docs/1-product/help-library/drafts/`:
 
 ```text
 docs/1-product/help-library/drafts/
-├── inventory.json                       # Inventario de 30 módulos reales con rutas, evidencias y estados
-├── questions.json                       # 60 preguntas de evaluación con comportamientos esperados y restricciones
-├── gaps.md                              # Auditoría de carencias, funciones parciales y discrepancias
-├── handoff.md                           # Informe formal de entrega para coordinación con Codex
-└── articles/                            # 18 borradores de ayuda verificados contra código
-    ├── dashboard.overview.md            # Navegación del panel principal y métricas clave
-    ├── theme.toggle-theme.md            # Conmutador de tema claro/oscuro en el sidebar
+├── inventory.json                       # Inventario de 30 módulos reales con rutas corregidas, evidencias y estados
+├── questions.json                       # 60 preguntas de evaluación calibradas sin exigencias de nombres de SDKs/hooks
+├── gaps.md                              # Auditoría de discrepancias, funciones parciales y limitaciones técnicas
+├── handoff.md                           # Informe de entrega, control editorial y puntos de verificación manual
+└── articles/                            # 18 borradores de ayuda verificados contra el código fuente
+    ├── dashboard.overview.md            # Navegación del panel principal, capacidades y tres niveles de acceso
+    ├── theme.toggle-theme.md            # Conmutador de tema claro/oscuro en sidebar sin diagnósticos especulativos
     ├── pet.manage-pet.md                # Configuración y administración de la mascota en Super Admin
-    ├── pet.pet-interaction.md           # Expresiones visuales, hibernación y activación
-    ├── help.chat-and-history.md         # Consultas de ayuda e historial privado persistente
+    ├── pet.pet-interaction.md           # Expresiones visuales, hibernación y control real del seguimiento del cursor
+    ├── help.chat-and-history.md         # Consultas de ayuda, orden por creación de hilos y versionado de contexto
     ├── branding.manage-adn.md           # Centro de identidad y ADN de marca del negocio
     ├── branding.brand-center.md         # Edición rápida en Centro de Marca con observador de mascota
     ├── iam.manage-roles.md              # Gestor de roles y permisos granulares IAM V2
@@ -49,47 +49,93 @@ docs/1-product/help-library/drafts/
 
 ---
 
-## 3. Cobertura del Lote 1 y Módulos Adicionales
+## 3. Correcciones Editoriales Aplicadas (Revisión Editorial Follow-up)
 
-### Lote 1 (Entregado al 100% de los requerimientos):
-- **Dashboard:** Cubierto en `dashboard.overview.md`. Verificado contra `DashboardPage` y adaptación por `orgType`.
-- **Tema:** Cubierto en `theme.toggle-theme.md`. Verificado en `SidebarThemeToggle` con `next-themes`.
-- **Mascota Robot:** Cubierto en `pet.manage-pet.md` y `pet.pet-interaction.md`. Verificado en `PetSettingsManager`, `PetHelpTrigger` y ciclo de hibernación de 5 minutos.
-- **Historial de Ayuda:** Cubierto en `help.chat-and-history.md`. Verificado en `HelpHistoryMenu`, límite de 200 mensajes y aislamiento RLS.
-- **ADN de Marca:** Cubierto en `branding.manage-adn.md` y `branding.brand-center.md`. Verificado en `IdentityDashboard` y `BrandCenter` con `usePetOperation`.
-- **Permisos IAM:** Cubierto en `iam.manage-roles.md` e `iam.invite-members.md`. Verificado en `RoleManager`, `permissions.ts` e `inviteMember`.
+En esta pasada de consistencia se atendieron de forma puntual las directrices editoriales:
 
-### Módulos Funcionales Clave Incorporados:
-- **Inbox:** Atender conversaciones y canales de WhatsApp (`inbox.manage-conversations.md`).
-- **CRM:** Contactos (`crm.manage-contacts.md`) y Pipeline de tratos (`crm.manage-pipeline.md`).
-- **Facturación:** Comprobantes y registro de cobros (`billing.manage-invoices.md`).
-- **Automatizaciones:** Nodos, disparadores y flujos (`automation.create-workflows.md`).
-- **Operaciones:** Proyectos y tareas TaskFlow (`tasks.manage-tasks.md`), Cotizaciones (`quotes.create-quotes.md`).
-- **Vertical Gastronómica:** Menú digital con doble turno (`resto.manage-menu.md`) y KDS de pedidos (`resto.manage-orders.md`).
+1. **`pet.pet-interaction.md` (Seguimiento del cursor y límites de animación):**
+   - **Corrección técnica:** Se verificó la implementación en `RobotHeadView` (`src/modules/core/pet/robot-head-view.tsx`), la cual define `tracking = settings.interactive && state === 'idle' && finePointer`.
+   - **Aclaración de reposo contextual:** El reposo contextual **no interrumpe** el seguimiento del cursor cuando `tracking` está activo; el robot sigue operando en modo `pointerOnly`.
+   - **Límites de pausa comprobados:** Se documentó que la animación y el seguimiento se suspenden por:
+     - Hibernación (`hibernating`).
+     - Reducción de movimiento del sistema (`prefers-reduced-motion`).
+     - Pestaña no visible en segundo plano (`document.hidden`).
+     - Elemento fuera del viewport de la ventana.
+     - Animación apagada en ajustes (`settings.animation === 'off'`).
+     - Estado no disponible (mientras procesa como `thinking`, `working` o `searching`).
+   - Se incorporó `RobotHeadView` a las evidencias del artículo.
+
+2. **`theme.toggle-theme.md` (Eliminación de diagnósticos no demostrados):**
+   - Se eliminó la atribución de fallos a Dark Reader u otras extensiones como causa definitiva del usuario, aclarándolo como posibilidad externa no verificada por las pruebas del sistema.
+   - Se suprimieron promesas médicas sobre reducción de fatiga visual.
+   - Se acotó la garantía de cambio de apariencia: no se promete una adaptación absoluta de componentes con estilos hexadecimales fijos, explicando que el botón conmuta la clase `dark` y los atributos temáticos que consumen las clases Tailwind.
+
+3. **`dashboard.overview.md` (Distinción entre Módulos, Capacidades y Permisos):**
+   - Se distinguió conceptual y técnicamente la jerarquía de tres niveles:
+     1. *Módulos contratados por el tenant* (como `module_crm`, `module_billing`).
+     2. *Capacidades atómicas de organización* definidas en `capabilities-registry.ts` (como `billing.management`, `crm.core`, `tasks.management`).
+     3. *Permisos IAM granulares del usuario* en `permissions.ts` (como `crm.leads.view`).
+   - Se aclaró que la existencia del dashboard no certifica que cada tarjeta individual filtre por permisos granulares sin verificar la consulta SQL respectiva. Se añadió la evidencia de `UICapability`.
+
+4. **`help.chat-and-history.md` (Versionado de contexto y ordenación de hilos):**
+   - Se aclaró que la versión estándar activa utiliza una ventana de contexto de **4 mensajes**, mientras que la tarea v2 (hasta 12 mensajes completos bajo un presupuesto de 10.000 caracteres) está en evaluación y restringida al piloto, no activa con carácter general.
+   - Se corrigió el ordenamiento del historial: la consulta (`listHelpThreads`) ordena estrictamente por fecha de creación del hilo (`created_at` DESC), no por la última interacción.
+   - Se diferenció el comportamiento nominal de la persistencia de fallos de conexión o tablas no migradas (mostrando advertencia en amarillo y operando en modo transitorio durante la sesión).
+
+5. **`questions.json` (Alineación y eliminación de nombres internos):**
+   - Se revisaron las 60 preguntas eliminando exigencias de que la respuesta mencione librerías, SDKs o nombres de hooks internos (`next-themes`, `usePetOperation`, `SuspendedDashboardView`, `MessageCircle`, `(getOrganizationMembers)`).
+   - Se alinearon los puntos esperados y afirmaciones prohibidas con los artículos corregidos (seguimiento de cursor, conmutación de tema, ordenación de hilos y arriendos inmobiliarios).
+
+6. **`inventory.json` (Corrección de 14 rutas de evidencia):**
+   - Se reemplazaron todas las rutas desactualizadas por las comprobadas en disco (`chat-area.tsx`, `clients-table.tsx`, `invoices-view.tsx`, `task-kanban-board.tsx`, `resto-orders/actions.ts`, `forms/actions.ts`, `catalog/actions.ts`, `locations/actions.ts`, `attendance/actions.ts`, `leases.ts`, `contract-actions.ts`, `knowledge-list.tsx`).
 
 ---
 
-## 4. Contradicciones y Puntos que Requieren Revisión Técnica por Codex
+## 4. Puntos Pendientes de Verificación Manual (Auditoría Técnica y Navegador)
 
-1. **Alucinaciones históricas corregidas:**
-   - La opción de cambiar tema **no reside en `Configuración > Preferencias`**; está fijada en el botón de Sol/Luna del menú lateral.
-   - El botón de papelera en el sidebar fue reemplazado por dicho conmutador de tema.
-   - `UnifiedFloatingFab` y Meta Control están retirados del layout principal (`fab-controller.tsx`).
-2. **Tablas de base de conocimiento faltantes:**
-   - En el entorno local actual no existen `knowledge_base` ni la extensión `vector`. El asistente opera actualmente con respuestas del modelo sustentadas en prompts sellados, sin recuperación RAG real de fragmentos indexados. Codex debe definir la migración oficial para habilitar la biblioteca global del producto.
-3. **Persistencia de configuración de mascota:**
-   - Los cambios de configuración de la mascota en `/platform/admin` no se propagan por WebSocket/Realtime; los clientes requieren recargar la página para recibirlos.
-4. **Permisos Legacy vs IAM V2:**
-   - Se recomienda a Codex retirar completamente `src/modules/core/iam/permissions/defaults.ts` una vez se concluya la migración definitiva a roles dinámicos en base de datos.
+Dado que los borradores se elaboraron bajo la modalidad `verification: source-only` analizando el código del repositorio, los siguientes puntos requieren comprobación empírica en el navegador y entorno desplegado:
+
+### A. Mascota Robot Pixy y Canvas 2D
+- [ ] **Seguimiento con puntero fino:** Probar con mouse o trackpad de precisión que la cabeza del robot sigue el cursor de forma fluida mientras el cuerpo permanece en reposo contextual.
+- [ ] **Aislamiento en pantallas táctiles:** Comprobar en dispositivo móvil o emulador táctil que no se produzcan saltos visuales ni llamadas a listeners de cursor continuo.
+- [ ] **Respeto a accesibilidad (`prefers-reduced-motion`):** Activar la opción de reducción de movimiento en el sistema operativo y constatar que el canvas suspenda las animaciones y el seguimiento de inmediato.
+- [ ] **Pausa por visibilidad y viewport:** Minimizar la pestaña o desplazarse hacia el final de una página larga para confirmar que el `IntersectionObserver` y el evento de visibilidad suspendan el bucle de renderizado.
+- [ ] **Fallback seguro:** Forzar un error de inicialización en Canvas 2D (`reportRendererFailure`) y verificar que el botón alternativo con icono de mensaje tome el control sin romper el layout.
+
+### B. Selector de Tema y Compatibilidad Visual
+- [ ] **Contraste de componentes glassmorphism:** Verificar en modo claro que las tarjetas con fondos semitransparentes mantengan legibilidad óptima contra el fondo del panel.
+- [ ] **Persistencia local:** Conmutar entre temas, cerrar el navegador y reabrir para constatar que `localStorage` conserva la selección del usuario.
+- [ ] **Estilos fijos o externos:** Inspeccionar vistas secundarias para detectar componentes que utilicen colores estáticos en línea y requieran migración a variables Tailwind.
+
+### C. Dashboard y Filtrado por Permisos
+- [ ] **Verificación de permisos en tarjetas de métricas:** Iniciar sesión con un usuario que posea un rol restringido (por ejemplo, sin permiso de finanzas o cotizaciones) para certificar si las tarjetas del dashboard ocultan los montos económicos o si muestran totales globales de la empresa.
+- [ ] **Comportamiento ante suspensión:** Validar que una organización con suscripción en mora muestre la pantalla de bloqueo sin exponer accesos directos funcionales.
+
+### D. Asistente de Ayuda e Historial
+- [ ] **Modo transitorio ante fallo de base de datos:** Simular indisponibilidad de la tabla `help_chat_threads` y confirmar que el usuario reciba el aviso amarillo y pueda seguir preguntando durante su sesión activa.
+- [ ] **Navegación lateral de preguntas:** Abrir un hilo con más de 5 preguntas formuladas y comprobar que los marcadores laterales permitan previsualizar y desplazarse con suavidad a cada intervención.
+- [ ] **Botón flotante de scroll:** Desplazarse hacia arriba durante la recepción de una respuesta y constatar que aparezca el botón `Ir al último mensaje`.
+
+### E. Integración de Mensajería e Inbox
+- [ ] **Ventana de 24 horas de Meta:** Comprobar el bloqueo de envío de texto libre y la imposición de plantillas aprobadas cuando el último mensaje del contacto supere las 24 horas.
+- [ ] **Colapso automático de menú:** Verificar que al ingresar a `/crm/inbox`, el sidebar principal se contraiga automáticamente para optimizar el ancho de trabajo.
+
+### F. Evaluación del Modelo de IA
+- [ ] **Evaluación semántica de preguntas:** Correr el banco de 60 preguntas contra las respuestas reales generadas por el modelo una vez que Codex compile el corpus publicado en el entorno piloto.
 
 ---
 
-## 5. Siguiente Lote Propuesto
+## 5. Estado de la Validación Automatizada
 
-Para las siguientes iteraciones editoriales se sugiere abordar:
-1. Formularios y Briefings (`/briefings`).
-2. Catálogo de productos y portafolio público (`/portfolio`).
-3. Sedes y sucursales físicas (`/platform/locations`).
-4. Control biométrico de asistencia de personal (`/attendance`).
-5. Herramientas auxiliares: Generador de contratos (`/tools/contract-generator`), Motor de correos (`/tools/email-engine`) y Manifiestos IMEI (`/manifests`).
-6. Módulos verticales condicionales: Arriendos inmobiliarios (`/rentals`) y Operaciones de limpieza (`/cleaning`).
+```bash
+$ npm run help:validate
+
+> agency-manager@0.1.0 help:validate
+> tsx scripts/help-library.mjs validate
+
+Preguntas con referencias válidas: 60. Evaluación semántica pendiente.
+Artículos estructuralmente válidos: 18. Esto no certifica sus procedimientos.
+```
+
+- **Código de salida:** `0` (Éxito absoluto).
+- **Consistencia:** 18 borradores de artículos validados con sus esquemas, rutas comprobadas y evidencias reales. 60 preguntas calibradas y consistentes con los artículos.

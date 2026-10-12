@@ -27,7 +27,10 @@ export function retrieveHelp(articles: HelpArticle[], question: string, access: 
         const matches = query.filter(term => title.has(term) || body.has(term))
         if (!matches.length) return { article, score: 0 }
         const overlap = matches.length / query.length
-        if (overlap < 0.4) return { article, score: 0 }
+        // Natural-language questions contain verbs and qualifiers absent from the guide.
+        // Two matching concepts including a title/keyword anchor can still identify the right topic.
+        const anchored = matches.length >= 2 && matches.some(term => title.has(term))
+        if (overlap < 0.4 && !anchored) return { article, score: 0 }
         const score = matches.reduce((sum, term) => sum + (title.has(term) ? 4 : 1), 0)
             + (access.route && article.routes.includes(access.route) ? 1 : 0)
         return { article, score }

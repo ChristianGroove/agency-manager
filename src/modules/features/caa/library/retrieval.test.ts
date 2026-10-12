@@ -23,6 +23,12 @@ describe('published help authorization and lexical retrieval', () => {
         expect(canReadArticle(restricted[3], { ...access, tenantAdmin: true })).toBe(false)
     })
     it('does not treat screen location as evidence for an unrelated question', () => expect(retrieveHelp([article], 'configurar impuestos', access)).toEqual([]))
+    it('finds a guide from two anchored concepts inside a longer natural-language question', () => {
+        expect(retrieveHelp([article], 'Quisiera entender exactamente por dónde seleccionar el tema oscuro después de entrar', access)).toEqual([article])
+    })
+    it('rejects an unrelated question that mentions only one familiar topic', () => {
+        expect(retrieveHelp([article], 'tema de impuestos y tasas tributarias', access)).toEqual([])
+    })
     it('uses prior question for short follow-ups', () => {
         expect(retrieveHelp([article], '¿Y en móvil?', access, '¿Cómo cambio el tema?').map(a => a.id)).toEqual([article.id])
     })

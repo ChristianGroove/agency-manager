@@ -10,12 +10,13 @@
       "expected_article_ids": ["theme.toggle-theme"],
       "expected_points": [
         "Hacer clic en el botón circular de Sol/Luna en el borde inferior derecho del menú lateral",
-        "El cambio es inmediato usando next-themes",
+        "El cambio conmuta la apariencia entre modo claro y oscuro de forma inmediata",
         "No requiere guardar en base de datos ni recargar la página"
       ],
       "must_not_claim": [
         "No afirmar que se configura en Configuración > Preferencias",
-        "No afirmar que requiere presionar un botón Guardar"
+        "No afirmar que requiere presionar un botón Guardar",
+        "No prometer beneficios médicos como eliminación de fatiga visual ni garantizar adaptación absoluta de estilos fijos"
       ],
       "expected_behavior": "answer"
     },
@@ -94,7 +95,7 @@
       "expected_points": [
         "Abrir el asistente de ayuda",
         "Hacer clic en el botón de Historial (icono de reloj en la esquina superior izquierda)",
-        "Seleccionar la conversación deseada de la lista paginada"
+        "Seleccionar la conversación deseada de la lista ordenada por fecha de creación del hilo"
       ],
       "must_not_claim": [
         "No afirmar que las conversaciones anteriores a la migración se pueden recuperar",
@@ -109,8 +110,8 @@
       "view_id": "dashboard",
       "expected_article_ids": ["help.chat-and-history"],
       "expected_points": [
-        "No, las conversaciones de ayuda son privadas por usuario mediante políticas RLS en base de datos",
-        "Cada usuario solo puede listar e interactuar con sus propios hilos de conversación"
+        "No, las conversaciones de ayuda son estrictamente privadas por usuario y organización",
+        "Cada usuario solo puede listar e interactuar con sus propios hilos de conversación dentro de la organización activa"
       ],
       "must_not_claim": [
         "No afirmar que los administradores tienen un panel para espiar chats de ayuda de sus empleados"
@@ -173,8 +174,8 @@
       "view_id": "settings",
       "expected_article_ids": ["branding.brand-center", "pet.pet-interaction"],
       "expected_points": [
-        "El Centro de Marca está integrado con usePetOperation",
-        "La mascota refleja estado de trabajo durante la petición y pasa a éxito (happy) o error según el resultado del servidor"
+        "El Centro de Marca cuenta con instrumentación visual de operaciones de guardado",
+        "La mascota refleja estado de trabajo mientras se procesa la solicitud y pasa a éxito (happy) o error según el resultado del servidor"
       ],
       "must_not_claim": [
         "No afirmar que la mascota está procesando IA en el guardado",
@@ -289,7 +290,8 @@
         "Se recomienda el modo contextual por rendimiento"
       ],
       "must_not_claim": [
-        "No afirmar que la animación continua no tiene impacto en la batería o rendimiento"
+        "No afirmar que la animación continua no tiene impacto en la batería o rendimiento",
+        "No afirmar que el reposo contextual impide el seguimiento del cursor si la interactividad está activa"
       ],
       "expected_behavior": "answer"
     },
@@ -638,11 +640,11 @@
       "view_id": "dashboard",
       "expected_article_ids": ["dashboard.overview"],
       "expected_points": [
-        "El módulo module_rentals está restringido exclusivamente a organizaciones con vertical inmobiliaria (real_estate)",
-        "No está habilitado para agencias ni comercios generales"
+        "El módulo de arriendos y su capacidad están restringidos a organizaciones configuradas con vertical inmobiliaria (real_estate)",
+        "No está disponible para agencias ni comercios generales"
       ],
       "must_not_claim": [
-        "No afirmar que es un módulo de acceso libre para cualquier tenant"
+        "No afirmar que es una capacidad o módulo de acceso libre para cualquier tenant"
       ],
       "expected_behavior": "clarify"
     },
@@ -729,7 +731,7 @@
       "expected_article_ids": ["dashboard.overview"],
       "expected_points": [
         "En el Dashboard principal (/dashboard)",
-        "En las tarjetas superiores de métricas y la tabla de resumen de cobros pendientes"
+        "En las tarjetas superiores de métricas y el resumen de cobros o deudores según las capacidades y permisos habilitados"
       ],
       "must_not_claim": [
         "No afirmar que se requiere un módulo externo de contabilidad"
@@ -743,7 +745,7 @@
       "view_id": "dashboard",
       "expected_article_ids": ["dashboard.overview"],
       "expected_points": [
-        "El dashboard muestra la vista de suspensión (SuspendedDashboardView)",
+        "El dashboard muestra la pantalla de organización suspendida",
         "Se debe actualizar el método de pago o contactar a administración para reactivar el acceso"
       ],
       "must_not_claim": [
@@ -832,8 +834,8 @@
       "view_id": "help",
       "expected_article_ids": ["help.chat-and-history"],
       "expected_points": [
-        "Ocurrió un error al persistir el hilo en la base de datos",
-        "Puedes seguir recibiendo ayuda de forma transitoria en la sesión activa, pero los mensajes nuevos podrían no conservarse al cerrar"
+        "Ocurrió una interrupción de red o fallo al persistir en la base de datos",
+        "Es posible seguir formulando preguntas de forma transitoria en la sesión activa, pero los mensajes nuevos podrían no persistir tras recargar"
       ],
       "must_not_claim": [
         "No afirmar que se borraron tus conversaciones anteriores"
@@ -847,7 +849,7 @@
       "view_id": "dashboard",
       "expected_article_ids": ["pet.pet-interaction"],
       "expected_points": [
-        "El sistema conmuta de forma segura al botón simple de mensaje (MessageCircle)",
+        "El sistema conmuta de forma segura al botón alternativo con icono de mensaje",
         "Para reintentar el dibujo del robot, recarga la página o verifica la aceleración por hardware del navegador"
       ],
       "must_not_claim": [
@@ -893,7 +895,7 @@
       "view_id": "settings",
       "expected_article_ids": ["iam.invite-members"],
       "expected_points": [
-        "Por políticas de seguridad y aislamiento estricto (getOrganizationMembers)",
+        "Por políticas de seguridad y aislamiento entre organizaciones del sistema",
         "Los usuarios con rol de plataforma super_admin se filtran y ocultan automáticamente de las listas de miembros de cada tenant"
       ],
       "must_not_claim": [

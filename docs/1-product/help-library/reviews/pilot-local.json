@@ -1,0 +1,55 @@
+{
+  "schema_version": 1,
+  "articles": [
+    {
+      "id": "theme.toggle-theme",
+      "draft_sha256": "f5af70c0b6728e6df0a4f6f96ed148126e1d85f7d2275129ac8a5d6221e11a67",
+      "reviewed_by": "Codex: independent source review; manual browser QA pending",
+      "reviewed_on": "2026-10-12",
+      "evidence_sha256": {
+        "src/components/layout/sidebar-theme-toggle.tsx": "911739d66f8273c13332a1a2eefedacfc4693385d7b77a3c1bada39b33011ba1",
+        "src/components/layout/sidebar-floating-actions.tsx": "afcb030bf884824fdf487023aafe021de8d3b8e8511abec93ce6c7aba9a9fe6e",
+        "docs/2-architecture/modules/pixy-robot-pet-phase-two.md": "253db3b4e8c3eda7b94c1970c1a1e242177ed50abe3ccce093c6259857dae2ea"
+      },
+      "required_modules": [],
+      "required_permissions": [],
+      "verticals": [],
+      "link_route": null
+    },
+    {
+      "id": "pet.pet-interaction",
+      "draft_sha256": "df95ada00a1e13bc2d67f48fb4f36418408e41202d6d6dbd2a8afffc6d969f31",
+      "reviewed_by": "Codex: independent source review; manual browser QA pending",
+      "reviewed_on": "2026-10-12",
+      "evidence_sha256": {
+        "src/modules/core/pet/pet-help-trigger.tsx": "4bf90d9608250199cfa610e76951ee949b93bf50971c640c171be91fa74115c8",
+        "src/modules/core/pet/use-pet-hibernation.ts": "a9ec4562b6c6faea4a704d90f284f1930ecdaca4e9614145b9526ac095193e6d",
+        "src/components/layout/fab-controller.tsx": "22d67be25a63688dc51edd6f783e5be73d2ae85241e83adf35d21b153dd405e6",
+        "src/modules/features/caa/components/ai-chat-panel.tsx": "c71431d37a651eabe5232d1fa79e21de71be5f114bd1a869e65a2ad94a28c41d",
+        "src/modules/core/pet/robot-head-view.tsx": "7c40a31fae947729c28dd5e673c0eb201975a90100f29204c07e6683763328d5",
+        "src/modules/core/pet/pet-provider.tsx": "73aa72c6e7eb32adaf64de5f66d1199820987f333b73ae4a9eb5b0977ea13e30"
+      },
+      "required_modules": [],
+      "required_permissions": [],
+      "verticals": [],
+      "link_route": null
+    },
+    {
+      "id": "help.chat-and-history",
+      "draft_sha256": "cec29e1755f51b2efbc1ab73159db36d1944b1b7af788b5521b1be2281a8ca69",
+      "reviewed_by": "Codex: independent source review; manual browser QA pending",
+      "reviewed_on": "2026-10-12",
+      "evidence_sha256": {
+        "src/modules/features/caa/components/assistant-modal.tsx": "c1e0d427c686c162414f1c12389fba2120e10a084b2cf4ad1cd8e02721711820",
+        "src/modules/features/caa/components/ai-chat-panel.tsx": "c71431d37a651eabe5232d1fa79e21de71be5f114bd1a869e65a2ad94a28c41d",
+        "src/modules/features/caa/components/help-history-menu.tsx": "d5bafd0a54e13a80d055f1be90eae0cea9a37e8f3e7990bc0bf8c9a6440cc1f0",
+        "src/modules/features/caa/actions/help-history.ts": "0e77ba009e84f54693a57373e7246223dffd7ed46e2ee29318aab906fa509221",
+        "docs/2-architecture/modules/pixy-help-chat-history.md": "5f94e8d3ab8e14e38fc97d9b84d4e690ce0ea734af2f5a313fb2ba5b1606735d"
+      },
+      "required_modules": [],
+      "required_permissions": [],
+      "verticals": [],
+      "link_route": null
+    }
+  ]
+}
