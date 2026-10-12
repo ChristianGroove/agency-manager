@@ -5,6 +5,7 @@ import { AIAccessError } from '@/modules/infrastructure/ai-engine/access-error'
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 import { getOrgSpaceCategory } from "@/modules/core/organizations/space-helpers"
 import { createClient } from "@/modules/core/database/supabase-server"
+import { z } from 'zod'
 
 export interface HelpChatMessage {
     role: "user" | "assistant"
@@ -16,6 +17,8 @@ export interface HelpChatResponse {
     message?: string
     error?: string
     blocked?: boolean
+    threadId?: string
+    storageError?: string
 }
 
 // Rate limiting constants
@@ -110,7 +113,7 @@ function sanitizeInput(input: string): string {
  * - Detección de off-topic
  * - Prompt con guardrails estrictos
  */
-export async function askHelpAssistant(
+async function processHelpQuestion(
     question: string,
     conversationHistory: HelpChatMessage[] = []
 ): Promise<HelpChatResponse> {
@@ -193,5 +196,58 @@ export async function askHelpAssistant(
             error: error instanceof AIAccessError ? error.message : "Ocurrió un error inesperado. Por favor, intenta más tarde."
         }
     }
+}
+
+/** Persist independently of the modal lifecycle. RLS always uses the signed-in user. */
+export async function askHelpAssistant(
+    question: string,
+    conversationHistory: HelpChatMessage[] = [],
+    threadId?: string,
+): Promise<HelpChatResponse> {
+    if (typeof question !== 'string' || question.trim().length < 3 || question.length > MAX_INPUT_LENGTH) {
+        return { success: false, error: 'Escribe una pregunta de entre 3 y 500 caracteres.' }
+    }
+    if (threadId && !z.string().uuid().safeParse(threadId).success) {
+        return { success: false, error: 'Conversación inválida.' }
+    }
+    // Validate even the fallback history supplied by the browser.
+    const history = z.array(z.object({ role: z.enum(['user', 'assistant']), content: z.string().max(20000) }))
+        .max(200).safeParse(conversationHistory)
+    if (!history.success) return { success: false, error: 'Historial inválido.' }
+    const client = await createClient()
+    const { data: { user } } = await client.auth.getUser()
+    const org = await getCurrentOrganizationId()
+    if (!user || !org) return { success: false, error: 'Inicia sesión para usar la ayuda.' }
+    let activeId = threadId
+    let context = history.data.slice(-MAX_CONVERSATION_HISTORY)
+    let storageError: string | undefined
+    const warning = 'No se pudo guardar esta conversación. Los mensajes nuevos podrían perderse al cerrar.'
+    if (activeId) {
+        const { data: thread, error } = await client.from('help_chat_threads').select('id')
+            .eq('id', activeId).eq('user_id', user.id).eq('organization_id', org).maybeSingle()
+        if (error || !thread) return { success: false, error: 'No se pudo abrir esta conversación. Inicia una nueva.' }
+        const { data: stored, error: loadError } = await client.from('help_chat_messages').select('role,content')
+            .eq('thread_id', activeId).order('created_at', { ascending: false }).order('id', { ascending: false }).limit(200)
+        if (loadError) return { success: false, error: 'El historial no está disponible. Intenta nuevamente.' }
+        if ((stored?.length ?? 0) >= 199) return { success: false, error: 'Esta conversación está completa. Inicia una nueva.' }
+        context = (stored ?? []).slice(0, MAX_CONVERSATION_HISTORY).reverse() as HelpChatMessage[]
+    } else {
+        const { data, error } = await client.from('help_chat_threads').insert({
+            user_id: user.id, organization_id: org, title: question.trim().slice(0, 80),
+        }).select('id').single()
+        if (error || !data) storageError = warning
+        else activeId = data.id
+    }
+    if (activeId) {
+        const { error } = await client.from('help_chat_messages').insert({ thread_id: activeId, role: 'user', content: question.trim() })
+        if (error) return { success: false, threadId: activeId, error: 'No se pudo guardar tu pregunta. Intenta nuevamente.' }
+    }
+    const response = await processHelpQuestion(question, context)
+    // Failed requests remain as an unanswered question; technical errors are not persisted as AI answers.
+    if (activeId && response.success && typeof response.message === 'string') {
+        const { error } = await client.from('help_chat_messages').insert({ thread_id: activeId, role: 'assistant', content: response.message })
+        if (error) storageError = warning
+    }
+    return { ...response, threadId: activeId, storageError }
 }
 

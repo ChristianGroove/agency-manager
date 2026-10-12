@@ -2,12 +2,14 @@
 
 import { useState, useRef, useEffect, useEffectEvent } from "react"
 import { motion } from "framer-motion"
-import { Send, Loader2 } from "lucide-react"
+import { Send, Loader2, ArrowDown } from "lucide-react"
 import { cn } from "@/modules/infrastructure/utils/utils"
 import { askHelpAssistant, HelpChatMessage } from "../actions/ask-help-assistant"
 import { usePet } from "@/modules/core/pet/pet-provider"
 import { PetVisual } from "@/modules/core/pet/pet-visual"
 import { usePetMedia } from "@/modules/core/pet/use-pet-motion"
+import { listHelpThreads, loadHelpThread, type HelpThread } from '../actions/help-history'
+import { HelpHistoryMenu } from './help-history-menu'
 
 interface AIChatPanelProps {
     initialQuery?: string
@@ -20,6 +22,7 @@ interface AIChatPanelProps {
 export function AIChatPanel({ initialQuery, className }: AIChatPanelProps) {
     const pet = usePet()
     const mobile = usePetMedia('(max-width: 639px)')
+    const reducedMotion = usePetMedia('(prefers-reduced-motion: reduce)')
     const reportHelpState = pet?.reportHelpState
     const mountedRef = useRef(true)
     const [messages, setMessages] = useState<HelpChatMessage[]>([])
@@ -29,6 +32,80 @@ export function AIChatPanel({ initialQuery, className }: AIChatPanelProps) {
     const messagesEndRef = useRef<HTMLDivElement>(null)
     const inputRef = useRef<HTMLInputElement>(null)
     const initialQuerySentRef = useRef(false)
+    const [threads, setThreads] = useState<HelpThread[]>([])
+    const [threadId, setThreadId] = useState<string>()
+    const [hasMoreThreads, setHasMoreThreads] = useState(false)
+    const [historyLoading, setHistoryLoading] = useState(true)
+    const [historyWarning, setHistoryWarning] = useState<string>()
+    const [awayFromBottom, setAwayFromBottom] = useState(false)
+    const [activeTurn, setActiveTurn] = useState(0)
+    const [previewTurn, setPreviewTurn] = useState<number | null>(null)
+    const scrollRef = useRef<HTMLDivElement>(null)
+    const messageRefs = useRef<(HTMLDivElement | null)[]>([])
+    const followBottomRef = useRef(true)
+    const historyRequestRef = useRef(0)
+
+    useEffect(() => {
+        let cancelled = false
+        void (async () => {
+            try {
+                const result = await listHelpThreads()
+                if (cancelled) return
+                setThreads(result.threads)
+                setHasMoreThreads(result.hasMore)
+                setHistoryWarning(result.error)
+                if (!initialQuery && result.threads[0]) {
+                    const loaded = await loadHelpThread(result.threads[0].id)
+                    if (cancelled) return
+                    if (loaded.error) setHistoryWarning(loaded.error)
+                    else { setThreadId(result.threads[0].id); setMessages(loaded.messages) }
+                }
+            } catch { if (!cancelled) setHistoryWarning('El historial no está disponible. Puedes seguir usando la ayuda.') }
+            finally { if (!cancelled) setHistoryLoading(false) }
+        })()
+        return () => { cancelled = true }
+    }, [initialQuery])
+
+    const selectThread = async (id: string) => {
+        const request = ++historyRequestRef.current
+        setHistoryLoading(true)
+        try {
+            const result = await loadHelpThread(id)
+            if (!mountedRef.current || request !== historyRequestRef.current) return
+            if (result.error) setHistoryWarning(result.error)
+            else {
+                followBottomRef.current = true
+                setThreadId(id); setMessages(result.messages); setInput(''); setError(null); setHistoryWarning(undefined)
+                reportHelpState?.('idle')
+            }
+        } catch { if (mountedRef.current) setHistoryWarning('No se pudo abrir la conversación.') }
+        finally { if (mountedRef.current && request === historyRequestRef.current) setHistoryLoading(false) }
+    }
+
+    const moreThreads = async () => {
+        setHistoryLoading(true)
+        try {
+            const result = await listHelpThreads(threads.length)
+            if (!mountedRef.current) return
+            if (result.error) setHistoryWarning(result.error)
+            else { setThreads(prev => [...prev, ...result.threads.filter(t => !prev.some(p => p.id === t.id))]); setHasMoreThreads(result.hasMore) }
+        } catch { if (mountedRef.current) setHistoryWarning('No se pudo cargar el historial.') }
+        finally { if (mountedRef.current) setHistoryLoading(false) }
+    }
+
+    const updateScroll = () => {
+        const area = scrollRef.current
+        if (!area) return
+        const away = area.scrollHeight - area.scrollTop - area.clientHeight > 80
+        followBottomRef.current = !away
+        setAwayFromBottom(away)
+        const top = area.getBoundingClientRect().top
+        let active = 0
+        messageRefs.current.forEach((element, index) => {
+            if (messages[index]?.role === 'user' && element && element.getBoundingClientRect().top <= top + 100) active = index
+        })
+        setActiveTurn(active)
+    }
 
     useEffect(() => {
         mountedRef.current = true
@@ -39,23 +116,24 @@ export function AIChatPanel({ initialQuery, className }: AIChatPanelProps) {
     }, [reportHelpState])
 
     useEffect(() => {
-        messagesEndRef.current?.scrollIntoView({ behavior: "smooth" })
-    }, [messages])
+        if (followBottomRef.current) messagesEndRef.current?.scrollIntoView({ behavior: "instant", block: 'end' })
+    }, [messages, isLoading])
 
     const sendInitialQuery = useEffectEvent((text: string) => { void handleSend(text) })
 
     useEffect(() => {
-        if (initialQuery && !initialQuerySentRef.current && messages.length === 0) {
+        if (!historyLoading && initialQuery && !initialQuerySentRef.current && messages.length === 0) {
             initialQuerySentRef.current = true
             sendInitialQuery(initialQuery)
         }
-    }, [initialQuery, messages.length])
+    }, [initialQuery, messages.length, historyLoading])
 
     const handleSend = async (text?: string) => {
         const question = text || input.trim()
-        if (!question || isLoading) return
+        if (!question || isLoading || historyLoading || messages.length >= 200) return
 
         setError(null)
+        followBottomRef.current = true
         const userMessage: HelpChatMessage = { role: "user", content: question }
         setMessages(prev => [...prev, userMessage])
         setInput("")
@@ -63,8 +141,13 @@ export function AIChatPanel({ initialQuery, className }: AIChatPanelProps) {
         reportHelpState?.('thinking')
 
         try {
-            const response = await askHelpAssistant(question, messages)
+            const response = await askHelpAssistant(question, messages, threadId)
             if (!mountedRef.current) return
+            setHistoryWarning(response.storageError)
+            if (response.threadId) {
+                setThreadId(response.threadId)
+                if (!threads.some(t => t.id === response.threadId)) setThreads(prev => [{ id: response.threadId!, title: question.slice(0, 80), created_at: new Date().toISOString() }, ...prev])
+            }
 
             if (response.success && response.message) {
                 setMessages(prev => [...prev, { role: "assistant", content: response.message! }])
@@ -88,12 +171,20 @@ export function AIChatPanel({ initialQuery, className }: AIChatPanelProps) {
 
     return (
         <div className={cn(
-            "flex flex-col h-full min-h-0",
+            "relative flex flex-col h-full min-h-0",
             "bg-white dark:bg-black",
             className
         )}>
-            {/* Messages */}
-            <div role="log" aria-label="Conversación de ayuda" aria-live="polite" className="flex-1 min-h-0 overflow-y-auto p-4 pt-12 space-y-4 scrollbar-modern">
+            <HelpHistoryMenu threads={threads} selected={threadId} busy={isLoading || historyLoading} hasMore={hasMoreThreads}
+                onSelect={id => { void selectThread(id) }} onMore={() => { void moreThreads() }}
+                onNew={() => {
+                    ++historyRequestRef.current; setThreadId(undefined); setMessages([]); setInput(''); setError(null)
+                    setHistoryWarning(undefined); followBottomRef.current = true; setAwayFromBottom(false); reportHelpState?.('idle'); inputRef.current?.focus()
+                }} />
+            {/* Native scrolling stays available without a visible scrollbar. */}
+            <div ref={scrollRef} onScroll={updateScroll} tabIndex={0} role="log" aria-label="Conversación de ayuda" aria-live="polite" aria-busy={historyLoading} className="relative flex-1 min-h-0 overflow-y-auto overscroll-contain p-4 pl-9 pt-16 space-y-4 no-scrollbar focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-primary/40">
+                {historyWarning && <p role="status" className="text-xs text-amber-700 dark:text-amber-300">{historyWarning}</p>}
+                {historyLoading && <p role="status" className="text-center text-xs text-muted-foreground">Cargando historial…</p>}
                 {messages.length === 0 && !isLoading && (
                     <div className="h-full flex flex-col items-center justify-center text-center p-6">
                         <h4 className="font-medium text-zinc-900 dark:text-white mb-2">
@@ -108,6 +199,7 @@ export function AIChatPanel({ initialQuery, className }: AIChatPanelProps) {
                 {messages.map((message, index) => (
                     <motion.div
                         key={index}
+                        ref={element => { messageRefs.current[index] = element }}
                         initial={{ opacity: 0, y: 10 }}
                         animate={{ opacity: 1, y: 0 }}
                         className={cn(
@@ -167,9 +259,25 @@ export function AIChatPanel({ initialQuery, className }: AIChatPanelProps) {
 
                 <div ref={messagesEndRef} />
             </div>
+            {messages.some(message => message.role === 'user') && <nav aria-label="Navegar por preguntas" className="absolute left-2 top-20 z-30 flex max-h-[55%] w-5 flex-col overflow-y-auto no-scrollbar">
+                {messages.map((message, index) => message.role === 'user' && <button key={index} type="button"
+                    aria-label={`Ir a pregunta: ${message.content.slice(0, 80)}`} aria-current={activeTurn === index ? 'true' : undefined}
+                    onMouseEnter={() => setPreviewTurn(index)} onMouseLeave={() => setPreviewTurn(null)} onFocus={() => setPreviewTurn(index)} onBlur={() => setPreviewTurn(null)}
+                    onClick={() => { followBottomRef.current = false; messageRefs.current[index]?.scrollIntoView({ behavior: reducedMotion ? 'instant' : 'smooth', block: 'start' }) }}
+                    className="group flex h-4 shrink-0 items-center justify-center focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary">
+                    <span className={cn('h-0.5 rounded-full transition-all group-hover:w-4 group-hover:bg-zinc-700 dark:group-hover:bg-white', activeTurn === index ? 'w-4 bg-zinc-700 dark:bg-white' : 'w-2 bg-zinc-300 dark:bg-white/25')} />
+                </button>)}
+            </nav>}
+            {previewTurn !== null && messages[previewTurn] && <div aria-hidden="true" className="pointer-events-none absolute left-9 top-20 z-40 max-w-[min(20rem,75%)] rounded-2xl border border-zinc-200/60 bg-white/85 px-4 py-3 text-sm shadow-lg backdrop-blur-2xl dark:border-white/10 dark:bg-zinc-900/85">
+                <p className="line-clamp-2 font-medium">{messages[previewTurn].content}</p>
+                {messages[previewTurn + 1]?.role === 'assistant' && <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{messages[previewTurn + 1].content}</p>}
+            </div>}
+            {awayFromBottom && <button type="button" aria-label="Ir al último mensaje" onClick={() => { followBottomRef.current = true; messagesEndRef.current?.scrollIntoView({ behavior: reducedMotion ? 'instant' : 'smooth', block: 'end' }) }}
+                className="absolute bottom-36 left-1/2 z-30 -translate-x-1/2 rounded-full border border-zinc-200/60 bg-white/70 p-2 shadow-sm backdrop-blur-xl dark:border-white/10 dark:bg-zinc-900/70"><ArrowDown className="h-4 w-4" /></button>}
 
             {/* Input */}
             <div className="shrink-0 px-4 pb-4 pt-2">
+                {messages.length >= 200 && <p className="mb-2 text-xs text-muted-foreground">Esta conversación está completa. Abre el historial para iniciar una nueva.</p>}
                 <form
                     onSubmit={(e) => { e.preventDefault(); handleSend(); }}
                     className={cn('relative flex items-end', pet?.enabled && 'min-h-24 pr-24 sm:min-h-28 sm:pr-32')}
@@ -182,7 +290,8 @@ export function AIChatPanel({ initialQuery, className }: AIChatPanelProps) {
                         onChange={(e) => setInput(e.target.value)}
                         placeholder="Escribe tu pregunta..."
                         aria-label="Tu pregunta"
-                        disabled={isLoading}
+                        disabled={isLoading || historyLoading || messages.length >= 200}
+                        maxLength={500}
                         className={cn(
                             "min-w-0 flex-1 px-2 py-3 bg-transparent text-zinc-900 dark:text-white",
                             "placeholder:text-zinc-400 dark:placeholder:text-white/30",
@@ -193,7 +302,7 @@ export function AIChatPanel({ initialQuery, className }: AIChatPanelProps) {
                     <motion.button
                         type="submit"
                         aria-label="Enviar pregunta"
-                        disabled={!input.trim() || isLoading}
+                        disabled={input.trim().length < 3 || isLoading || historyLoading || messages.length >= 200}
                         whileHover={{ scale: 1.05 }}
                         whileTap={{ scale: 0.95 }}
                         className={cn(

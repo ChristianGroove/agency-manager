@@ -10,6 +10,7 @@ import type { BrandingConfig } from '@/types/branding'
 
 const mocks = vi.hoisted(() => ({ ask: vi.fn() }))
 vi.mock('@/modules/features/caa/actions/ask-help-assistant', () => ({ askHelpAssistant: mocks.ask }))
+vi.mock('@/modules/features/caa/actions/help-history', () => ({ listHelpThreads: vi.fn(async () => ({ threads: [], hasMore: false })), loadHelpThread: vi.fn() }))
 vi.mock('next-themes', () => ({ useTheme: () => ({ theme: 'light', setTheme: vi.fn() }) }))
 vi.mock('next/image', () => ({ default: () => null }))
 vi.mock('next/dynamic', () => ({ default: () => function Modal({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
@@ -70,6 +71,7 @@ describe('dashboard pet and help integration', () => {
         expect(screen.getAllByTestId('pet-visual')).toHaveLength(1)
         expect(screen.queryByRole('heading', { name: 'Pixy IA' })).not.toBeInTheDocument()
         expect(screen.getByRole('textbox', { name: 'Tu pregunta' })).toBeInTheDocument()
+        await waitFor(() => expect(screen.getByRole('textbox', { name: 'Tu pregunta' })).toBeEnabled())
         fireEvent.change(screen.getByPlaceholderText('Escribe tu pregunta...'), { target: { value: '¿Cómo creo una tarea?' } })
         fireEvent.submit(screen.getByPlaceholderText('Escribe tu pregunta...').closest('form')!)
         expect(screen.getByTestId('state')).toHaveTextContent('thinking')
@@ -84,6 +86,7 @@ describe('dashboard pet and help integration', () => {
     it('keeps error text and gives critical alerts precedence when enabled', async () => {
         mocks.ask.mockResolvedValue({ success: false, error: 'Servicio no disponible.' })
         render(wrapper(<><AIChatPanel /><Probe /></>, { ...settings, alertReactions: true }))
+        await waitFor(() => expect(screen.getByRole('textbox', { name: 'Tu pregunta' })).toBeEnabled())
         fireEvent.change(screen.getByPlaceholderText('Escribe tu pregunta...'), { target: { value: 'Necesito ayuda' } })
         fireEvent.submit(screen.getByPlaceholderText('Escribe tu pregunta...').closest('form')!)
         await waitFor(() => expect(screen.getByText('Servicio no disponible.')).toBeInTheDocument())
