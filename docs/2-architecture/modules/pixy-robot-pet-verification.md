@@ -30,9 +30,30 @@ En el navegador integrado, una prueba sintética del renderizador real a 64 px, 
 
 La medición mostró que no corresponde recomendar animación continua como default. Se implementó reposo estático, límite de 30 FPS y pausa de gestos contextuales. La vista previa también queda estática en idle. No se afirma haber alcanzado los presupuestos de bundle/INP del plan; faltan mediciones en un build real y dispositivos representativos.
 
-## Activación pendiente
+## Verificación integrada en localhost
 
-La migración `20261011000001_platform_robot_pet.sql` está preparada y no se aplicó a la base desplegada. Añade `platform_settings.pet_config`, inicialmente apagado, y no cambia permisos/RLS. Si falta esa columna, el dashboard conserva su ayuda actual y el panel comunica que la configuración no está disponible.
+La migración se aplicó el 11 de octubre de 2026 exclusivamente al contenedor `supabase_db_agency-manager`, cuyo puerto publicado se verificó como **55322**. La API usada por la aplicación es `http://127.0.0.1:55321`. Se ejecutó solamente el archivo `20261011000001_platform_robot_pet.sql`, en una transacción con `ON_ERROR_STOP`, y se registró su versión en `supabase_migrations.schema_migrations`. No se ejecutó reset ni se aplicaron otras migraciones.
+
+Pixy quedó ejecutándose en **http://127.0.0.1:3005**, con el build de producción ya validado (`next start`). El servidor de Cartera en 3000 continúa intacto; no se inició una segunda compilación de desarrollo sobre `.next/dev`. Las URLs de aplicación/sitio se sobrescribieron para el proceso de prueba; `.env.local` no se editó.
+
+La contraseña genérica de la guía local fue rechazada. La sesión de prueba se autenticó mediante un enlace de un solo uso generado por la API administrativa de **Supabase local**, para la cuenta super admin ya existente. No se crearon usuarios, no se cambiaron contraseñas, no se enviaron correos ni se guardaron tokens en archivos versionados.
+
+| Límite/flujo | Resultado con aplicación y datos reales locales |
+| --- | --- |
+| Migración → configuración | La fila singleton inicialmente devolvió `{"version":1,"enabled":false}` y la configuración dejó de mostrar el aviso de preparación pendiente. |
+| Panel → server action → base → UI | Guardado desde Super Admin → SaaS Engine → Marca Global → Mascota Pixy; lectura SQL posterior confirmó los valores. La recarga del layout hizo aparecer el acceso directo. |
+| Mascota → ayuda | El botón `Abrir ayuda` abrió el modal existente; ambos controles flotantes se retiraron durante el diálogo. |
+| Consulta → estado de error | La pregunta real sobre colores del ADN pasó por `askHelpAssistant` y mostró procesamiento y error con avatar. El servidor identificó la causa: **los servicios IA están desactivados para Pixy en esta copia local**. No se habilitaron ni se cambiaron credenciales IA. No se verificó una respuesta exitosa del proveedor. |
+| Apagado → recuperación | Guardado de `enabled:false`, vuelta de `Abrir herramientas y ayuda`, y apertura del mismo chat mediante `Centro de Ayuda`. |
+| ADN → robot | Se habilitó temporalmente disponibilidad general local y se cambió a Dannicel Comunicaciones: el robot azul coincidió con sus colores efectivos `#3594f1` / `#0362ff`, leídos de `organization_settings` y del proveedor de branding en el navegador. No se editó el ADN. |
+| Piloto → aislamiento | Después de volver a `audience:pixy`, Dannicel mostró el acceso anterior y cero botones `Abrir ayuda`; al regresar a Pixy reapareció la mascota. |
+| Permisos de base | Las políticas existentes siguen siendo lectura pública y administración por `service_role`. Un intento `UPDATE` con rol `authenticated` y JWT sin privilegios devolvió **0 filas modificables**, dentro de una transacción revertida. La autorización de la server action conserva además sus pruebas unitarias; esta comprobación no equivale a una prueba HTTP de la action con otro usuario. |
+
+Configuración final local: `enabled:true`, `audience:pixy`, organización `db9d1288-80ab-48df-b130-a0739881c6f2`, animación contextual, seguimiento del puntero apagado y reacciones a alertas encendidas. La ampliación a todos los tenants fue temporal y se revirtió desde el panel. La prueba integrada no modifica la base remota y no sustituye un piloto de producción ni mediciones en dispositivos móviles reales.
+
+## Activación en otros entornos
+
+La migración `20261011000001_platform_robot_pet.sql` ya se aplicó localmente y no se aplicó a una base remota. Añade `platform_settings.pet_config`, inicialmente apagado, y no cambia permisos/RLS. Si falta esa columna, el dashboard conserva su ayuda actual y el panel comunica que la configuración no está disponible.
 
 Para desplegar: revisar/aplicar la migración en el entorno seleccionado, desplegar la rama, identificar la organización Pixy en el panel y activar **Piloto: solo Pixy**. Verificar entonces guardado real, rechazo de usuarios no autorizados y branding de tenants con las políticas desplegadas. Abrir la disponibilidad general solo después de ese piloto.
 
