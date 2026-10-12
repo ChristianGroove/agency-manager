@@ -167,7 +167,7 @@ export default async function AdminDashboardPage() {
                                                             {log.action.toUpperCase()}
                                                         </span>
                                                         <span className="ml-2 text-foreground">
-                                                            Org ID: {log.organization_id.split('-')[0]}
+                                                            {log.organization_id ? `Org ID: ${log.organization_id.split('-')[0]}` : 'Plataforma'}
                                                         </span>
                                                         {log.details?.reason && (
                                                             <span className="block mt-1 text-muted-foreground italic">
