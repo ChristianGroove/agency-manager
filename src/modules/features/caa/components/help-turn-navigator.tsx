@@ -33,16 +33,16 @@ export function HelpTurnNavigator({ messages, activeTurn, reducedMotion, onSelec
             {turns.map(({ message, index }, ordinal) => {
                 const influence = hover ? Math.exp(-Math.pow((ordinal - hover.position) / 2.2, 2)) : 0
                 const active = activeTurn === index
-                const width = Math.max(active ? 14 : 4, 4 + influence * 22)
+                const width = Math.max(active ? 14 : 4, 4 + influence * 19.4)
                 return <button key={index} type="button"
                     aria-label={`Ir a pregunta: ${message.content.slice(0, 80)}`}
                     aria-current={active ? 'true' : undefined}
                     onFocus={() => setHover({ position: ordinal, index })}
                     onClick={() => onSelect(index)}
                     className="flex h-3 shrink-0 items-center justify-end pr-1 focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-inset focus-visible:ring-primary">
-                    <span className="h-0.5 w-1 origin-right rounded-full bg-zinc-700 dark:bg-white"
-                        style={{ transform: `scaleX(${width / 4})`, opacity: active ? 1 : 0.25 + influence * 0.65,
-                            transition: reducedMotion ? 'none' : 'transform 140ms ease-out, opacity 140ms ease-out' }} />
+                    <span className="h-0.5 shrink-0 rounded-full bg-zinc-700 dark:bg-white"
+                        style={{ width, opacity: active ? 1 : 0.25 + influence * 0.65,
+                            transition: reducedMotion ? 'none' : 'width 140ms ease-out, opacity 140ms ease-out' }} />
                 </button>
             })}
         </nav>
