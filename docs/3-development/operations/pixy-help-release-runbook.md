@@ -1,6 +1,6 @@
 # Publicación del robot y ayuda Pixy
 
-Preparación: 2026-10-12; configuración de despliegue aclarada por el usuario el 2026-10-13. Candidato: `codex/pixyrobotpet-release`, checkout `G:\Pixy\agency-manager\tmp\pet-release`; base master local `fadd9ed7`. Producción es **pixy CRM Backend** en Coolify, `https://app.pixy.com.co`. Los despliegues son manuales: actualizar master no despliega la aplicación. No se ha actualizado master, hecho push, aplicado SQL remoto ni inspeccionado la configuración real del contenedor.
+Preparación: 2026-10-12; configuración de despliegue aclarada por el usuario el 2026-10-13. Candidato: `codex/pixyrobotpet-release`, checkout `G:\Pixy\agency-manager\tmp\pet-release`; base master local `fadd9ed7`. Producción es **pixy CRM Backend** en Coolify, `https://app.pixy.com.co`. Los despliegues son manuales: actualizar master no despliega la aplicación. Base Supabase confirmada: **Pixy control**, `amwlwmkejdjskukdfwut`; siete migraciones aplicadas y comprobadas por CLI, sin Cartera. No se ha publicado master ni desplegado la aplicación. Ver [cierre real del push](pixy-help-production-db-closeout-20261013.md).
 
 ## Puertas antes de publicar
 
@@ -14,10 +14,11 @@ Si falta información del destino, mantener el candidato local. El acceso a prod
 
 ## Migraciones de esta entrega y su base
 
-Resultado del usuario recibido el 2026-10-13: faltan las cinco migraciones de ayuda y su dependencia `organization_members.status`. Lote transaccional concreto y evidencia de pruebas en [preparación de migraciones de producción](pixy-help-production-batch-20261013.md). Onboarding se mantiene aparte; no está instalado según ese resultado. El lote de ayuda aún no se ha ejecutado en producción.
+El resultado inicial aportado por el usuario mostraba las cinco migraciones de ayuda y onboarding ausentes. El push posterior del CLI instaló las seis y una migración aditiva de dependencias. El [lote SQL Editor](pixy-help-production-batch-20261013.md) es un antecedente que no se ejecutó; no usarlo sobre este destino ya migrado.
 
 | Versión / nombre | Dependencia y comprobación |
 |---|---|
+| `20261010000000_help_tenant_prerequisites` | Repara columnas ausentes de estado de miembros, activación de categorías y tipo de organización de invitación; preserva valores existentes. Aplicada y registrada en producción. |
 | `20261011000000_atomic_tenant_provisioning` | Base de onboarding de master local. Requiere su baseline; comprobar tabla `tenant_provisioning_requests` y función `provision_tenant_atomic`, además del historial. |
 | `20261011000001_platform_robot_pet` | Columna JSONB `platform_settings.pet_config`; deshabilitado por defecto para instalaciones nuevas. |
 | `20261011000003_help_chat_history` | Dos tablas dashboard con RLS, políticas de usuario/organización y trigger de límite de mensajes. |

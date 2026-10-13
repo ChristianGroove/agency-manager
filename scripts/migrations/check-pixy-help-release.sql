@@ -8,6 +8,7 @@ SET LOCAL lock_timeout = '3s';
 WITH roles AS (SELECT to_regrole('anon') AS anon, to_regrole('authenticated') AS authenticated,
   to_regrole('service_role') AS service_role),
 expected_migrations(version, name) AS (VALUES
+  ('20261010000000', 'help_tenant_prerequisites'),
   ('20261011000000', 'atomic_tenant_provisioning'), ('20261011000001', 'platform_robot_pet'),
   ('20261011000003', 'help_chat_history'), ('20261012000004', 'tasks_portal_help'),
   ('20261012000005', 'dashboard_help_quota'), ('20261012000006', 'help_function_privileges')

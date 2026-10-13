@@ -1,5 +1,7 @@
 # Bot de ayuda Pixy: guía de mantenimiento
 
+Producción, 2026-10-13: siete migraciones de dependencias, onboarding y ayuda instaladas mediante CLI `2.120.0`, con historial/objetos/permisos verificados y sin Cartera. Nueva dependencia canónica `20261010000000_help_tenant_prerequisites.sql`. No se publicó master ni se desplegó la aplicación. Ver [cierre de base](pixy-help-production-db-closeout-20261013.md); los estados locales y snapshots anteriores se conservan como antecedentes.
+
 Actualización de preflight: usar `reviews/tasks-schema-preflight-reviewed-20261012.json` como snapshot vigente (48 artículos y filtros preservados). Añadida migración `20261012000006_help_function_privileges`, aplicada solo local. El espacio de una tarea se resuelve por su proyecto, no por una columna en `task_items`. Secuencia y diferencias conocidas de la base local en [el runbook de publicación](pixy-help-release-runbook.md); los snapshots mencionados abajo registran etapas anteriores.
 
 Estado vigente: 2026-10-12. Candidato de entrega: `codex/pixyrobotpet-release`, basado en master local `fadd9ed7`, sin los commits de Cartera. El piloto de 3005 ejecuta ahora ESTE candidato, con cuota compartida y guards de Tasks. `pixyrobotpet` se conserva como rama anterior; su helper histórico no arranca el código actual. Punto de entrada para cualquier agente que intervenga el robot, el chat o su biblioteca. Los documentos de fases anteriores son registros históricos; sus cifras y pendientes no describen necesariamente el runtime actual.

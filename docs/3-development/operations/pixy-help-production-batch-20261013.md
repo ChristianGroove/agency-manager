@@ -1,5 +1,7 @@
 # Migraciones de ayuda pendientes según el resultado de producción
 
+Actualización: las siete migraciones de robot/ayuda, alta de tenants y sus dependencias ya se aplicaron mediante el CLI. Este batch no se ejecutó y se conserva como antecedente; **no ejecutarlo sobre producción actualizada**. Ver [cierre del push](pixy-help-production-db-closeout-20261013.md).
+
 Fecha: 2026-10-13. Resultado aportado por el usuario desde el SQL Editor; no es una consulta remota ejecutada por Codex. El proyecto debe ser el Supabase de **pixy CRM Backend**, `https://app.pixy.com.co`. Coolify despliega manualmente; este SQL no publica código ni dispara despliegues.
 
 ## Hallazgos

@@ -1,5 +1,7 @@
 # Preparación de publicación de la ayuda Pixy
 
+Estado posterior al 2026-10-13: esquema de producción confirmado y siete migraciones aplicadas por el CLI desde el candidato aislado, sin Cartera. Ver [cierre real de base](pixy-help-production-db-closeout-20261013.md). Los pendientes de SQL descritos abajo son antecedentes; publicación de master, despliegue manual y activación de ayuda siguen separados.
+
 Guía operativa vigente: [secuencia de publicación y comprobación de esquema](pixy-help-release-runbook.md). Este documento conserva los antecedentes de separación y validación. El cierre posterior añade una quinta migración de ayuda (`20261012000006_help_function_privileges`) y corrige la resolución del espacio de una tarea a través de su proyecto.
 
 Inspección: 2026-10-12. Candidato inspeccionado: `pixyrobotpet` en `751aa83b`. Este documento registra pendientes; no autoriza ni acredita merge, push, despliegue o cambios en la base remota.
