@@ -5,6 +5,7 @@ import { cookies } from "next/headers"
 import { createClient } from "@/modules/core/database/supabase-server"
 
 import { cache } from "react"
+import { isMembershipAvailable, isOrganizationAvailable } from '../services/organization-availability'
 
 
 /**
@@ -50,6 +51,8 @@ export async function getOrganizationsPaginated(params: {
             parent_organization:organizations!parent_organization_id(name),
             saas_subscriptions(status, current_period_end, bypass_until, saas_apps(id, name, space_category, price_monthly))
         `, { count: 'exact' })
+        .neq('status', 'archived')
+        .is('deleted_at', null)
         .order('created_at', { ascending: false })
 
     // 3. Filters
@@ -95,6 +98,9 @@ export async function getUserOrganizations() {
             id,
             user_id,
             role,
+            status,
+            deleted_at,
+            permissions,
             created_at,
             organization_id,
             organization:organizations (
@@ -102,6 +108,8 @@ export async function getUserOrganizations() {
                 name,
                 slug,
                 organization_type,
+                status,
+                deleted_at,
                 logo_url
             )
         `)
@@ -112,8 +120,9 @@ export async function getUserOrganizations() {
         return []
     }
 
-    // Filter in JS. If status is missing from select or DB, it is undefined (!== 'blocked')
-    const validMembers = (data || []).filter((member: any) => member.status !== 'blocked')
+    const validMembers = (data || []).filter(isMembershipAvailable).map(member => ({
+        ...member, organization: Array.isArray(member.organization) ? member.organization[0] : member.organization
+    }))
 
     return validMembers as unknown as OrganizationMember[]
 }
@@ -133,7 +142,7 @@ export const getCurrentOrganizationId = cache(async () => {
     if (orgCookie?.value) {
         const { data: membership, error } = await (await createClient())
             .from('organization_members')
-            .select('organization_id')
+            .select('organization_id, status, deleted_at, organization:organizations!inner(status, deleted_at)')
             .eq('organization_id', orgCookie.value)
             .eq('user_id', user.id)
             .maybeSingle()
@@ -142,15 +151,15 @@ export const getCurrentOrganizationId = cache(async () => {
             console.error("Error in getCurrentOrganizationId membership check:", error)
         }
 
-        if (membership) {
-            // Assume not blocked if we can't select status
+        if (isMembershipAvailable(membership)) {
             return orgCookie.value
         }
 
         const { isSuperAdmin } = await import("@/modules/core/iam/services/platform-roles")
         if (await isSuperAdmin(user.id)) {
-            console.log(`[ORG_CONTEXT] 🛡️ SuperAdmin Overpass: ${orgCookie.value} for User ${user.id}`);
-            return orgCookie.value
+            const { data: target, error: targetError } = await supabase.from('organizations')
+                .select('status, deleted_at').eq('id', orgCookie.value).maybeSingle()
+            if (!targetError && isOrganizationAvailable(target)) return orgCookie.value
         }
 
         console.warn(`[ORG_CONTEXT] ❌ Security check failed for ${orgCookie.value} (User ${user.id}). Reverting to default.`);

@@ -64,15 +64,7 @@ export function OrganizationSwitcher({ trigger, initialOrgDetails }: Organizatio
             // Show loading state
             toast.loading("Cambiando de organización...")
 
-            // 1. Force Clear existing cookie first (to remove conflicting domain/path overrides)
-            document.cookie = 'pixy_org_id=; path=/; expires=Thu, 01 Jan 1970 00:00:01 GMT;'
-
-            // 2. Set Cookie Client-Side (Robust)
-            // Use same settings as Server Action
-            const isSecure = window.location.protocol === 'https:';
-            document.cookie = `pixy_org_id=${orgId}; path=/; max-age=${60 * 60 * 24 * 30}; SameSite=Lax${isSecure ? '; Secure' : ''}`
-
-            // 3. Notify Server (Essential for server-side context consistency)
+            // The server validates availability and access before changing the cookie.
             await switchOrganization(orgId)
 
             // Close modal

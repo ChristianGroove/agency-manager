@@ -5,6 +5,7 @@ import { cookies } from "next/headers"
 import { revalidatePath } from "next/cache"
 import { isSuperAdmin } from "@/modules/core/iam/services/platform-roles"
 import { getUserOrganizations } from "./crud"
+import { isMembershipAvailable, isOrganizationAvailable } from '../services/organization-availability'
 
 const PUBLIC_LIMITS_UPDATE_ERROR = "No se pudieron actualizar los limites"
 const LIMITS_PERMISSION_ERROR = "No tienes permiso para gestionar limites de esta organizacion."
@@ -22,6 +23,12 @@ export async function switchOrganization(organizationId: string) {
         throw new Error("Unauthorized")
     }
 
+    const { data: targetOrg, error: targetError } = await supabase.from('organizations')
+        .select('parent_organization_id, status, deleted_at').eq('id', organizationId).single()
+    if (targetError || !isOrganizationAvailable(targetOrg)) {
+        throw new Error('Esta organización está archivada o ya no está disponible.')
+    }
+
     // 1. Check direct membership
     const { data: member } = await supabase
         .from('organization_members')
@@ -29,28 +36,24 @@ export async function switchOrganization(organizationId: string) {
         .eq('organization_id', organizationId)
         .eq('user_id', user.id)
         .neq('status', 'blocked')
+        .is('deleted_at', null)
         .single()
 
     if (!member) {
         // 2. Check hierarchical access: Reseller (parent) → Child tenant
         let hasHierarchicalAccess = false
 
-        const { data: targetOrg } = await supabase
-            .from('organizations')
-            .select('parent_organization_id')
-            .eq('id', organizationId)
-            .single()
-
         if (targetOrg?.parent_organization_id) {
             const { data: parentMembership } = await supabase
                 .from('organization_members')
-                .select('role')
+                .select('role, status, deleted_at, organization:organizations!inner(status, deleted_at)')
                 .eq('organization_id', targetOrg.parent_organization_id)
                 .eq('user_id', user.id)
                 .neq('status', 'blocked')
+                .is('deleted_at', null)
                 .single()
 
-            if (parentMembership && ['owner', 'admin'].includes(parentMembership.role)) {
+            if (isMembershipAvailable(parentMembership) && parentMembership && ['owner', 'admin'].includes(parentMembership.role)) {
                 hasHierarchicalAccess = true
             }
         }

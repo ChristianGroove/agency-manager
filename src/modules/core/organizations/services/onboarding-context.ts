@@ -5,21 +5,21 @@ import { validateInviteCode } from '@/modules/core/iam/actions/invitation-action
 export async function resolveOnboardingContext(user: User) {
     const { data: memberships, error } = await supabaseAdmin
         .from('organization_members')
-        .select('organization_id, role, status, permissions, organization:organizations!inner(id, name, slug, status, active_app_id, organization_type, active_app:saas_apps!active_app_id(name))')
+        .select('organization_id, role, status, permissions, deleted_at, organization:organizations!inner(id, name, slug, status, deleted_at, active_app_id, organization_type, active_app:saas_apps!active_app_id(name))')
         .eq('user_id', user.id)
     if (error) throw new Error('No se pudo verificar tu organización. Intenta de nuevo.')
 
     const eligible = (memberships || []).filter(member =>
-        member.status !== 'blocked' && !(member.permissions as Record<string, unknown> | null)?.is_support_proxy
+        member.status !== 'blocked' && !member.deleted_at && !(member.permissions as Record<string, unknown> | null)?.is_support_proxy
     )
     const invitedOrgId = user.app_metadata?.invited_org_id || user.user_metadata?.invited_org_id
     const membership = invitedOrgId ? eligible.find(member => member.organization_id === invitedOrgId) : eligible[0]
     const organization = membership?.organization as unknown as {
         id: string; name: string; slug: string; status: string; active_app_id: string;
-        organization_type: string; active_app: { name: string } | null
+        organization_type: string; deleted_at?: string | null; active_app: { name: string } | null
     } | undefined
 
-    if (organization && organization.status !== 'active') {
+    if (organization && (organization.status !== 'active' || organization.deleted_at)) {
         throw new Error('Tu organización no está activa. Contacta a soporte.')
     }
     if (!organization && (invitedOrgId || (memberships || []).some(member => member.status === 'blocked'))) {

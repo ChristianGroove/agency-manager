@@ -24,7 +24,8 @@ export type Organization = {
     acquisition_date?: string | null
 
     // V2 Status fields
-    status?: 'active' | 'limited' | 'suspended'
+    status?: 'active' | 'limited' | 'suspended' | 'past_due' | 'archived'
+    deleted_at?: string | null
     payment_status?: 'good_standing' | 'past_due'
 
     created_at: string
@@ -35,6 +36,7 @@ export type OrganizationMember = {
     user_id: string
     role: 'owner' | 'admin' | 'member'
     status?: 'active' | 'blocked'
+    deleted_at?: string | null
     permissions?: Record<string, any>
     created_at: string
     organization?: Organization

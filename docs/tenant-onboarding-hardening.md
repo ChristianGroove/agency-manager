@@ -40,6 +40,14 @@ Auditoría realizada el 11 de octubre de 2026 contra **la base local `127.0.0.1:
 
 ## Pruebas
 
+### Organizaciones archivadas y contexto activo (13 de octubre de 2026)
+
+El selector consulta el estado y la eliminación lógica tanto de la membresía como de la organización. Excluye organizaciones archivadas o eliminadas y membresías bloqueadas o eliminadas; las suspendidas conservan el comportamiento existente. Una cookie que apunta a un espacio no disponible vuelve a una membresía elegible. El acceso de soporte de plataforma también verifica que el espacio exista y esté disponible.
+
+El cambio de organización valida el destino y el acceso antes de escribir la cookie. El acceso jerárquico exige una membresía elegible en un padre disponible. Una activación dirigida a una organización archivada o eliminada, o a una membresía eliminada, falla sin crear otra organización.
+
+Este ajuste no requiere otra migración. Debe desplegarse junto con cualquier conciliación histórica que archive tenants: el código anterior no filtraba su estado al mostrar el selector. La conciliación de datos se revisa por separado y conserva las filas originales.
+
 - `npm run test:tenant-db`: PostgreSQL efímero (PGlite), regresiones de transacción, reintentos, cupos, permisos, módulos, envío y reparación; no requiere ni modifica una base externa.
 - Pruebas Vitest de organizaciones, invitaciones, activación, wizard, cookies y rutas de autenticación.
 

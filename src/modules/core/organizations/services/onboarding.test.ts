@@ -163,6 +163,18 @@ describe('tenant activation and autonomous onboarding', () => {
         expect(mocks.switchOrganization).not.toHaveBeenCalled()
     })
 
+    it.each(['archived-org', 'deleted-org', 'deleted-member'])('does not recreate an unavailable activation target: %s', async state => {
+        user.user_metadata.invited_org_id = 'existing-org'
+        const row: any = membership()
+        if (state === 'archived-org') row.organization.status = 'archived'
+        if (state === 'deleted-org') row.organization.deleted_at = '2026-10-13'
+        if (state === 'deleted-member') row.deleted_at = '2026-10-13'
+        memberships = [row]
+        expect((await completeOrganizationOnboarding({ name: 'Empresa', slug: 'empresa', app_id: 'saas-space' })).success).toBe(false)
+        expect(inserts()).toHaveLength(0)
+        expect(mocks.switchOrganization).not.toHaveBeenCalled()
+    })
+
     it('rejects expired invitations and invitations for another email', async () => {
         mocks.validateInvite.mockResolvedValueOnce({ isValid: false, error: 'Expired' })
         expect((await completeOrganizationOnboarding({})).success).toBe(false)
