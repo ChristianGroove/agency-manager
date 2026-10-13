@@ -7,6 +7,8 @@ La rama incorpora también `master` en `fadd9ed7` (alta y activación de tenants
 
 La [segunda sincronización del 13 de octubre](master-sync-2026-10-13.md) incorpora `master` en `c5918870` (robot, ayuda y permisos de Tasks). Su informe actualiza la evidencia y enlaza el cierre de las migraciones de ayuda/tenants ya aplicado en el trabajo de esa rama.
 
+El [preflight de producción](production-preflight-2026-10-13.md) confirma el destino y las 16 migraciones de Marketing pendientes mediante consultas reales y un dry-run acotado; documenta índices y el punto de recuperación antes de aplicarlas.
+
 ## Estado de entrega
 
 La implementación actual está terminada y guardada localmente. Se ha comprobado con pruebas automatizadas y build, pero **no está habilitada para envíos masivos en producción**. Las migraciones de Marketing se aplicaron únicamente en Supabase Docker local. La revisión visual autenticada y una campaña real pequeña siguen pendientes.
