@@ -7,6 +7,9 @@ import { normalizeTask, parseTaskChecklist, isStaffLeadOrPmRole, inferTaskRole, 
 import { calculateNextRecurrence } from "../utils/recurrence-utils";
 import { generateNextTicketCode } from "./task-actions";
 import { isPortalSessionUnlocked } from "@/modules/features/portal-security/utils/session-cookie";
+import { resolveTaskPortalRoleContext } from '../services/portal-role-context';
+import { requirePortalTaskMutation, portalTaskMutationFilter, validateTaskMutationIds } from '../services/task-mutation-access';
+import { z } from 'zod';
 
 /**
  * Safely revalidate platform operations view from portal actions
@@ -440,36 +443,8 @@ export const getCollaboratorPortalData = cache(async (token: string): Promise<Co
   }
 
   // 4. Determine role permissions
-  const roleLower = (staff.role || "").toLowerCase();
-  const hasLeadKeywords = isStaffLeadOrPmRole(staff.role);
-
-  // Also check if this collaborator is designated lead of any workspace or project
-  const { data: leadWorkspaces } = await supabaseAdmin
-    .from("task_workspaces")
-    .select("id")
-    .eq("organization_id", staff.organization_id)
-    .eq("lead_staff_id", staff.id)
-    .limit(1);
-
-  const { data: leadProjects } = await supabaseAdmin
-    .from("task_projects")
-    .select("id")
-    .eq("organization_id", staff.organization_id)
-    .eq("lead_staff_id", staff.id)
-    .limit(1);
-
-  const isLeadOrPm = Boolean(
-    hasLeadKeywords ||
-    (leadWorkspaces && leadWorkspaces.length > 0) ||
-    (leadProjects && leadProjects.length > 0)
-  );
-
-  const isQa =
-    roleLower.includes("qa") ||
-    roleLower.includes("tester") ||
-    roleLower.includes("calidad") ||
-    roleLower.includes("revisor") ||
-    roleLower.includes("pruebas");
+  const roleContext = await resolveTaskPortalRoleContext(staff);
+  const { isLeadOrPm, isQa, leadWorkspaces } = roleContext;
 
   // 4. Resolve Workspace Access Control & Fetch Workspaces
   const hasGlobalAccess = staff.has_global_workspace_access !== false;
@@ -507,9 +482,8 @@ export const getCollaboratorPortalData = cache(async (token: string): Promise<Co
   const allowedWorkspaceIds = new Set(workspaces.map((w) => w.id));
 
   // Determine if this collaborator belongs to the parallel support team
-  const staffTaskRole = staff.task_role || inferTaskRole(staff.role);
-  const isParallelSupport = staffTaskRole === "support" && !isLeadOrPm;
-  const portalMode: 'operations' | 'support' = isParallelSupport ? "support" : "operations";
+  const portalMode = roleContext.portalMode;
+  const isParallelSupport = portalMode === 'support';
 
   // 5. Fetch Projects (scoped to allowed workspaces if not global)
   const { data: projectsData } = await supabaseAdmin
@@ -904,10 +878,7 @@ export const getCollaboratorPortalData = cache(async (token: string): Promise<Co
 
   const activeSprint = sprints.find((s) => s.status === "active") || null;
 
-  const canBulkDeleteTasks =
-    staff.can_bulk_delete_tasks !== null && staff.can_bulk_delete_tasks !== undefined
-      ? Boolean(staff.can_bulk_delete_tasks)
-      : isLeadOrPm;
+  const canBulkDeleteTasks = roleContext.canBulkDeleteTasks;
 
   return {
     isLocked: false,
@@ -967,22 +938,17 @@ export async function portalUpdateTaskPriority(
   priority: TaskPriority
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const { data: staff } = await supabaseAdmin
-      .from("organization_staff")
-      .select("id, organization_id")
-      .eq("access_token", token)
-      .eq("is_active", true)
-      .maybeSingle();
-
-    if (!staff) throw new Error("Acceso no autorizado");
-
-    const { error } = await supabaseAdmin
+    if (!Object.hasOwn(TASK_PRIORITY_LABELS, priority)) throw new Error('Prioridad inválida.');
+    const access = await requirePortalTaskMutation(token, [taskId], 'manage');
+    const scope = portalTaskMutationFilter(access);
+    let mutation = supabaseAdmin
       .from("task_items")
       .update({ priority, updated_at: new Date().toISOString() })
       .eq("id", taskId)
-      .eq("organization_id", staff.organization_id);
-
-    if (error) throw error;
+      .eq("organization_id", access.staff.organization_id);
+    if (scope) mutation = mutation.or(scope);
+    const { data, error } = await mutation.select('id').maybeSingle();
+    if (error || !data) throw new Error('No se pudo actualizar esta tarea.');
     return { success: true };
   } catch (err: any) {
     console.error("Portal update priority error:", err);
@@ -999,22 +965,22 @@ export async function portalAssignTask(
   assignedStaffId: string | null
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const { data: staff } = await supabaseAdmin
-      .from("organization_staff")
-      .select("id, organization_id")
-      .eq("access_token", token)
-      .eq("is_active", true)
-      .maybeSingle();
-
-    if (!staff) throw new Error("Acceso no autorizado");
-
-    const { error } = await supabaseAdmin
+    if (assignedStaffId !== null && !z.string().uuid().safeParse(assignedStaffId).success) throw new Error('Responsable inválido.');
+    const access = await requirePortalTaskMutation(token, [taskId], 'manage');
+    if (assignedStaffId) {
+      const assignee = await supabaseAdmin.from('organization_staff').select('id')
+        .eq('id', assignedStaffId).eq('organization_id', access.staff.organization_id).eq('is_active', true).maybeSingle();
+      if (assignee.error || !assignee.data) throw new Error('El responsable seleccionado no está disponible.');
+    }
+    const scope = portalTaskMutationFilter(access);
+    let mutation = supabaseAdmin
       .from("task_items")
       .update({ assigned_staff_id: assignedStaffId, updated_at: new Date().toISOString() })
       .eq("id", taskId)
-      .eq("organization_id", staff.organization_id);
-
-    if (error) throw error;
+      .eq("organization_id", access.staff.organization_id);
+    if (scope) mutation = mutation.or(scope);
+    const { data, error } = await mutation.select('id').maybeSingle();
+    if (error || !data) throw new Error('No se pudo reasignar esta tarea.');
     return { success: true };
   } catch (err: any) {
     console.error("Portal assign task error:", err);
@@ -2673,28 +2639,10 @@ export async function portalDeleteTask(
   taskId: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    const { data: staff } = await supabaseAdmin
-      .from("organization_staff")
-      .select("id, user_id, role, task_role, organization_id")
-      .eq("access_token", token)
-      .eq("is_active", true)
-      .maybeSingle();
-
-    if (!staff) throw new Error("Acceso no autorizado");
-
-    const isLeadOrPm = isStaffLeadOrPmRole(staff.role, (staff as any).task_role);
-
-    if (!isLeadOrPm) {
-      throw new Error("Solo los líderes o Project Managers tienen permiso para eliminar tareas.");
-    }
-
+    const access = await requirePortalTaskMutation(token, [taskId], 'delete');
+    const { staff } = access;
     // Cancelar en Google Calendar si es una reunion vinculada
-    const { data: taskToDelete } = await supabaseAdmin
-      .from("task_items")
-      .select("id, external_meeting_id, type")
-      .eq("organization_id", staff.organization_id)
-      .eq("id", taskId)
-      .maybeSingle();
+    const taskToDelete = access.tasks[0];
 
     if (taskToDelete?.external_meeting_id && taskToDelete?.type === "meeting") {
       try {
@@ -2712,13 +2660,15 @@ export async function portalDeleteTask(
       }
     }
 
-    const { error } = await supabaseAdmin
+    const scope = portalTaskMutationFilter(access);
+    let mutation = supabaseAdmin
       .from("task_items")
       .delete()
       .eq("id", taskId)
       .eq("organization_id", staff.organization_id);
-
-    if (error) throw error;
+    if (scope) mutation = mutation.or(scope);
+    const { data, error } = await mutation.select('id').maybeSingle();
+    if (error || !data) throw new Error('No se pudo eliminar esta tarea.');
     safeRevalidateOperations();
     return { success: true };
   } catch (err: any) {
@@ -2889,36 +2839,12 @@ export async function portalBulkDeleteTasks(
       return { success: true, count: 0 };
     }
 
-    // 1. Verify staff by token
-    const { data: staff, error: staffErr } = await supabaseAdmin
-      .from("organization_staff")
-      .select("id, user_id, organization_id, role, task_role, can_bulk_delete_tasks")
-      .eq("access_token", token)
-      .eq("is_active", true)
-      .maybeSingle();
-
-    if (staffErr || !staff) {
-      return { success: false, error: "Colaborador no autorizado" };
-    }
-
-    const isLead = isStaffLeadOrPmRole(staff.role, (staff as any).task_role);
-    const hasPermission =
-      staff.can_bulk_delete_tasks !== null && staff.can_bulk_delete_tasks !== undefined
-        ? Boolean(staff.can_bulk_delete_tasks)
-        : isLead;
-
-    if (!hasPermission) {
-      return { success: false, error: "No tienes permiso para eliminar tareas en masa" };
-    }
-
+    taskIds = validateTaskMutationIds(taskIds);
+    const access = await requirePortalTaskMutation(token, taskIds, 'bulk-delete');
+    const { staff } = access;
+    const scope = portalTaskMutationFilter(access);
     // Cancelar reuniones en Google Calendar antes de eliminarlas
-    const { data: meetingTasks } = await supabaseAdmin
-      .from("task_items")
-      .select("id, external_meeting_id, type")
-      .in("id", taskIds)
-      .eq("organization_id", staff.organization_id)
-      .eq("type", "meeting")
-      .not("external_meeting_id", "is", null);
+    const meetingTasks = access.tasks.filter(task => task.type === 'meeting' && task.external_meeting_id);
 
     if (meetingTasks && meetingTasks.length > 0) {
       try {
@@ -2946,14 +2872,15 @@ export async function portalBulkDeleteTasks(
 
     for (let i = 0; i < taskIds.length; i += CHUNK_SIZE) {
       const chunk = taskIds.slice(i, i + CHUNK_SIZE);
-      const { error: delErr, count } = await supabaseAdmin
+      let mutation = supabaseAdmin
         .from("task_items")
         .delete({ count: "exact" })
         .eq("organization_id", staff.organization_id)
         .in("id", chunk);
-
-      if (delErr) throw delErr;
-      totalDeleted += count ?? chunk.length;
+      if (scope) mutation = mutation.or(scope);
+      const { error: delErr, count } = await mutation;
+      if (delErr) throw new Error('No se pudieron eliminar las tareas seleccionadas.');
+      totalDeleted += count ?? 0;
     }
 
     safeRevalidateOperations();

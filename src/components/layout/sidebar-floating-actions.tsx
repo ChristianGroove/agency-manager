@@ -1,10 +1,10 @@
 "use client"
 
 import React, { useState } from 'react'
-import { LayoutDashboard, Shield, Package, Building2, Bell, User as UserIcon, Trash2 } from 'lucide-react'
+import { LayoutDashboard, Building2, Bell, User as UserIcon } from 'lucide-react'
 import { ActionButton } from './action-button'
 import { OrganizationSwitcher } from "@/modules/core/organizations/components/organization-switcher"
-import { CreateOrganizationSheet } from "@/modules/core/organizations/components/create-organization-sheet"
+import { SidebarThemeToggle } from './sidebar-theme-toggle'
 import { NotificationBell } from './notification-bell'
 import { ProfileSheet } from '@/modules/core/iam/components/account/profile-sheet'
 
@@ -77,15 +77,7 @@ export function SidebarFloatingActions({ isSuperAdmin, user, currentOrgId, organ
                 <ProfileSheet open={isProfileOpen} onOpenChange={setIsProfileOpen} user={user} currentOrgId={currentOrgId} />
             </div>
 
-            {/* Trash Bin (Quick Access) */}
-            <div className="relative">
-                <ActionButton
-                    icon={Trash2}
-                    text="Papelera"
-                    color="var(--primary)"
-                    onClick={() => window.dispatchEvent(new Event('pixy:open-trash'))}
-                />
-            </div>
+            <SidebarThemeToggle />
 
             {/* --- Super Admin Actions --- */}
             {isSuperAdmin && (

@@ -1,0 +1,136 @@
+{
+  "schema_version": 1,
+  "generated_at": "2026-10-12",
+  "scope": "dashboard.tasks",
+  "base_revision": "5aaeec98767f13ec9b495eed33486fcdba65ab86",
+  "reviewer": "Gemini: source verification and editorial review",
+  "notes": "Propuesta parcial para el modulo de Tareas en el dashboard. Incluye actualizacion de tasks.manage-tasks y 5 guias especializadas nuevas. Para ser combinada por Codex con el snapshot global vigente sin sobrescribir revisiones del portal.",
+  "articles": [
+    {
+      "id": "tasks.collaborators-and-portals",
+      "replaces": null,
+      "draft_sha256": "d577bee90f55e5a658251faee070e913bc5331497d1859cd401a139ab2f3ea40",
+      "reviewed_by": "Gemini: source verification and editorial review",
+      "reviewed_on": "2026-10-12",
+      "evidence_sha256": {
+        "src/modules/features/tasks/components/collaborators/task-collaborators-manager.tsx": "286bb8d78ddf3adf5bc67c75321f1458ff18d87cd002c818e27645919cab87e6",
+        "src/modules/features/portal-security/actions/portal-security-actions.ts": "3b24cdbc255eeecfc4ef8b9550e78855ffa60394ff1b7d9a5da75aa504a412a2",
+        "src/modules/features/tasks/types.ts": "19fb6a18d0334367841007d9dd4438c94f6982fffac65d35b32e46280f24a69a"
+      },
+      "required_modules": [
+        "module_tasks"
+      ],
+      "required_permissions": [
+        "operations.tasks.view",
+        "operations.tasks.manage"
+      ],
+      "verticals": [],
+      "link_route": "/operations/tasks"
+    },
+    {
+      "id": "tasks.import-data",
+      "replaces": null,
+      "draft_sha256": "7d3072fe4e9370bfb3e7fc97e23c1dc146db8a58a867e0b87af64a454448583d",
+      "reviewed_by": "Gemini: source verification and editorial review",
+      "reviewed_on": "2026-10-12",
+      "evidence_sha256": {
+        "src/modules/features/tasks/components/modals/task-import-modal.tsx": "3f453b141409431b7cb7303601096bbbdc519a4cc67ffa0bf5ea0681b7398329",
+        "src/modules/features/tasks/actions/task-import-actions.ts": "b6957b0812efda8eb7d715dafa537e2b1b9a3e3271922afb26440e52ba4af0eb"
+      },
+      "required_modules": [
+        "module_tasks"
+      ],
+      "required_permissions": [
+        "operations.tasks.view",
+        "operations.tasks.manage"
+      ],
+      "verticals": [],
+      "link_route": "/operations/tasks"
+    },
+    {
+      "id": "tasks.manage-tasks",
+      "replaces": "tasks.manage-tasks",
+      "draft_sha256": "88a872cf89d3d80a3d617780aa261778d712a87c4235ecccf018ad6f22e1ba0e",
+      "reviewed_by": "Gemini: source verification and editorial review",
+      "reviewed_on": "2026-10-12",
+      "evidence_sha256": {
+        "src/app/(dashboard)/operations/tasks/page.tsx": "6929b1883c6b27064eb444ab8366c2097b4a0b191ca33ebd202b8207b344cedc",
+        "src/modules/features/tasks/components/task-manager-view.tsx": "a45eae1236d693144effadc9dc972f5d0de39928f821b655224c9ad334c41a45",
+        "src/modules/core/iam/actions/permissions.ts": "68d0525b12e2aeed38175f5dea98e1b44301a3b3bdcccf12e676cd9bbf55a302"
+      },
+      "required_modules": [
+        "module_tasks"
+      ],
+      "required_permissions": [
+        "operations.tasks.view"
+      ],
+      "verticals": [],
+      "link_route": "/operations/tasks"
+    },
+    {
+      "id": "tasks.meetings-and-calendar",
+      "replaces": null,
+      "draft_sha256": "645caf0b544901025e8c1a2a14d485d1a11789daf0725a6e72d445fb3485d155",
+      "reviewed_by": "Gemini: source verification and editorial review",
+      "reviewed_on": "2026-10-12",
+      "evidence_sha256": {
+        "src/modules/features/tasks/components/meetings/task-meeting-modal.tsx": "01fdb977a35d65b7e89e1e76bd0e6fc145ed6e3c5ce872c7c6bfad6b04f1ba69",
+        "src/modules/features/tasks/components/meetings/task-meeting-detail-modal.tsx": "1f914a80cd3210cd94c31e73aba6e75e0679d0cd1ef5cef6c907c42d59bf7f4a",
+        "src/modules/features/tasks/components/meetings/task-meeting-console.tsx": "3ca2e492076fcf4951574ce8725d9e03d016e4087671eed99c1096acdeccdeea",
+        "src/modules/features/tasks/components/meetings/task-google-meet-connector.tsx": "4a2c645202a20c14a93c85dc30e473465436e4527add16c0bbdd0c342323be77",
+        "src/modules/features/tasks/actions/task-actions.ts": "5a4b8e032986c456f35ead61a1d6b79c9af1486f586f7ce49bfbb567f5ff0c58"
+      },
+      "required_modules": [
+        "module_tasks"
+      ],
+      "required_permissions": [
+        "operations.tasks.view",
+        "operations.tasks.manage"
+      ],
+      "verticals": [],
+      "link_route": "/operations/tasks"
+    },
+    {
+      "id": "tasks.sprint-planning-and-pacing",
+      "replaces": null,
+      "draft_sha256": "9938e89717a71510a574a12b5514266b09dd1fa4e2af60f7355239144063ccea",
+      "reviewed_by": "Gemini: source verification and editorial review",
+      "reviewed_on": "2026-10-12",
+      "evidence_sha256": {
+        "src/modules/features/tasks/components/modals/task-sprint-modal.tsx": "fc6b89a9fd9c494d783464ed7b84f79626680793d38a55605f0f86633db7cae9",
+        "src/modules/features/tasks/components/pacing/task-weekly-pacing-matrix.tsx": "aabc1b38b3e804bebf12ea73fba55c5cf0c65747485f8498366012f473924103",
+        "src/modules/features/tasks/components/metrics/task-metrics-view.tsx": "5ad0c2b64020518a83584125ca2473cd6d2630106c07b16f63861cef915a4ce6",
+        "src/modules/features/tasks/actions/task-sprint-actions.ts": "0786867bada991c758b1a9333358b4a2918c88d6c5980983423d078ab33870ef"
+      },
+      "required_modules": [
+        "module_tasks"
+      ],
+      "required_permissions": [
+        "operations.tasks.view"
+      ],
+      "verticals": [],
+      "link_route": "/operations/tasks"
+    },
+    {
+      "id": "tasks.task-lifecycle-and-views",
+      "replaces": null,
+      "draft_sha256": "2f1ea9c970db93b325d558bc0b0fdc69f506d09b477dd0f9bc682109986fe8e7",
+      "reviewed_by": "Gemini: source verification and editorial review",
+      "reviewed_on": "2026-10-12",
+      "evidence_sha256": {
+        "src/modules/features/tasks/components/kanban/task-kanban-board.tsx": "f0aa5939a017ac21bb0262e1c83ffc5493061df5c8ab3e16c2d796ade0597b21",
+        "src/modules/features/tasks/components/list/task-list-view.tsx": "4d435a67f7ca6c77936810c3ee4d0480b0f03f6d64213ca0a3a63e59d98b4baf",
+        "src/modules/features/tasks/components/modals/task-detail-modal.tsx": "f10da2626f04b2eadcd7941d769b668a07f11c6b4893fafec3db52ef84bf4258",
+        "src/modules/features/tasks/actions/task-actions.ts": "5a4b8e032986c456f35ead61a1d6b79c9af1486f586f7ce49bfbb567f5ff0c58"
+      },
+      "required_modules": [
+        "module_tasks"
+      ],
+      "required_permissions": [
+        "operations.tasks.view"
+      ],
+      "verticals": [],
+      "link_route": "/operations/tasks"
+    }
+  ]
+}

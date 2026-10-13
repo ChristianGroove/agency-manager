@@ -1,0 +1,1011 @@
+{
+  "corpus_revision": "8bf83e3f9b3431b635e0856f59e3e5baafc5ff5e866005120e0dbeab16897fae",
+  "articles": 48,
+  "questions": 65,
+  "covered_answer_cases": 56,
+  "retrieval_hits": 56,
+  "note": "This checks retrieval against expected article IDs, not factual correctness, model answers, latency, cost or runtime permissions.",
+  "cases": [
+    {
+      "id": "Q01",
+      "expected_behavior": "answer",
+      "evaluated_verticals": [
+        "agency"
+      ],
+      "published_expected": [
+        "theme.toggle-theme"
+      ],
+      "retrieved": [
+        "theme.toggle-theme",
+        "dashboard.overview",
+        "inbox.manage-conversations"
+      ],
+      "status": "retrieval_hit"
+    },
+    {
+      "id": "Q02",
+      "expected_behavior": "clarify",
+      "evaluated_verticals": [
+        "agency"
+      ],
+      "published_expected": [
+        "theme.toggle-theme"
+      ],
+      "retrieved": [
+        "tasks.manage-tasks",
+        "theme.toggle-theme",
+        "billing.manage-invoices"
+      ],
+      "status": "boundary_requires_action_or_model_check"
+    },
+    {
+      "id": "Q03",
+      "expected_behavior": "answer",
+      "evaluated_verticals": [
+        "agency"
+      ],
+      "published_expected": [
+        "pet.pet-interaction",
+        "help.chat-and-history"
+      ],
+      "retrieved": [
+        "help.chat-and-history",
+        "pet.pet-interaction"
+      ],
+      "status": "retrieval_hit"
+    },
+    {
+      "id": "Q04",
+      "expected_behavior": "answer",
+      "evaluated_verticals": [
+        "agency"
+      ],
+      "published_expected": [
+        "pet.pet-interaction"
+      ],
+      "retrieved": [
+        "pet.pet-interaction",
+        "help.chat-and-history"
+      ],
+      "status": "retrieval_hit"
+    },
+    {
+      "id": "Q05",
+      "expected_behavior": "answer",
+      "evaluated_verticals": [
+        "agency"
+      ],
+      "published_expected": [
+        "pet.pet-interaction"
+      ],
+      "retrieved": [
+        "pet.pet-interaction",
+        "help.chat-and-history"
+      ],
+      "status": "retrieval_hit"
+    },
+    {
+      "id": "Q06",
+      "expected_behavior": "answer",
+      "evaluated_verticals": [
+        "agency"
+      ],
+      "published_expected": [
+        "help.chat-and-history"
+      ],
+      "retrieved": [
+        "help.chat-and-history"
+      ],
+      "status": "retrieval_hit"
+    },
+    {
+      "id": "Q07",
+      "expected_behavior": "answer",
+      "evaluated_verticals": [
+        "agency"
+      ],
+      "published_expected": [
+        "help.chat-and-history"
+      ],
+      "retrieved": [
+        "help.chat-and-history",
+        "inbox.manage-conversations"
+      ],
+      "status": "retrieval_hit"
+    },
+    {
+      "id": "Q08",
+      "expected_behavior": "answer",
+      "evaluated_verticals": [
+        "agency"
+      ],
+      "published_expected": [
+        "help.chat-and-history"
+      ],
+      "retrieved": [
+        "help.chat-and-history",
+        "pet.pet-interaction"
+      ],
+      "status": "retrieval_hit"
+    },
+    {
+      "id": "Q09",
+      "expected_behavior": "answer",
+      "evaluated_verticals": [
+        "agency"
+      ],
+      "published_expected": [
+        "help.chat-and-history"
+      ],
+      "retrieved": [
+        "help.chat-and-history",
+        "inbox.manage-conversations"
+      ],
+      "status": "retrieval_hit"
+    },
+    {
+      "id": "Q10",
+      "expected_behavior": "answer",
+      "evaluated_verticals": [
+        "agency"
+      ],
+      "published_expected": [
+        "branding.manage-adn",
+        "branding.brand-center"
+      ],
+      "retrieved": [
+        "branding.manage-adn",
+        "billing.manage-invoices",
+        "branding.brand-center"
+      ],
+      "status": "retrieval_hit"
+    },
+    {
+      "id": "Q11",
+      "expected_behavior": "answer",
+      "evaluated_verticals": [
+        "agency"
+      ],
+      "published_expected": [
+        "branding.brand-center",
+        "pet.pet-interaction"
+      ],
+      "retrieved": [
+        "branding.brand-center",
+        "pet.pet-interaction",
+        "branding.manage-adn"
+      ],
+      "status": "retrieval_hit"
+    },
+    {
+      "id": "Q12",
+      "expected_behavior": "answer",
+      "evaluated_verticals": [
+        "agency"
+      ],
+      "published_expected": [
+        "iam.manage-roles"
+      ],
+      "retrieved": [
+        "iam.manage-roles",
+        "iam.invite-members",
+        "branding.brand-center"
+      ],
+      "status": "retrieval_hit"
+    },
+    {
+      "id": "Q13",
+      "expected_behavior": "answer",
+      "evaluated_verticals": [
+        "agency"
+      ],
+      "published_expected": [
+        "iam.manage-roles"
+      ],
+      "retrieved": [
+        "iam.manage-roles",
+        "iam.invite-members",
+        "inbox.manage-channels"
+      ],
+      "status": "retrieval_hit"
+    },
+    {
+      "id": "Q14",
+      "expected_behavior": "answer",
+      "evaluated_verticals": [
+        "agency"
+      ],
+      "published_expected": [
+        "iam.invite-members"
+      ],
+      "retrieved": [
+        "iam.invite-members",
+        "dashboard.overview",
+        "branding.brand-center",
+        "tasks.import-data"
+      ],
+      "status": "retrieval_hit"
+    },
+    {
+      "id": "Q15",
+      "expected_behavior": "answer",
+      "evaluated_verticals": [
+        "agency"
+      ],
+      "published_expected": [
+        "iam.invite-members"
+      ],
+      "retrieved": [
+        "iam.invite-members",
+        "billing.manage-invoices",
+        "dashboard.overview"
+      ],
+      "status": "retrieval_hit"
+    },
+    {
+      "id": "Q16",
+      "expected_behavior": "clarify",
+      "evaluated_verticals": [
+        "agency"
+      ],
+      "published_expected": [
+        "pet.manage-pet"
+      ],
+      "retrieved": [
+        "pet.pet-interaction",
+        "help.chat-and-history"
+      ],
+      "status": "boundary_requires_action_or_model_check"
+    },
+    {
+      "id": "Q17",
+      "expected_behavior": "answer",
+      "evaluated_verticals": [
+        "agency"
+      ],
+      "published_expected": [
+        "pet.manage-pet"
+      ],
+      "retrieved": [
+        "pet.manage-pet",
+        "branding.brand-center",
+        "dashboard.overview"
+      ],
+      "status": "retrieval_hit"
+    },
+    {
+      "id": "Q18",
+      "expected_behavior": "answer",
+      "evaluated_verticals": [
+        "agency"
+      ],
+      "published_expected": [
+        "pet.manage-pet",
+        "pet.pet-interaction"
+      ],
+      "retrieved": [
+        "pet.manage-pet",
+        "pet.pet-interaction"
+      ],
+      "status": "retrieval_hit"
+    },
+    {
+      "id": "Q19",
+      "expected_behavior": "answer",
+      "evaluated_verticals": [
+        "agency"
+      ],
+      "published_expected": [
+        "inbox.manage-conversations"
+      ],
+      "retrieved": [
+        "inbox.manage-conversations",
+        "inbox.saved-replies-and-templates"
+      ],
+      "status": "retrieval_hit"
+    },
+    {
+      "id": "Q20",
+      "expected_behavior": "answer",
+      "evaluated_verticals": [
+        "agency"
+      ],
+      "published_expected": [
+        "inbox.manage-conversations"
+      ],
+      "retrieved": [
+        "inbox.manage-conversations",
+        "inbox.saved-replies-and-templates"
+      ],
+      "status": "retrieval_hit"
+    },
+    {
+      "id": "Q21",
+      "expected_behavior": "answer",
+      "evaluated_verticals": [
+        "agency"
+      ],
+      "published_expected": [
+        "inbox.manage-conversations"
+      ],
+      "retrieved": [
+        "inbox.manage-conversations",
+        "inbox.saved-replies-and-templates"
+      ],
+      "status": "retrieval_hit"
+    },
+    {
+      "id": "Q22",
+      "expected_behavior": "answer",
+      "evaluated_verticals": [
+        "agency"
+      ],
+      "published_expected": [
+        "crm.manage-contacts"
+      ],
+      "retrieved": [
+        "crm.manage-contacts",
+        "crm.manage-pipeline",
+        "dashboard.overview"
+      ],
+      "status": "retrieval_hit"
+    },
+    {
+      "id": "Q23",
+      "expected_behavior": "answer",
+      "evaluated_verticals": [
+        "agency"
+      ],
+      "published_expected": [
+        "crm.manage-contacts",
+        "iam.manage-roles"
+      ],
+      "retrieved": [
+        "crm.manage-contacts",
+        "tasks.import-data",
+        "billing.manage-invoices",
+        "quotes.create-quotes"
+      ],
+      "status": "retrieval_hit"
+    },
+    {
+      "id": "Q24",
+      "expected_behavior": "answer",
+      "evaluated_verticals": [
+        "agency"
+      ],
+      "published_expected": [
+        "crm.manage-pipeline"
+      ],
+      "retrieved": [
+        "crm.manage-pipeline"
+      ],
+      "status": "retrieval_hit"
+    },
+    {
+      "id": "Q25",
+      "expected_behavior": "answer",
+      "evaluated_verticals": [
+        "agency"
+      ],
+      "published_expected": [
+        "crm.manage-pipeline"
+      ],
+      "retrieved": [
+        "crm.manage-pipeline",
+        "dashboard.overview",
+        "inbox.manage-conversations"
+      ],
+      "status": "retrieval_hit"
+    },
+    {
+      "id": "Q26",
+      "expected_behavior": "answer",
+      "evaluated_verticals": [
+        "agency"
+      ],
+      "published_expected": [
+        "billing.manage-invoices"
+      ],
+      "retrieved": [
+        "billing.manage-invoices",
+        "dashboard.overview",
+        "quotes.create-quotes"
+      ],
+      "status": "retrieval_hit"
+    },
+    {
+      "id": "Q27",
+      "expected_behavior": "answer",
+      "evaluated_verticals": [
+        "agency"
+      ],
+      "published_expected": [
+        "billing.manage-invoices"
+      ],
+      "retrieved": [
+        "billing.manage-invoices",
+        "dashboard.overview",
+        "inbox.manage-conversations"
+      ],
+      "status": "retrieval_hit"
+    },
+    {
+      "id": "Q28",
+      "expected_behavior": "answer",
+      "evaluated_verticals": [
+        "agency"
+      ],
+      "published_expected": [
+        "billing.manage-invoices"
+      ],
+      "retrieved": [
+        "billing.manage-invoices",
+        "quotes.create-quotes"
+      ],
+      "status": "retrieval_hit"
+    },
+    {
+      "id": "Q29",
+      "expected_behavior": "answer",
+      "evaluated_verticals": [
+        "agency"
+      ],
+      "published_expected": [
+        "automation.create-workflows"
+      ],
+      "retrieved": [
+        "automation.create-workflows",
+        "quotes.create-quotes",
+        "inbox.manage-channels"
+      ],
+      "status": "retrieval_hit"
+    },
+    {
+      "id": "Q30",
+      "expected_behavior": "answer",
+      "evaluated_verticals": [
+        "agency"
+      ],
+      "published_expected": [
+        "tasks.manage-tasks"
+      ],
+      "retrieved": [
+        "tasks.manage-tasks",
+        "tasks.task-lifecycle-and-views"
+      ],
+      "status": "retrieval_hit"
+    },
+    {
+      "id": "Q31",
+      "expected_behavior": "answer",
+      "evaluated_verticals": [
+        "agency"
+      ],
+      "published_expected": [
+        "tasks.manage-tasks"
+      ],
+      "retrieved": [
+        "tasks.manage-tasks",
+        "tasks.task-lifecycle-and-views"
+      ],
+      "status": "retrieval_hit"
+    },
+    {
+      "id": "Q32",
+      "expected_behavior": "answer",
+      "evaluated_verticals": [
+        "agency"
+      ],
+      "published_expected": [
+        "quotes.create-quotes"
+      ],
+      "retrieved": [
+        "quotes.create-quotes",
+        "crm.manage-pipeline",
+        "dashboard.overview"
+      ],
+      "status": "retrieval_hit"
+    },
+    {
+      "id": "Q33",
+      "expected_behavior": "answer",
+      "evaluated_verticals": [
+        "agency"
+      ],
+      "published_expected": [
+        "quotes.create-quotes",
+        "billing.manage-invoices"
+      ],
+      "retrieved": [
+        "billing.manage-invoices",
+        "quotes.create-quotes",
+        "dashboard.overview"
+      ],
+      "status": "retrieval_hit"
+    },
+    {
+      "id": "Q34",
+      "expected_behavior": "answer",
+      "evaluated_verticals": [
+        "resto"
+      ],
+      "published_expected": [
+        "resto.manage-menu"
+      ],
+      "retrieved": [
+        "resto.manage-menu",
+        "resto.manage-orders"
+      ],
+      "status": "retrieval_hit"
+    },
+    {
+      "id": "Q35",
+      "expected_behavior": "answer",
+      "evaluated_verticals": [
+        "resto"
+      ],
+      "published_expected": [
+        "resto.manage-menu"
+      ],
+      "retrieved": [
+        "resto.manage-menu",
+        "resto.manage-orders"
+      ],
+      "status": "retrieval_hit"
+    },
+    {
+      "id": "Q36",
+      "expected_behavior": "answer",
+      "evaluated_verticals": [
+        "resto"
+      ],
+      "published_expected": [
+        "resto.manage-orders"
+      ],
+      "retrieved": [
+        "resto.manage-orders",
+        "resto.manage-menu"
+      ],
+      "status": "retrieval_hit"
+    },
+    {
+      "id": "Q37",
+      "expected_behavior": "answer",
+      "evaluated_verticals": [
+        "agency"
+      ],
+      "published_expected": [
+        "pet.manage-pet"
+      ],
+      "retrieved": [
+        "pet.manage-pet",
+        "pet.pet-interaction",
+        "theme.toggle-theme"
+      ],
+      "status": "retrieval_hit"
+    },
+    {
+      "id": "Q38",
+      "expected_behavior": "answer",
+      "evaluated_verticals": [
+        "agency"
+      ],
+      "published_expected": [
+        "pet.manage-pet",
+        "pet.pet-interaction"
+      ],
+      "retrieved": [
+        "pet.pet-interaction",
+        "theme.toggle-theme",
+        "inbox.manage-conversations"
+      ],
+      "status": "retrieval_hit"
+    },
+    {
+      "id": "Q39",
+      "expected_behavior": "answer",
+      "evaluated_verticals": [
+        "agency"
+      ],
+      "published_expected": [
+        "branding.manage-adn"
+      ],
+      "retrieved": [
+        "branding.manage-adn",
+        "billing.manage-invoices"
+      ],
+      "status": "retrieval_hit"
+    },
+    {
+      "id": "Q40",
+      "expected_behavior": "clarify",
+      "evaluated_verticals": [
+        "agency"
+      ],
+      "published_expected": [
+        "dashboard.overview"
+      ],
+      "retrieved": [
+        "tasks.manage-tasks",
+        "iam.invite-members",
+        "dashboard.overview"
+      ],
+      "status": "boundary_requires_action_or_model_check"
+    },
+    {
+      "id": "Q41",
+      "expected_behavior": "abstain",
+      "evaluated_verticals": [
+        "agency"
+      ],
+      "published_expected": [],
+      "retrieved": [
+        "tasks.manage-tasks",
+        "inbox.saved-replies-and-templates"
+      ],
+      "status": "boundary_requires_action_or_model_check"
+    },
+    {
+      "id": "Q42",
+      "expected_behavior": "abstain",
+      "evaluated_verticals": [
+        "agency"
+      ],
+      "published_expected": [],
+      "retrieved": [
+        "help.chat-and-history",
+        "inbox.manage-conversations"
+      ],
+      "status": "boundary_requires_action_or_model_check"
+    },
+    {
+      "id": "Q43",
+      "expected_behavior": "abstain",
+      "evaluated_verticals": [
+        "agency"
+      ],
+      "published_expected": [],
+      "retrieved": [
+        "dashboard.overview",
+        "help.chat-and-history",
+        "theme.toggle-theme"
+      ],
+      "status": "boundary_requires_action_or_model_check"
+    },
+    {
+      "id": "Q44",
+      "expected_behavior": "abstain",
+      "evaluated_verticals": [
+        "agency"
+      ],
+      "published_expected": [],
+      "retrieved": [
+        "inbox.saved-replies-and-templates"
+      ],
+      "status": "boundary_requires_action_or_model_check"
+    },
+    {
+      "id": "Q45",
+      "expected_behavior": "abstain",
+      "evaluated_verticals": [
+        "agency"
+      ],
+      "published_expected": [],
+      "retrieved": [
+        "help.chat-and-history",
+        "tasks.manage-tasks"
+      ],
+      "status": "boundary_requires_action_or_model_check"
+    },
+    {
+      "id": "Q46",
+      "expected_behavior": "clarify",
+      "evaluated_verticals": [
+        "agency"
+      ],
+      "published_expected": [
+        "billing.manage-invoices"
+      ],
+      "retrieved": [
+        "billing.manage-invoices",
+        "inbox.saved-replies-and-templates",
+        "quotes.create-quotes"
+      ],
+      "status": "boundary_requires_action_or_model_check"
+    },
+    {
+      "id": "Q47",
+      "expected_behavior": "answer",
+      "evaluated_verticals": [
+        "agency"
+      ],
+      "published_expected": [
+        "dashboard.overview"
+      ],
+      "retrieved": [
+        "dashboard.overview"
+      ],
+      "status": "retrieval_hit"
+    },
+    {
+      "id": "Q48",
+      "expected_behavior": "answer",
+      "evaluated_verticals": [
+        "agency"
+      ],
+      "published_expected": [
+        "dashboard.overview"
+      ],
+      "retrieved": [
+        "dashboard.overview",
+        "help.chat-and-history"
+      ],
+      "status": "retrieval_hit"
+    },
+    {
+      "id": "Q49",
+      "expected_behavior": "answer",
+      "evaluated_verticals": [
+        "agency"
+      ],
+      "published_expected": [
+        "iam.manage-roles"
+      ],
+      "retrieved": [
+        "iam.manage-roles",
+        "help.chat-and-history"
+      ],
+      "status": "retrieval_hit"
+    },
+    {
+      "id": "Q50",
+      "expected_behavior": "answer",
+      "evaluated_verticals": [
+        "agency"
+      ],
+      "published_expected": [
+        "inbox.manage-channels",
+        "inbox.manage-conversations"
+      ],
+      "retrieved": [
+        "inbox.manage-channels",
+        "inbox.manage-conversations",
+        "crm.manage-contacts"
+      ],
+      "status": "retrieval_hit"
+    },
+    {
+      "id": "Q51",
+      "expected_behavior": "answer",
+      "evaluated_verticals": [
+        "agency"
+      ],
+      "published_expected": [
+        "branding.manage-adn"
+      ],
+      "retrieved": [
+        "branding.manage-adn",
+        "branding.brand-center",
+        "crm.crm-reports"
+      ],
+      "status": "retrieval_hit"
+    },
+    {
+      "id": "Q52",
+      "expected_behavior": "answer",
+      "evaluated_verticals": [
+        "agency"
+      ],
+      "published_expected": [
+        "dashboard.overview"
+      ],
+      "retrieved": [
+        "theme.toggle-theme",
+        "tasks.manage-tasks",
+        "dashboard.overview"
+      ],
+      "status": "retrieval_hit"
+    },
+    {
+      "id": "Q53",
+      "expected_behavior": "answer",
+      "evaluated_verticals": [
+        "agency"
+      ],
+      "published_expected": [
+        "help.chat-and-history"
+      ],
+      "retrieved": [
+        "help.chat-and-history",
+        "pet.pet-interaction"
+      ],
+      "status": "retrieval_hit"
+    },
+    {
+      "id": "Q54",
+      "expected_behavior": "answer",
+      "evaluated_verticals": [
+        "agency"
+      ],
+      "published_expected": [
+        "help.chat-and-history"
+      ],
+      "retrieved": [
+        "help.chat-and-history",
+        "pet.pet-interaction"
+      ],
+      "status": "retrieval_hit"
+    },
+    {
+      "id": "Q55",
+      "expected_behavior": "answer",
+      "evaluated_verticals": [
+        "agency"
+      ],
+      "published_expected": [
+        "pet.pet-interaction"
+      ],
+      "retrieved": [
+        "pet.pet-interaction",
+        "help.chat-and-history"
+      ],
+      "status": "retrieval_hit"
+    },
+    {
+      "id": "Q56",
+      "expected_behavior": "answer",
+      "evaluated_verticals": [
+        "resto"
+      ],
+      "published_expected": [
+        "resto.manage-orders"
+      ],
+      "retrieved": [
+        "resto.manage-orders",
+        "resto.manage-menu"
+      ],
+      "status": "retrieval_hit"
+    },
+    {
+      "id": "Q57",
+      "expected_behavior": "answer",
+      "evaluated_verticals": [
+        "resto"
+      ],
+      "published_expected": [
+        "resto.manage-menu"
+      ],
+      "retrieved": [
+        "resto.manage-menu",
+        "resto.manage-orders"
+      ],
+      "status": "retrieval_hit"
+    },
+    {
+      "id": "Q58",
+      "expected_behavior": "answer",
+      "evaluated_verticals": [
+        "agency"
+      ],
+      "published_expected": [
+        "iam.invite-members"
+      ],
+      "retrieved": [
+        "iam.invite-members",
+        "tasks.manage-tasks",
+        "iam.manage-roles"
+      ],
+      "status": "retrieval_hit"
+    },
+    {
+      "id": "Q59",
+      "expected_behavior": "answer",
+      "evaluated_verticals": [
+        "agency"
+      ],
+      "published_expected": [
+        "dashboard.overview"
+      ],
+      "retrieved": [
+        "help.chat-and-history",
+        "dashboard.overview"
+      ],
+      "status": "retrieval_hit"
+    },
+    {
+      "id": "Q60",
+      "expected_behavior": "answer",
+      "evaluated_verticals": [
+        "agency"
+      ],
+      "published_expected": [
+        "crm.crm-reports"
+      ],
+      "retrieved": [
+        "crm.crm-reports",
+        "crm.manage-pipeline",
+        "quotes.create-quotes"
+      ],
+      "status": "retrieval_hit"
+    },
+    {
+      "id": "Q61",
+      "expected_behavior": "answer",
+      "evaluated_verticals": [
+        "agency"
+      ],
+      "published_expected": [
+        "inbox.saved-replies-and-templates"
+      ],
+      "retrieved": [
+        "inbox.saved-replies-and-templates",
+        "inbox.manage-conversations",
+        "theme.toggle-theme"
+      ],
+      "status": "retrieval_hit"
+    },
+    {
+      "id": "Q62",
+      "expected_behavior": "answer",
+      "evaluated_verticals": [
+        "agency"
+      ],
+      "published_expected": [
+        "inbox.saved-replies-and-templates",
+        "inbox.manage-conversations"
+      ],
+      "retrieved": [
+        "inbox.saved-replies-and-templates",
+        "inbox.manage-conversations"
+      ],
+      "status": "retrieval_hit"
+    },
+    {
+      "id": "Q63",
+      "expected_behavior": "answer",
+      "evaluated_verticals": [
+        "agency"
+      ],
+      "published_expected": [
+        "inbox.manage-channels"
+      ],
+      "retrieved": [
+        "inbox.manage-channels",
+        "inbox.saved-replies-and-templates"
+      ],
+      "status": "retrieval_hit"
+    },
+    {
+      "id": "Q64",
+      "expected_behavior": "answer",
+      "evaluated_verticals": [
+        "agency"
+      ],
+      "published_expected": [
+        "inbox.manage-channels"
+      ],
+      "retrieved": [
+        "inbox.manage-channels",
+        "inbox.saved-replies-and-templates"
+      ],
+      "status": "retrieval_hit"
+    },
+    {
+      "id": "Q65",
+      "expected_behavior": "answer",
+      "evaluated_verticals": [
+        "agency"
+      ],
+      "published_expected": [
+        "inbox.manage-channels"
+      ],
+      "retrieved": [
+        "inbox.manage-channels",
+        "inbox.manage-conversations",
+        "crm.manage-contacts"
+      ],
+      "status": "retrieval_hit"
+    }
+  ]
+}

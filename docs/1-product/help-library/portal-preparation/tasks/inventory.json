@@ -1,0 +1,385 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "name": "pixy-tasks-portal-inventory",
+  "version": "1.0.0",
+  "generated_at": "2026-10-12",
+  "source_revision": "5aaeec98767f13ec9b495eed33486fcdba65ab86",
+  "surface": "portal.tasks",
+  "route_pattern": "/portal/tasks/[token]",
+  "views": [
+    {
+      "id": "view.portal.lockscreen",
+      "name": "Pantalla de bloqueo por PIN",
+      "component": "PortalLockscreen",
+      "path": "src/modules/features/portal-security/components/portal-lockscreen.tsx",
+      "status": "implemented",
+      "profiles": ["all_collaborators"],
+      "condition": "staff.has_pin_code === true && !isPortalSessionUnlocked(token, staff.id)",
+      "description": "Bloqueo preventivo de sesión que exige teclado numérico de 6 dígitos antes de exponer tareas, proyectos o datos del tenant.",
+      "manual_tests_pending": [
+        "Ingreso de PIN correcto desbloquea y setea cookie HttpOnly",
+        "Ingreso de PIN incorrecto muestra contador y alerta de intentos",
+        "Opción 'Recordar en este dispositivo' extiende duración de cookie a 30 días"
+      ]
+    },
+    {
+      "id": "view.portal.collaborator.main",
+      "name": "Portal Operativo de Tareas (Colaborador)",
+      "component": "TaskCollaboratorPortal",
+      "path": "src/modules/features/tasks/components/portal/task-collaborator-portal.tsx",
+      "status": "implemented",
+      "profiles": ["developer", "designer", "specialist", "qa_lead", "pm"],
+      "condition": "portalData.portalMode === 'operations'",
+      "description": "Espacio principal de trabajo operativo para consultar y gestionar requerimientos, subtareas y reuniones del colaborador.",
+      "manual_tests_pending": [
+        "Carga inicial en tema claro sin parpadeo de estilos oscuros",
+        "Aislamiento de tareas entre workspaces autorizados cuando staff.has_global_workspace_access === false"
+      ]
+    },
+    {
+      "id": "view.portal.pm.dashboard",
+      "name": "Dashboard Operativo de Project Manager",
+      "component": "TaskPmOperationsDashboard",
+      "path": "src/modules/features/tasks/components/portal/task-pm-operations-dashboard.tsx",
+      "status": "implemented",
+      "profiles": ["pm", "lead"],
+      "condition": "isLeadOrPm === true && pmViewMode === 'dashboard'",
+      "description": "Vista ejecutiva con métricas de salud de proyectos, distribución de carga por colaborador, requerimientos estancados y estado de sprints.",
+      "manual_tests_pending": [
+        "Filtro temporal (7d, 30d, 90d, 1y, all) recalcula gráficas de Recharts",
+        "Botón de iniciar sprint desde el modal de sprint"
+      ]
+    },
+    {
+      "id": "view.portal.pm.pacing",
+      "name": "Matriz de Ritmo Semanal (Weekly Pacing)",
+      "component": "TaskWeeklyPacingMatrix",
+      "path": "src/modules/features/tasks/components/pacing/task-weekly-pacing-matrix.tsx",
+      "status": "implemented",
+      "profiles": ["pm", "lead"],
+      "condition": "isLeadOrPm === true && pmViewMode === 'pacing'",
+      "description": "Matriz de seguimiento de 4 semanas que evalúa cumplimiento de entregables, horas presupuestadas vs ejecutadas y exportación a PDF.",
+      "manual_tests_pending": [
+        "Generación y descarga de PDF de pacing",
+        "Transición de estado semanal (on_track, at_risk, delayed, completed)"
+      ]
+    },
+    {
+      "id": "view.portal.pm.support_channel",
+      "name": "Canal de Supervisión de Soporte Paralelo",
+      "component": "TaskSupportChannelView",
+      "path": "src/modules/features/tasks/components/portal/task-support-channel-view.tsx",
+      "status": "implemented",
+      "profiles": ["pm", "lead"],
+      "condition": "isLeadOrPm === true && pmViewMode === 'support' && hasSupportChannelActive === true",
+      "description": "Bandeja de triaje y asignación de tickets generados por el equipo de soporte hacia desarrolladores u operaciones.",
+      "manual_tests_pending": [
+        "Reasignación de ticket SUP a un desarrollador",
+        "Cambio de estado de ticket y sincronización en tiempo real"
+      ]
+    },
+    {
+      "id": "view.portal.support.main",
+      "name": "Portal de Soporte Paralelo",
+      "component": "TaskParallelSupportPortal",
+      "path": "src/modules/features/tasks/components/portal/task-parallel-support-portal.tsx",
+      "status": "implemented",
+      "profiles": ["support"],
+      "condition": "portalData.portalMode === 'support'",
+      "description": "Portal especializado para personal de atención al cliente y soporte: emisión de tickets SUP, seguimiento de resolución y consultas técnicas.",
+      "manual_tests_pending": [
+        "Creación de ticket con prefijo SUP y notificación a PMs",
+        "Lectura de menciones técnicas sin acceso a tareas de desarrollo interno"
+      ]
+    },
+    {
+      "id": "view.portal.task_detail_modal",
+      "name": "Modal de Detalle y Edición de Tarea",
+      "component": "TaskPortalDetailModal",
+      "path": "src/modules/features/tasks/components/portal/task-portal-detail-modal.tsx",
+      "status": "implemented",
+      "profiles": ["all_collaborators"],
+      "condition": "selectedTask !== null",
+      "description": "Ventana modal con pestañas de subtareas, adjuntos, discusión con menciones, registro de horas, bloqueadores y capacidades técnicas.",
+      "manual_tests_pending": [
+        "Gobernanza de cierre: no permite estado done si hay subtareas incompletas",
+        "Restricción de imputación de horas en tareas selladas (done)"
+      ]
+    },
+    {
+      "id": "view.portal.meeting_detail_modal",
+      "name": "Modal de Detalle y Ejecución de Reunión",
+      "component": "TaskMeetingDetailModal",
+      "path": "src/modules/features/tasks/components/meetings/task-meeting-detail-modal.tsx",
+      "status": "implemented",
+      "profiles": ["all_collaborators"],
+      "condition": "selectedTask?.type === 'meeting'",
+      "description": "Consola de reunión interactiva con botón de unión a Google Meet, pase de lista de asistentes y minuta con notas de cierre.",
+      "manual_tests_pending": [
+        "Registro de asistencia por checkbox",
+        "Auto-cierre de reuniones expiradas en fecha/hora"
+      ]
+    },
+    {
+      "id": "view.portal.grid",
+      "name": "Vista de Cuadrícula / Tarjetas",
+      "component": "TaskCollaboratorPortal (viewMode='grid')",
+      "path": "src/modules/features/tasks/components/portal/task-collaborator-portal.tsx",
+      "status": "implemented",
+      "profiles": ["all_collaborators"],
+      "condition": "viewMode === 'grid'",
+      "description": "Tarjetas individuales con semáforo de prioridad, barra de progreso interactiva, badge de subtareas y fecha de vencimiento.",
+      "manual_tests_pending": ["Slider de progreso ajusta porcentaje y audita regresiones"]
+    },
+    {
+      "id": "view.portal.list",
+      "name": "Vista de Lista / Tabla",
+      "component": "TaskCollaboratorPortal (viewMode='list')",
+      "path": "src/modules/features/tasks/components/portal/task-collaborator-portal.tsx",
+      "status": "implemented",
+      "profiles": ["all_collaborators"],
+      "condition": "viewMode === 'list'",
+      "description": "Tabla compacta con columnas fijas de ticket, título, proyecto, prioridad, estado interactivo, horas y checkboxes para selección en lote.",
+      "manual_tests_pending": ["Selección múltiple activa la barra flotante de acciones masivas"]
+    },
+    {
+      "id": "view.portal.kanban",
+      "name": "Tablero Kanban de Portal",
+      "component": "TaskKanbanBoard",
+      "path": "src/modules/features/tasks/components/kanban/task-kanban-board.tsx",
+      "status": "implemented",
+      "profiles": ["all_collaborators"],
+      "condition": "viewMode === 'kanban' && !includeMeetings",
+      "description": "Columnas de Backlog, Por hacer, En progreso, En revisión, Bloqueadas y Completadas con arrastre o selector de estado.",
+      "manual_tests_pending": ["Restricción de arrastre de reuniones hacia columnas técnicas"]
+    },
+    {
+      "id": "view.portal.calendar",
+      "name": "Vista de Calendario",
+      "component": "TaskCalendarView",
+      "path": "src/modules/features/tasks/components/calendar/task-calendar-view.tsx",
+      "status": "implemented",
+      "profiles": ["all_collaborators"],
+      "condition": "viewMode === 'calendar'",
+      "description": "Calendario mensual y semanal que ubica entregables y reuniones según fecha límite o fecha programada.",
+      "manual_tests_pending": ["Navegación entre meses y click en evento abre modal de detalle"]
+    },
+    {
+      "id": "view.portal.compact",
+      "name": "Vista Compacta (Retirada en UI)",
+      "component": "TaskCollaboratorPortal (viewMode='compact')",
+      "path": "src/modules/features/tasks/components/portal/task-collaborator-portal.tsx",
+      "status": "retired",
+      "profiles": ["none"],
+      "condition": "none (el alternador ViewToggle mapea 'compact' a 'list')",
+      "description": "Código residual de vista compacta presente en el componente pero inaccesible desde los controles del menú.",
+      "manual_tests_pending": ["Verificar que ViewToggle no ofrece opción compact"]
+    }
+  ],
+  "actions": [
+    {
+      "id": "action.portal.get_data",
+      "name": "Obtener datos del portal de colaborador",
+      "symbol": "getCollaboratorPortalData",
+      "path": "src/modules/features/tasks/actions/collaborator-portal-actions.ts",
+      "status": "implemented",
+      "authorization": "Token de acceso activo en organization_staff",
+      "checks": ["is_active === true", "Verificación de PIN si pin_code no es null"],
+      "description": "Valida el token público, recupera staff, branding de tenant, workspaces, proyectos, tareas filtradas y métricas."
+    },
+    {
+      "id": "action.portal.verify_pin",
+      "name": "Verificar PIN de colaborador",
+      "symbol": "verifyPortalPinAction",
+      "path": "src/modules/features/portal-security/actions/portal-security-actions.ts",
+      "status": "implemented",
+      "authorization": "Token de acceso + 6 dígitos numéricos",
+      "checks": ["PBKDF2 verifyPin contra staff.pin_code", "staff.is_active === true"],
+      "description": "Comprueba el PIN criptográficamente y emite cookie de sesión HttpOnly firmada."
+    },
+    {
+      "id": "action.portal.setup_pin",
+      "name": "Configurar o cambiar PIN de colaborador",
+      "symbol": "setupPortalPinAction",
+      "path": "src/modules/features/portal-security/actions/portal-security-actions.ts",
+      "status": "implemented",
+      "authorization": "Token de acceso (+ PIN actual si ya existía)",
+      "checks": ["isValid6DigitPin(newPin)", "verifyPin(currentPin) si aplica"],
+      "description": "Hashea con PBKDF2 y sal aleatoria; actualiza staff.pin_code y renueva cookie de sesión."
+    },
+    {
+      "id": "action.portal.remove_pin",
+      "name": "Desactivar PIN de colaborador",
+      "symbol": "removePortalPinAction",
+      "path": "src/modules/features/portal-security/actions/portal-security-actions.ts",
+      "status": "implemented",
+      "authorization": "Token de acceso + PIN actual",
+      "checks": ["verifyPin(currentPin, staff.pin_code)"],
+      "description": "Elimina staff.pin_code y borra la cookie HttpOnly, retornando al acceso por enlace directo."
+    },
+    {
+      "id": "action.portal.lock_session",
+      "name": "Bloquear sesión manualmente",
+      "symbol": "lockPortalSessionAction",
+      "path": "src/modules/features/portal-security/actions/portal-security-actions.ts",
+      "status": "implemented",
+      "authorization": "Token de acceso",
+      "checks": ["clearPortalSessionCookie(token)"],
+      "description": "Elimina la cookie de sesión en el navegador y fuerza la presentación de PortalLockscreen."
+    },
+    {
+      "id": "action.portal.update_status",
+      "name": "Actualizar estado de tarea",
+      "symbol": "portalUpdateTaskStatus",
+      "path": "src/modules/features/tasks/actions/collaborator-portal-actions.ts",
+      "status": "implemented",
+      "authorization": "Colaborador activo; restricciones estrictas de rol y estado",
+      "checks": [
+        "Rechaza si type === 'meeting'",
+        "Si status actual es 'done', solo PM puede reabrir",
+        "Si status actual es 'backlog', solo PM puede moverlo",
+        "Si status destino es 'done' o 'in_review', valida que blocked_by_task esté 'done'",
+        "Si status destino es 'done' pero hay subtareas incompletas, desvía a 'in_review' con 95%"
+      ],
+      "description": "Modifica el estado técnico de una tarea, notifica interesados y desbloquea tareas sucesoras si pasa a 'done'."
+    },
+    {
+      "id": "action.portal.update_progress",
+      "name": "Actualizar progreso porcentual",
+      "symbol": "portalUpdateTaskProgress",
+      "path": "src/modules/features/tasks/actions/collaborator-portal-actions.ts",
+      "status": "implemented",
+      "authorization": "Solo responsable directo o PM",
+      "checks": [
+        "isLeadOrPm || assigned_staff_id === staff.id",
+        "Rechaza si status === 'done' y no es PM",
+        "Rechaza si status === 'backlog' y no es PM",
+        "Clamped a 95% si hay subtareas incompletas y progress > 95"
+      ],
+      "description": "Actualiza el slider de 0% a 100% y registra nota de auditoría si hay regresión o avance."
+    },
+    {
+      "id": "action.portal.toggle_checklist",
+      "name": "Marcar subtarea / entregable",
+      "symbol": "portalToggleChecklist",
+      "path": "src/modules/features/tasks/actions/collaborator-portal-actions.ts",
+      "status": "implemented",
+      "authorization": "Responsable de la subtarea, responsable general de la tarea o PM",
+      "checks": [
+        "Rechaza si task.status === 'done' y no es PM",
+        "Si no es PM ni responsable general: solo puede marcar subtareas donde assigned_staff_id === staff.id",
+        "Si todas las subtareas se completan (100%), transiciona automáticamente a 'in_review' (no a done directo)"
+      ],
+      "description": "Marca/desmarca un ítem de la lista de chequeo, actualiza el progreso porcentual proporcional y ajusta el estado."
+    },
+    {
+      "id": "action.portal.add_comment",
+      "name": "Añadir comentario o mención",
+      "symbol": "portalAddTaskComment",
+      "path": "src/modules/features/tasks/actions/collaborator-portal-actions.ts",
+      "status": "implemented",
+      "authorization": "Colaborador activo de la organización",
+      "checks": ["task pertenece a la organización", "mentions extraídas mediante regex @nombre"],
+      "description": "Inserta comentario en task_comments, registra autor y avatar de staff, y notifica a colaboradores mencionados."
+    },
+    {
+      "id": "action.portal.upload_attachment",
+      "name": "Subir archivo adjunto",
+      "symbol": "portalUploadTaskAttachment",
+      "path": "src/modules/features/tasks/actions/collaborator-portal-actions.ts",
+      "status": "implemented",
+      "authorization": "Colaborador activo de la organización",
+      "checks": ["Subida a bucket Supabase Storage 'task-attachments' con sanitización de nombre"],
+      "description": "Carga documentos o imágenes en la tarea y añade el enlace en el array attachments del registro."
+    },
+    {
+      "id": "action.portal.create_task",
+      "name": "Crear requerimiento o reunión",
+      "symbol": "portalCreateTask",
+      "path": "src/modules/features/tasks/actions/collaborator-portal-actions.ts",
+      "status": "implemented",
+      "authorization": "Cualquier colaborador activo (con gobernanza de rol en los campos)",
+      "checks": [
+        "Si no es PM: status forzado a 'backlog'",
+        "Si no es PM: estimated_hours forzado a 0",
+        "Si no es PM: due_date forzado a null",
+        "Si no es PM: assigned_staff solo a sí mismo o null; QA forzado a null",
+        "Si type === 'meeting' y autoGenerateMeet === true: invoca Google Calendar API si staff tiene user_id"
+      ],
+      "description": "Crea un ticket en task_items con código autoincrementado (TK, MTG o SUP)."
+    },
+    {
+      "id": "action.portal.update_quick_note",
+      "name": "Guardar nota rápida privada",
+      "symbol": "portalUpdateTaskQuickNote",
+      "path": "src/modules/features/tasks/actions/collaborator-portal-actions.ts",
+      "status": "implemented",
+      "authorization": "Colaborador activo",
+      "checks": ["Almacenado bajo diccionario quick_notes[staff.id] con aislamiento estricto"],
+      "description": "Permite al colaborador guardar recordatorios personales privados que ningún otro usuario puede leer."
+    },
+    {
+      "id": "action.portal.bulk_delete",
+      "name": "Eliminar tareas en lote",
+      "symbol": "portalBulkDeleteTasks",
+      "path": "src/modules/features/tasks/actions/collaborator-portal-actions.ts",
+      "status": "implemented",
+      "authorization": "PM/Lead o staff con can_bulk_delete_tasks === true",
+      "checks": [
+        "staff.can_bulk_delete_tasks !== null ? Boolean(staff.can_bulk_delete_tasks) : isLeadOrPm",
+        "Cancela eventos en Google Calendar si eran reuniones vinculadas"
+      ],
+      "description": "Elimina de forma permanente una lista de tareas seleccionadas en la vista de lista."
+    },
+    {
+      "id": "action.portal.delete_single_task",
+      "name": "Eliminar tarea individual",
+      "symbol": "portalDeleteTask",
+      "path": "src/modules/features/tasks/actions/collaborator-portal-actions.ts",
+      "status": "implemented",
+      "authorization": "Solo PM / Líder (isLeadOrPm === true)",
+      "checks": ["isStaffLeadOrPmRole(staff.role, staff.task_role)"],
+      "description": "Elimina una tarea individual. Falla si un colaborador ordinario la invoca directamente."
+    },
+    {
+      "id": "action.portal.update_priority",
+      "name": "Modificar prioridad de tarea",
+      "symbol": "portalUpdateTaskPriority",
+      "path": "src/modules/features/tasks/actions/collaborator-portal-actions.ts",
+      "status": "implemented",
+      "authorization": "Verificación backend básica (pertenencia a org)",
+      "checks": ["UI restringe a PM; backend solo valida staff.organization_id"],
+      "description": "Actualiza la prioridad (low, medium, high, urgent) de la tarea."
+    },
+    {
+      "id": "action.portal.assign_task",
+      "name": "Reasignar responsable de tarea",
+      "symbol": "portalAssignTask",
+      "path": "src/modules/features/tasks/actions/collaborator-portal-actions.ts",
+      "status": "implemented",
+      "authorization": "Verificación backend básica (pertenencia a org)",
+      "checks": ["UI restringe a PM en ribbon/modal; backend solo valida staff.organization_id"],
+      "description": "Cambia el assigned_staff_id de una tarea."
+    },
+    {
+      "id": "action.portal.complete_meeting",
+      "name": "Finalizar sesión de reunión",
+      "symbol": "portalCompleteMeetingSession",
+      "path": "src/modules/features/tasks/actions/collaborator-portal-actions.ts",
+      "status": "implemented",
+      "authorization": "Colaborador asistente o PM",
+      "checks": ["Marca status='done', progress_percentage=100 e inserta minuta como comentario"],
+      "description": "Guarda notas de cierre, lista final de asistentes confirmados y sella la reunión."
+    },
+    {
+      "id": "action.portal.save_weekly_snapshot",
+      "name": "Guardar snapshot de ritmo semanal",
+      "symbol": "portalSaveTaskWeeklySnapshot",
+      "path": "src/modules/features/tasks/actions/collaborator-portal-actions.ts",
+      "status": "implemented",
+      "authorization": "PM / Líder",
+      "checks": ["isLeadOrPm === true"],
+      "description": "Persiste el histórico de cumplimiento semanal para reportes ejecutivos."
+    }
+  ]
+}

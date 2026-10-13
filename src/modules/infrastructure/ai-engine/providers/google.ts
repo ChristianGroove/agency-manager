@@ -17,11 +17,13 @@ export class GoogleProvider extends BaseAIProvider {
 
             // Map common model aliases or use direct model name
             const modelName = model || "gemini-pro";
-            const geminiModel = genAI.getGenerativeModel({ model: modelName });
+            const systemInstruction = messages.filter(message => message.role === 'system')
+                .map(message => typeof message.content === 'string' ? message.content : JSON.stringify(message.content)).join('\n');
+            const geminiModel = genAI.getGenerativeModel({ model: modelName, ...(systemInstruction ? { systemInstruction } : {}) });
 
             // Convert messages to Gemini format
             // Gemini history structure: [{ role: "user" | "model", parts: [{ text: "..." }] }]
-            const history = messages.slice(0, -1).map(msg => ({
+            const history = messages.slice(0, -1).filter(message => message.role !== 'system').map(msg => ({
                 role: msg.role === 'assistant' ? 'model' : 'user',
                 parts: [{ text: typeof msg.content === 'string' ? msg.content : JSON.stringify(msg.content) }]
             }));
@@ -34,6 +36,7 @@ export class GoogleProvider extends BaseAIProvider {
                 generationConfig: {
                     maxOutputTokens: options?.maxTokens,
                     temperature: options?.temperature,
+                    ...(options?.response_format?.type === 'json_object' ? { responseMimeType: 'application/json' } : {}),
                 }
             });
 

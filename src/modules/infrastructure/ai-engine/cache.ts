@@ -36,7 +36,7 @@ export async function getCachedResponse(organizationId: string, taskType: string
             .eq('task_type', taskType)
             .eq('payload_hash', payloadHash)
             .gt('expires_at', new Date().toISOString())
-            .single();
+            .maybeSingle();
 
         if (error || !data) return null;
 

@@ -6726,6 +6726,7 @@ export type Database = {
       }
       platform_settings: {
         Row: {
+          pet_config: Json
           admin_domain: string | null
           agency_name: string
           brand_color_primary: string | null
@@ -6758,6 +6759,7 @@ export type Database = {
           main_logo_url?: string | null
           portal_domain?: string | null
           portal_logo_url?: string | null
+          pet_config?: Json
           social_links?: Json | null
           updated_at?: string
         }
@@ -6776,6 +6778,7 @@ export type Database = {
           main_logo_url?: string | null
           portal_domain?: string | null
           portal_logo_url?: string | null
+          pet_config?: Json
           social_links?: Json | null
           updated_at?: string
         }

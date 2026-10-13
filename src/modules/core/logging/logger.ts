@@ -70,9 +70,12 @@ export function createSupabaseFetchInterceptor(clientName: string): typeof fetch
 
         // Extract table or RPC name
         let target = 'unknown'
+        const privateQuery = /access_token|pin_code|help_portal|portal_help/i.test(urlStr)
+        let logUrl = privateQuery ? '[private portal query]' : urlStr
         try {
             const urlObj = new URL(urlStr)
             target = urlObj.pathname.split('/').pop() || 'unknown'
+            if (privateQuery) logUrl = urlObj.origin + urlObj.pathname
         } catch { }
 
         try {
@@ -85,7 +88,7 @@ export function createSupabaseFetchInterceptor(clientName: string): typeof fetch
                     target,
                     method,
                     durationMs,
-                    url: urlStr,
+                    url: logUrl,
                 })
             }
 
@@ -101,23 +104,24 @@ export function createSupabaseFetchInterceptor(clientName: string): typeof fetch
                     } catch { }
                 }
 
-                logger.error(`Supabase Query Failed [${clientName}]`, errorBody, {
+                const safeError = privateQuery ? { code: 'PRIVATE_QUERY_FAILED' } : errorBody
+                logger.error(`Supabase Query Failed [${clientName}]`, safeError, {
                     target,
                     method,
                     status: response.status,
                     durationMs,
-                    url: urlStr,
+                    url: logUrl,
                 })
             }
 
             return response
         } catch (error) {
             const durationMs = Date.now() - startTime
-            logger.error(`Supabase Network Error [${clientName}]`, error, {
+            logger.error(`Supabase Network Error [${clientName}]`, privateQuery ? { code: 'PRIVATE_QUERY_NETWORK_ERROR' } : error, {
                 target,
                 method,
                 durationMs,
-                url: urlStr,
+                url: logUrl,
             })
             throw error
         }

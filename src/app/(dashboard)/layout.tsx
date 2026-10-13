@@ -1,4 +1,4 @@
-import { getDashboardTemplate } from "@/modules/features/portal/components/portal-registry"
+import { PORTAL_TEMPLATES } from "@/modules/features/portal/components/portal-registry"
 import { createClient } from "@/modules/core/database/supabase-server"
 import { redirect } from "next/navigation"
 import { getCurrentOrganizationId, getCurrentOrgDetails } from "@/modules/core/organizations/organization-actions"
@@ -16,6 +16,8 @@ import { SaaSProvider } from "@/components/providers/saas-provider"
 import { SuspendedDashboardView } from "@/modules/core/organizations/components/dashboard/SuspendedDashboardView"
 import { SidebarLoader } from "@/components/layout/sidebar-loader"
 import { Suspense } from "react"
+import { getDashboardPetConfig } from "@/modules/core/pet/config-actions"
+import { PetProvider } from "@/modules/core/pet/pet-provider"
 
 export default async function DashboardLayout({
     children,
@@ -36,14 +38,15 @@ export default async function DashboardLayout({
     }
 
     // 2. PARALLEL FETCH: All critical data including subscription, app and template metadata
-    const [currentOrgId, orgDetails, settings, isAdmin, appResult, subscription, activeModules] = await Promise.all([
+    const [currentOrgId, orgDetails, settings, isAdmin, appResult, subscription, activeModules, petConfig] = await Promise.all([
         getCurrentOrganizationId(),
         getCurrentOrgDetails(),
         getSettings(),
         isSuperAdmin(user.id),
         getCurrentOrganizationApp(),
         getOrganizationSubscription(),
-        getActiveModules()
+        getActiveModules(),
+        getDashboardPetConfig()
     ])
 
     const uiConfig = currentOrgId ? await resolveOrgCapabilities(currentOrgId) : null
@@ -57,7 +60,9 @@ export default async function DashboardLayout({
     // Si no, b2b_dashboard es el default.
     const portalTemplateKey = orgDetails?.active_app?.portal_template || 'b2b_dashboard'
 
-    const PortalLayoutComponent = getDashboardTemplate(portalTemplateKey)
+    const PortalLayoutComponent = portalTemplateKey === 'b2c_commerce'
+        ? PORTAL_TEMPLATES.b2b_dashboard
+        : PORTAL_TEMPLATES[portalTemplateKey] || PORTAL_TEMPLATES.b2b_dashboard
     const locale = (settings?.default_language as Locale) || 'es'
     const dictionary = getDictionary(locale)
 
@@ -69,6 +74,7 @@ export default async function DashboardLayout({
                 orgDetails,
                 uiConfig
             }}>
+                <PetProvider key={currentOrgId} config={petConfig}>
                 <PortalLayoutComponent
                     user={user}
                     currentOrgId={currentOrgId}
@@ -92,6 +98,7 @@ export default async function DashboardLayout({
                         children
                     )}
                 </PortalLayoutComponent>
+                </PetProvider>
             </SaaSProvider>
         </I18nProvider>
     )

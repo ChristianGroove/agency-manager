@@ -6,6 +6,7 @@ import { AlertCircle } from "lucide-react"
 import { BrandingProvider } from "@/components/providers/branding-provider"
 import { BrandingConfig } from "@/types/branding"
 import { GlobalParticles } from "@/components/layout/global-particles"
+import { tasksPortalHelpEnabled } from '@/modules/features/caa/library/activation'
 
 interface PageProps {
   params: Promise<{ token: string }>
@@ -114,7 +115,7 @@ export default async function TaskCollaboratorPortalPage({ params }: PageProps) 
           `,
         }}
       />
-      <TaskCollaboratorPortal portalData={portalData} token={token} />
+      <TaskCollaboratorPortal portalData={portalData} token={token} helpEnabled={tasksPortalHelpEnabled(portalData.organization.id)} />
     </BrandingProvider>
   )
 }

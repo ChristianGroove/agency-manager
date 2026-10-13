@@ -2,12 +2,14 @@
 
 import { useEffect, useState } from "react"
 import { getPublicBroadcasts } from "@/modules/core/admin/actions"
-import { AlertCircle, Megaphone, X } from "lucide-react"
+import { Megaphone, X } from "lucide-react"
+import { usePet } from "@/modules/core/pet/pet-provider"
+import { PetAlertAvatar } from "@/modules/core/pet/pet-alert-avatar"
 
 export function SystemAlertBanner() {
-    const [alerts, setAlerts] = useState<any[]>([])
+    const reportCriticalAlert = usePet()?.reportCriticalAlert
+    const [alerts, setAlerts] = useState<{ id: string; severity: string; title: string; message: string }[]>([])
     const [dismissed, setDismissed] = useState<string[]>([])
-    const [isVisible, setIsVisible] = useState(true)
 
     useEffect(() => {
         const fetchAlerts = async () => {
@@ -23,10 +25,16 @@ export function SystemAlertBanner() {
         fetchAlerts()
     }, [])
 
-    if (!alerts.length || !isVisible) return null
-
     // Show the highest severity alert first
-    const activeAlert = alerts.find(a => !dismissed.includes(a.id))
+    const priority: Record<string, number> = { critical: 2, warning: 1 }
+    const activeAlert = alerts.filter(a => !dismissed.includes(a.id))
+        .sort((a, b) => (priority[b.severity] || 0) - (priority[a.severity] || 0))[0]
+    const critical = activeAlert?.severity === 'critical'
+
+    useEffect(() => {
+        reportCriticalAlert?.(critical)
+        return () => reportCriticalAlert?.(false)
+    }, [critical, reportCriticalAlert])
 
     if (!activeAlert) return null
 
@@ -40,6 +48,7 @@ export function SystemAlertBanner() {
             <div className="container mx-auto flex items-center justify-between">
                 <div className="flex items-center gap-3">
                     <Megaphone className="h-5 w-5 animate-pulse" />
+                    <PetAlertAvatar state={critical ? 'error' : 'idle'} />
                     <p className="font-medium text-sm md:text-base">
                         <span className="font-bold mr-2 uppercase text-[10px] bg-white/20 px-1 rounded">
                             {activeAlert.severity}

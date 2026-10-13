@@ -1,9 +1,11 @@
 # Campañas masivas: cierre de implementación
 
-Fecha: 11 de octubre de 2026. Rama: `codex/marketing-campaign-hardening`.
+Fecha de actualización: 13 de octubre de 2026. Rama: `codex/marketing-campaign-hardening`.
 La referencia anterior `8f82db13` corresponde a las etapas 1–13. La [etapa 14](implementation-stage-14.md) integra campañas de email con SMTP del tenant.
 
 La rama incorpora también `master` en `fadd9ed7` (alta y activación de tenants). El [informe de sincronización](master-sync-2026-10-11.md) documenta el merge, su validación y la migración adicional requerida antes del despliegue.
+
+La [segunda sincronización del 13 de octubre](master-sync-2026-10-13.md) incorpora `master` en `c5918870` (robot, ayuda y permisos de Tasks). Su informe actualiza la evidencia y enlaza el cierre de las migraciones de ayuda/tenants ya aplicado en el trabajo de esa rama.
 
 ## Estado de entrega
 

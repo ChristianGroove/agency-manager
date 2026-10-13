@@ -1,0 +1,303 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "name": "pixy-tasks-portal-capability-matrix",
+  "version": "1.0.0",
+  "generated_at": "2026-10-12",
+  "source_revision": "5aaeec98767f13ec9b495eed33486fcdba65ab86",
+  "surface": "portal.tasks",
+  "profiles_taxonomy": {
+    "pm_lead": {
+      "name": "Project Manager / Líder Técnico",
+      "resolution": "isStaffLeadOrPmRole(staff.role, staff.task_role) === true || leadWorkspaces.length > 0 || leadProjects.length > 0",
+      "scope": "Supervisión global de workspaces asignados, gestión de sprint, triaje de backlog y reasignación",
+      "evidence": "src/modules/features/tasks/actions/collaborator-portal-actions.ts#L442-L466"
+    },
+    "qa_specialist": {
+      "name": "Especialista de Calidad / QA Tester",
+      "resolution": "role.toLowerCase() incluye ('qa', 'tester', 'calidad', 'revisor', 'pruebas')",
+      "scope": "Auditoría de entregables en revisión, aprobación a 'done' o rechazo a 'in_progress' con reporte de bugs",
+      "evidence": "src/modules/features/tasks/actions/collaborator-portal-actions.ts#L467-L473"
+    },
+    "standard_collaborator": {
+      "name": "Colaborador Operativo (Dev, Diseñador, Especialista)",
+      "resolution": "Colaborador con token activo sin rol de liderazgo ni soporte exclusivo",
+      "scope": "Ejecución de tareas asignadas, actualización de avance, completado de subtareas propias y comentarios",
+      "evidence": "src/modules/features/tasks/actions/collaborator-portal-actions.ts#L640-L653"
+    },
+    "parallel_support": {
+      "name": "Colaborador de Soporte Paralelo",
+      "resolution": "staff.task_role === 'support' && !isLeadOrPm",
+      "scope": "Portal dedicado de tickets de soporte (SUP), seguimiento de resolución y consultas técnicas",
+      "evidence": "src/modules/features/tasks/actions/collaborator-portal-actions.ts#L509-L513"
+    }
+  },
+  "functional_capabilities": {
+    "vcs_code": {
+      "name": "Inspección de Código y Ramas Git (VCS)",
+      "defaults_by_role": {
+        "developer": true,
+        "qa_lead": true,
+        "pm": true,
+        "designer": false,
+        "specialist": false,
+        "support": false
+      },
+      "resolution": "resolveCollaboratorCapabilities(collaborator).vcs_code",
+      "evidence": "src/modules/features/tasks/types.ts#L900-L960"
+    },
+    "design_preview": {
+      "name": "Previsualización de Prototipos de Diseño (Figma)",
+      "defaults_by_role": {
+        "designer": true,
+        "qa_lead": true,
+        "pm": true,
+        "developer": false,
+        "specialist": false,
+        "support": false
+      },
+      "resolution": "resolveCollaboratorCapabilities(collaborator).design_preview",
+      "evidence": "src/modules/features/tasks/types.ts#L900-L960"
+    },
+    "monitoring": {
+      "name": "Telemetría y Monitoreo de Errores (Sentry/APM)",
+      "defaults_by_role": {
+        "developer": true,
+        "qa_lead": true,
+        "pm": true,
+        "designer": false,
+        "specialist": false,
+        "support": false
+      },
+      "resolution": "resolveCollaboratorCapabilities(collaborator).monitoring",
+      "evidence": "src/modules/features/tasks/types.ts#L900-L960"
+    },
+    "finance_costs": {
+      "name": "Costos Financieros y Tarifas Horarias",
+      "defaults_by_role": {
+        "pm": true,
+        "developer": false,
+        "designer": false,
+        "qa_lead": false,
+        "specialist": false,
+        "support": false
+      },
+      "resolution": "resolveCollaboratorCapabilities(collaborator).finance_costs",
+      "evidence": "src/modules/features/tasks/types.ts#L900-L960"
+    },
+    "bulk_delete": {
+      "name": "Eliminación Masiva de Tareas en Lote",
+      "defaults_by_role": {
+        "pm": true,
+        "developer": false,
+        "designer": false,
+        "qa_lead": false,
+        "specialist": false,
+        "support": false
+      },
+      "resolution": "staff.can_bulk_delete_tasks ?? isLeadOrPm",
+      "evidence": "src/modules/features/tasks/actions/collaborator-portal-actions.ts#L2852-L2905"
+    }
+  },
+  "matrix": [
+    {
+      "function_id": "func.pin_protection",
+      "name": "Protección de Acceso por PIN de 6 Dígitos",
+      "ui_visibility": "Renderiza PortalLockscreen si staff.has_pin_code === true && !isUnlocked; muestra menú de seguridad en avatar",
+      "server_authorization": "isPortalSessionUnlocked(token, staff.id) comprueba cookie firmada; verifyPortalPinAction valida PBKDF2",
+      "allowed_profiles": ["all_collaborators"],
+      "required_context": "token, cookie de sesión firmada o PIN de 6 dígitos",
+      "evidence": "src/modules/features/portal-security/actions/portal-security-actions.ts#L24-L88",
+      "gap_or_discrepancy": "Ninguna. Si el PIN está activo, todas las consultas getCollaboratorPortalData devuelven isLocked: true sin exponer datos de tareas ni proyectos."
+    },
+    {
+      "function_id": "func.view_modes_navigation",
+      "name": "Navegación entre Vistas (Tarjetas, Lista, Kanban, Calendario)",
+      "ui_visibility": "Control ViewToggle en la barra superior derecha de la sección de gestión",
+      "server_authorization": "Cliente React puro; los datos ya están en el payload inicial getCollaboratorPortalData",
+      "allowed_profiles": ["developer", "designer", "specialist", "qa_specialist", "pm_lead"],
+      "required_context": "portalMode === 'operations'",
+      "evidence": "src/modules/features/tasks/components/portal/task-collaborator-portal.tsx#L3556-L3572",
+      "gap_or_discrepancy": "La vista 'compact' aún tiene ramas de renderizado en el código, pero el control ViewToggle la mapea a 'list', quedando inaccesible."
+    },
+    {
+      "function_id": "func.pm_dashboard_switch",
+      "name": "Conmutador de Modos PM (Dashboard, Gestión, Pacing, Soporte)",
+      "ui_visibility": "Renderizado condicional del switch central solo si isLeadOrPm === true",
+      "server_authorization": "Server Action getCollaboratorPortalData resuelve isLeadOrPm y adjunta allTeamTasks, sprints y supportMembers",
+      "allowed_profiles": ["pm_lead"],
+      "required_context": "isLeadOrPm === true",
+      "evidence": "src/modules/features/tasks/components/portal/task-collaborator-portal.tsx#L2607-L2664",
+      "gap_or_discrepancy": "Ninguna. Colaboradores ordinarios no reciben el switch ni los bloques ejecutivos en el DOM."
+    },
+    {
+      "function_id": "func.update_progress_slider",
+      "name": "Ajuste de Progreso Porcentual (Slider 0-100%)",
+      "ui_visibility": "Slider interactivo visible en tarjeta/modal si es PM o asignado directo; deshabilitado si está en done o backlog para staff",
+      "server_authorization": "portalUpdateTaskProgress valida canManageParent (isLeadOrPm || assigned_staff_id === staff.id). Bloquea si done o backlog y no es PM. Clampeo a 95% si hay subtareas incompletas.",
+      "allowed_profiles": ["pm_lead", "responsible_collaborator"],
+      "required_context": "taskId, progress (0-100), token",
+      "evidence": "src/modules/features/tasks/actions/collaborator-portal-actions.ts#L997-L1050",
+      "gap_or_discrepancy": "Un colaborador asignado a una subtarea pero NO a la tarea padre no puede mover el slider general; solo puede marcar su subtarea."
+    },
+    {
+      "function_id": "func.transition_task_status",
+      "name": "Cambio de Estado Técnico de Tarea",
+      "ui_visibility": "Dropdown de estados en tarjeta, fila de lista o modal de detalle",
+      "server_authorization": "portalUpdateTaskStatus: prohíbe reuniones; prohíbe reabrir 'done' a no-PM; prohíbe iniciar 'backlog' a no-PM; valida predecesoras pendientes; desvía 'done' con subtareas incompletas a 'in_review' (95%).",
+      "allowed_profiles": ["pm_lead", "responsible_collaborator", "qa_specialist"],
+      "required_context": "taskId, status, blockedReason (opcional), loggedHours (opcional)",
+      "evidence": "src/modules/features/tasks/actions/collaborator-portal-actions.ts#L1140-L1260",
+      "gap_or_discrepancy": "La UI permite seleccionar 'done', pero si hay entregables pendientes en el checklist, el servidor silenciosamente desvía el estado a 'in_review' con 95% de progreso."
+    },
+    {
+      "function_id": "func.toggle_subtask_deliverable",
+      "name": "Marcar / Desmarcar Subtarea (Entregable)",
+      "ui_visibility": "Checkbox de subtarea en el checklist del modal de detalle o tooltip de subtareas",
+      "server_authorization": "portalToggleChecklist: si no es PM ni responsable general de la tarea, exige targetItem.assigned_staff_id === staff.id. Prohíbe en tareas selladas (done). Auto-transiciona a in_review al 100%.",
+      "allowed_profiles": ["pm_lead", "task_owner", "subtask_assignee"],
+      "required_context": "taskId, checklistItemId, completed (boolean)",
+      "evidence": "src/modules/features/tasks/actions/collaborator-portal-actions.ts#L1308-L1385",
+      "gap_or_discrepancy": "Un colaborador ordinario puede ver todas las subtareas de una tarea en la que participa, pero el backend rechaza con error si intenta marcar una subtarea asignada a un compañero."
+    },
+    {
+      "function_id": "func.log_work_hours",
+      "name": "Imputación de Horas Trabajadas (Worklog)",
+      "ui_visibility": "Modal TaskLogWorkModal accesible desde botón de reloj o al mover estado",
+      "server_authorization": "portalUpdateTaskStatus valida loggedHours > 0; actualiza actual_hours e incrementa subtarea asignada si existe. Prohíbe imputar en tareas done si no es PM.",
+      "allowed_profiles": ["pm_lead", "standard_collaborator"],
+      "required_context": "taskId, loggedHours, note",
+      "evidence": "src/modules/features/tasks/actions/collaborator-portal-actions.ts#L1182-L1242",
+      "gap_or_discrepancy": "Si la tarea está en estado 'done', la UI del modal de log work puede abrirse, pero el backend arroja error si el usuario no es PM."
+    },
+    {
+      "function_id": "func.create_new_task",
+      "name": "Creación de Requerimientos y Tickets",
+      "ui_visibility": "Botón '+ Requerimiento' en barra superior",
+      "server_authorization": "portalCreateTask: si el creador NO es PM, el backend fuerza status='backlog', estimated_hours=0, due_date=null, assigned_staff solo a sí mismo o null, QA=null.",
+      "allowed_profiles": ["all_collaborators"],
+      "required_context": "projectId, title, description, priority",
+      "evidence": "src/modules/features/tasks/actions/collaborator-portal-actions.ts#L1558-L1633",
+      "gap_or_discrepancy": "En el formulario de creación, un colaborador ordinario ve campos de fecha límite y horas, pero al enviar, el servidor los descarta/fuerza a 0 y null bajo la política de gobernanza de Backlog."
+    },
+    {
+      "function_id": "func.create_meeting_google_meet",
+      "name": "Creación de Reunión con Google Meet Sincronizado",
+      "ui_visibility": "Opción 'Reunión' en selector de tipo de tarea dentro del modal de creación",
+      "server_authorization": "portalCreateTask con type='meeting': autogenera enlace Meet mediante createGoogleCalendarMeetingEvent si staff.user_id está vinculado a integración Google Calendar de la org.",
+      "allowed_profiles": ["all_collaborators", "pm_lead"],
+      "required_context": "type='meeting', meetingStartAt, meetingDurationMinutes, meetingAttendees",
+      "evidence": "src/modules/features/tasks/actions/collaborator-portal-actions.ts#L1641-L1695",
+      "gap_or_discrepancy": "Si el colaborador no tiene user_id en Supabase (solo existe como registro organization_staff), la autogeneración de Meet falla y debe ingresar la URL manualmente."
+    },
+    {
+      "function_id": "func.delete_task_single",
+      "name": "Eliminación de Tarea Individual",
+      "ui_visibility": "Botón de papelera en modal de detalle de tarea (renderizado solo si isLeadOrPm === true)",
+      "server_authorization": "portalDeleteTask valida estrictamente isLeadOrPm; rechaza cualquier solicitud de colaborador ordinario.",
+      "allowed_profiles": ["pm_lead"],
+      "required_context": "taskId, token",
+      "evidence": "src/modules/features/tasks/actions/collaborator-portal-actions.ts#L2640-L2690",
+      "gap_or_discrepancy": "Ninguna. Tanto UI como servidor bloquean la eliminación individual a personal no directivo."
+    },
+    {
+      "function_id": "func.bulk_delete_tasks",
+      "name": "Eliminación Masiva de Tareas en Lote",
+      "ui_visibility": "Botón 'Eliminar Seleccionados' en la barra flotante BulkActionsFloatingBar (renderizado si canBulkDeleteTasks === true)",
+      "server_authorization": "portalBulkDeleteTasks valida staff.can_bulk_delete_tasks ?? isLeadOrPm.",
+      "allowed_profiles": ["pm_lead", "staff_with_bulk_delete_flag"],
+      "required_context": "taskIds (array), token",
+      "evidence": "src/modules/features/tasks/actions/collaborator-portal-actions.ts#L2852-L2905",
+      "gap_or_discrepancy": "Discrepancia sutil: si a un colaborador se le otorga can_bulk_delete_tasks: true pero no es PM, puede borrar en lote desde la barra flotante pero NO puede borrar una tarea individual desde el modal de detalle."
+    },
+    {
+      "function_id": "func.task_reassignment",
+      "name": "Reasignación de Responsable de Tarea",
+      "ui_visibility": "Selector de colaborador en ribbon superior de PM y modal de detalle",
+      "server_authorization": "portalAssignTask actualiza assigned_staff_id sin validar rol en el backend (solo valida pertenencia a la org).",
+      "allowed_profiles": ["pm_lead"],
+      "required_context": "taskId, assignedStaffId, token",
+      "evidence": "src/modules/features/tasks/actions/collaborator-portal-actions.ts#L965-L990",
+      "gap_or_discrepancy": "Contradicción de seguridad: la UI solo permite reasignar a PMs, pero la Server Action portalAssignTask no verifica isLeadOrPm en backend."
+    },
+    {
+      "function_id": "func.task_priority_update",
+      "name": "Modificación de Prioridad",
+      "ui_visibility": "Selector de prioridad en modal de detalle (visible para PM y creador)",
+      "server_authorization": "portalUpdateTaskPriority actualiza priority sin validar rol en backend.",
+      "allowed_profiles": ["pm_lead", "responsible_collaborator"],
+      "required_context": "taskId, priority, token",
+      "evidence": "src/modules/features/tasks/actions/collaborator-portal-actions.ts#L933-L960",
+      "gap_or_discrepancy": "La Server Action portalUpdateTaskPriority solo comprueba que el token pertenezca a la misma organización."
+    },
+    {
+      "function_id": "func.private_quick_notes",
+      "name": "Notas Rápidas Privadas por Colaborador",
+      "ui_visibility": "Botón de lápiz / nota rápida en cada tarjeta y fila de lista",
+      "server_authorization": "portalUpdateTaskQuickNote persiste en task_items.quick_notes[staff.id]. getCollaboratorPortalData limpia el diccionario global y solo entrega la nota del colaborador actual.",
+      "allowed_profiles": ["all_collaborators"],
+      "required_context": "taskId, note (string), token",
+      "evidence": "src/modules/features/tasks/actions/collaborator-portal-actions.ts#L619-L624, L3005-L3050",
+      "gap_or_discrepancy": "Ninguna. Zero-leak garantizado en backend y cliente."
+    },
+    {
+      "function_id": "func.parallel_support_portal",
+      "name": "Módulo de Soporte Paralelo (Tickets SUP)",
+      "ui_visibility": "Reemplazo completo de TaskCollaboratorPortal por TaskParallelSupportPortal si portalMode === 'support'",
+      "server_authorization": "getCollaboratorPortalData filtra supportTickets según staff.task_role === 'support' y aísla tareas de desarrollo.",
+      "allowed_profiles": ["parallel_support"],
+      "required_context": "portalData.portalMode === 'support'",
+      "evidence": "src/modules/features/tasks/components/portal/task-parallel-support-portal.tsx#L1-L100",
+      "gap_or_discrepancy": "Ninguna. Los colaboradores de soporte no tienen visibilidad de tableros Kanban, métricas de sprint ni tareas de ingeniería."
+    },
+    {
+      "function_id": "func.vcs_code_inspection",
+      "name": "Inspección de Ramas y Commits Git (VCS)",
+      "ui_visibility": "Pestaña 'Código / VCS' en el modal de detalle renderizada si capabilities.vcs_code === true",
+      "server_authorization": "TaskVcsContainer y task-vcs-service validan permisos derivados de rol o configuración del colaborador.",
+      "allowed_profiles": ["developer", "qa_specialist", "pm_lead"],
+      "required_context": "capabilities.vcs_code === true (requisito por registro: pertenencia al proyecto de la tarea)",
+      "evidence": "src/modules/features/tasks/components/detail/task-vcs-container.tsx#L1-L80",
+      "gap_or_discrepancy": "Diseñadores y personal administrativo no ven la pestaña de código a menos que tengan un override explícito en staff.settings.capabilities."
+    },
+    {
+      "function_id": "func.design_preview",
+      "name": "Previsualización Embebida de Prototipos de Diseño (Figma)",
+      "ui_visibility": "Pestaña 'Diseño / Prototipo' en el modal de detalle renderizada si capabilities.design_preview === true",
+      "server_authorization": "TaskAttachmentsSection y TaskCollaboratorsManager resuelven capability; requiere URL válida de Figma en adjuntos",
+      "allowed_profiles": ["designer", "qa_specialist", "pm_lead"],
+      "required_context": "capabilities.design_preview === true (requisito por registro: adjunto con URL de figma.com en la tarea)",
+      "evidence": "src/modules/features/tasks/components/detail/task-attachments-section.tsx#L40-L110",
+      "gap_or_discrepancy": "Si la tarea no tiene un enlace de Figma en los adjuntos, la pestaña informa que no hay diseño vinculado."
+    },
+    {
+      "function_id": "func.monitoring_telemetry",
+      "name": "Telemetría y Monitoreo de Excepciones Técnicas (Sentry / APM)",
+      "ui_visibility": "Pestaña 'Monitoreo' en el modal de detalle renderizada si capabilities.monitoring === true",
+      "server_authorization": "TaskDetailModal y TaskCollaboratorsManager evalúan capability de monitoreo activa",
+      "allowed_profiles": ["developer", "qa_specialist", "pm_lead"],
+      "required_context": "capabilities.monitoring === true (requisito por registro: tarea vinculada a servicio/repositorio con DSN configurado)",
+      "evidence": "src/modules/features/tasks/components/detail/task-detail-modal.tsx#L250-L310",
+      "gap_or_discrepancy": "La pestaña es de solo lectura; no permite alterar trazas ni configuración de alertas del servidor."
+    },
+    {
+      "function_id": "func.finance_costs",
+      "name": "Consulta de Costos Financieros y Márgenes de Tarea",
+      "ui_visibility": "Pestaña 'Costos y Finanzas' en el modal de detalle renderizada si capabilities.finance_costs === true",
+      "server_authorization": "TaskDetailModal evalúa capability confidencial; restringido por defecto a roles directivos/PM",
+      "allowed_profiles": ["pm_lead"],
+      "required_context": "capabilities.finance_costs === true (requisito por registro: pertenencia como líder del workspace/proyecto)",
+      "evidence": "src/modules/features/tasks/components/detail/task-detail-modal.tsx#L320-L380",
+      "gap_or_discrepancy": "Desarrolladores y QA nunca ven esta pestaña en sus portales aunque estén asignados a la tarea."
+    },
+    {
+      "function_id": "func.support_ticket_consultation",
+      "name": "Consulta y Colaboración en Tickets de Soporte (#SUP-)",
+      "ui_visibility": "Modal TaskSupportTicketDetailModal abierto desde TaskCollaboratorPortal al hacer clic en tarea con origin_type='support' o prefijo 'SUP-'",
+      "server_authorization": "getCollaboratorPortalData entrega tickets SUP asignados o relacionados al colaborador; portalAddTicketMessage para respuestas",
+      "allowed_profiles": ["all_collaborators"],
+      "required_context": "task.origin_type === 'support' || task.ticket_code.startsWith('SUP-') (requisito por registro: asignación o involucramiento directo en el ticket)",
+      "evidence": "src/modules/features/tasks/components/portal/task-collaborator-portal.tsx#L1145, src/modules/features/tasks/components/portal/task-support-ticket-detail-modal.tsx#L1-L150",
+      "gap_or_discrepancy": "Permite a desarrolladores y colaboradores operativos atender consultas técnicas de soporte sin tener el rol ni acceso al portal exclusivo de soporte."
+    }
+  ]
+}

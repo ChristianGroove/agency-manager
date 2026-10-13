@@ -63,7 +63,7 @@ export function AssistantModal({ open, onOpenChange }: AssistantModalProps) {
     return (
         <Dialog open={open} onOpenChange={onOpenChange}>
             <DialogContent className={cn(
-                "p-0 overflow-hidden backdrop-blur-2xl sm:max-w-[700px] h-[650px] top-[50%] translate-y-[-50%] rounded-2xl outline-none block",
+                "p-0 overflow-hidden backdrop-blur-2xl max-w-[calc(100vw-2rem)] sm:max-w-[700px] h-[min(650px,calc(100dvh-2rem))] top-[50%] translate-y-[-50%] rounded-2xl outline-none block",
                 // Light mode
                 "bg-white/95 border border-zinc-200 shadow-[0_0_60px_rgba(242,5,226,0.1)]",
                 // Dark mode
@@ -80,7 +80,7 @@ export function AssistantModal({ open, onOpenChange }: AssistantModalProps) {
                 />
 
                 <div className="relative h-full flex flex-col overflow-hidden">
-                    {/* Header is handled inside AIChatPanel now for total clean flow */}
+                    {/* One live robot lives in the composer; the dialog keeps its accessible title. */}
                     <div className="flex-1 relative">
                         <AnimatePresence initial={false} mode="popLayout">
                             {showAIChat && (
@@ -93,7 +93,6 @@ export function AssistantModal({ open, onOpenChange }: AssistantModalProps) {
                                 >
                                     <AIChatPanel
                                         className="h-full"
-                                        onBack={() => onOpenChange(false)} // Treat back as close in AI-only mode
                                     />
                                 </motion.div>
                             )}
@@ -103,6 +102,8 @@ export function AssistantModal({ open, onOpenChange }: AssistantModalProps) {
                 
                 {/* Close Button UI override if needed */}
                 <button
+                    type="button"
+                    aria-label="Cerrar ayuda"
                     onClick={() => onOpenChange(false)}
                     className="absolute top-4 right-4 z-[40] p-2 rounded-lg hover:bg-zinc-100 dark:hover:bg-white/10 transition-colors"
                 >
