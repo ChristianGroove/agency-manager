@@ -11,9 +11,11 @@ El [preflight de producción](production-preflight-2026-10-13.md) confirma el de
 
 El [cierre de base del 13 de octubre](production-db-closeout-2026-10-13.md) registra la aplicación posterior autorizada de esas 16 migraciones, sus comprobaciones y la integración local a master. El preflight anterior se conserva como antecedente, no como estado pendiente actual.
 
+La [configuración posterior en Coolify](production-activation-2026-10-13.md) registra el push autorizado, la variable Runtime de producción habilitada y la tarea de campañas preparada para el deploy manual. Su ejecución antes del deploy solo confirma la espera del archivo nuevo, no envíos reales.
+
 ## Estado de entrega
 
-La implementación actual está terminada y guardada localmente. Se ha comprobado con pruebas automatizadas y build, pero **no está habilitada para envíos masivos en producción**. Las 16 migraciones de Marketing se aplicaron también al proyecto de producción confirmado el 13 de octubre, sin Cartera. La publicación del código, el despliegue manual, la revisión visual autenticada y una campaña real pequeña siguen pendientes.
+La implementación actual está terminada, integrada en master y publicada en Git. Se ha comprobado con pruebas automatizadas y build. Las 16 migraciones de Marketing se aplicaron al proyecto de producción confirmado el 13 de octubre, sin Cartera. Por autorización posterior del usuario, la variable Runtime de producción y el programador quedaron habilitados para la prueba, **pendientes de hacerse efectivos con el deploy manual**. La revisión visual autenticada y una campaña real pequeña siguen pendientes.
 
 WhatsApp y email mediante SMTP verificado comparten el flujo de campañas; SMS sigue aplazado. Email tiene permisos, bajas y outbox propios, sin sustituir el transporte Meta ni los correos transaccionales. SMTP solo acredita aceptación del servidor. Consulta la [etapa 14](implementation-stage-14.md) para migraciones, configuración y límites.
 
@@ -94,7 +96,7 @@ La migración de seguimiento/frecuencia añade índices de mensajes/outbox. En u
 
 ### Programador en Coolify
 
-Lanzador: `node scripts/marketing-worker.mjs`, dentro del contenedor de la aplicación. Puede programarse cada minuto (`* * * * *`) con timeout de 120 segundos. La ventana de inicio de ciclos dura 45 segundos y una última solicitud puede ocupar hasta otros 55 segundos. No se ha configurado en producción en este trabajo.
+Lanzador: `node scripts/marketing-worker.mjs`, dentro del contenedor de la aplicación. Programado en producción cada minuto (`* * * * *`) con timeout de 120 segundos y una comprobación de existencia del archivo mientras espera el deploy. La ventana de inicio de ciclos dura 45 segundos y una última solicitud puede ocupar hasta otros 55 segundos. Ver la [configuración real](production-activation-2026-10-13.md).
 
 Lee `MARKETING_EXECUTION_ENABLED`, `CRON_SECRET` y `PORT` del entorno del contenedor. Deshabilitado, termina sin solicitar envíos. Habilitado, llama a `127.0.0.1:<PORT>/api/marketing/run` con el secreto y comprueba el resultado. No incluir el secreto literalmente en comandos ni documentación/logs.
 
