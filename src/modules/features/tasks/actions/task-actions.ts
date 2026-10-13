@@ -37,6 +37,7 @@ import {
   getMeetingAttendanceWindowStatus
 } from "../types";
 import { calculateNextRecurrence } from "../utils/recurrence-utils";
+import { requireDashboardTaskManagement, validateTaskMutationIds } from '../services/task-mutation-access';
 
 /**
  * Helper to get current organization ID safely with authenticated session validation
@@ -1966,7 +1967,9 @@ export async function deleteTasks(
       return { success: true, count: 0 };
     }
 
+    taskIds = validateTaskMutationIds(taskIds);
     const activeOrgId = await resolveOrgId(orgId);
+    await requireDashboardTaskManagement(activeOrgId);
 
     // Cancelar reuniones en Google Calendar antes de su eliminacion
     const { data: meetingTasks } = await supabaseAdmin
@@ -2012,7 +2015,7 @@ export async function deleteTasks(
         .eq("organization_id", activeOrgId)
         .in("id", chunk);
 
-      if (error) throw error;
+      if (error) throw new Error('No se pudieron eliminar las tareas seleccionadas.');
       totalDeleted += (count ?? chunk.length);
     }
 

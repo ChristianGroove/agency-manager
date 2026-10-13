@@ -13,6 +13,7 @@ import { selectAuthorizedArticles } from '../library/selection'
 import { HelpDiagnostics } from '../library/diagnostics'
 import { casualHelpReply, naturalizeHelpUncertainty } from '../library/response-policy'
 import { publicHelpText } from '../library/public-language'
+import { reserveDashboardHelpQuota } from '../library/dashboard-quota'
 
 export interface HelpChatMessage {
     role: "user" | "assistant"
@@ -28,42 +29,8 @@ export interface HelpChatResponse {
     storageError?: string
 }
 
-// Rate limiting constants
-const RATE_LIMIT_WINDOW_MS = 60 * 1000 // 1 minute
-const MAX_REQUESTS_PER_WINDOW = 10
 const MAX_INPUT_LENGTH = 500
 const MAX_CONVERSATION_HISTORY = 12 // Legacy task still limits its own context below.
-
-// In-memory rate limit store (in production, use Redis)
-const rateLimitStore = new Map<string, { count: number, timestamp: number }>()
-
-/**
- * Check if organization is rate limited
- */
-function isRateLimited(orgId: string): boolean {
-    const now = Date.now()
-    const record = rateLimitStore.get(orgId)
-
-    if (!record) {
-        rateLimitStore.set(orgId, { count: 1, timestamp: now })
-        return false
-    }
-
-    // Reset if window expired
-    if (now - record.timestamp > RATE_LIMIT_WINDOW_MS) {
-        rateLimitStore.set(orgId, { count: 1, timestamp: now })
-        return false
-    }
-
-    // Check limit
-    if (record.count >= MAX_REQUESTS_PER_WINDOW) {
-        return true
-    }
-
-    // Increment
-    record.count++
-    return false
-}
 
 /**
  * Basic off-topic detection keywords
@@ -122,31 +89,14 @@ function sanitizeInput(input: string): string {
  */
 async function processHelpQuestion(
     question: string,
+    organizationId: string,
     conversationHistory: HelpChatMessage[] = [],
     currentRoute?: string,
     diagnostics?: HelpDiagnostics,
 ): Promise<HelpChatResponse> {
     const trace = diagnostics || new HelpDiagnostics()
     try {
-        const organizationId = await getCurrentOrganizationId()
-
-        if (!organizationId) {
-            return {
-                success: false,
-                error: "No se pudo identificar tu organización. Por favor, inicia sesión nuevamente."
-            }
-        }
-
-        // 1. Rate Limiting
         trace.phase = 'policy'
-        if (isRateLimited(organizationId)) {
-            return {
-                success: false,
-                blocked: true,
-                error: "Has alcanzado el límite de preguntas. Espera un momento antes de continuar."
-            }
-        }
-
         // 2. Input Validation
         const sanitizedQuestion = sanitizeInput(question)
 
@@ -304,7 +254,15 @@ async function askAndPersistHelp(
         if ((stored?.length ?? 0) >= 199) return { success: false, error: 'Esta conversación está completa. Inicia una nueva.' }
         context = (stored ?? []).slice(0, MAX_CONVERSATION_HISTORY).reverse() as HelpChatMessage[]
         trace.historySource = 'database'
-    } else {
+    }
+    const quota = await trace.measure('policy', () => reserveDashboardHelpQuota(client, org))
+    if (quota !== 'allowed') {
+        return { success: false, ...(quota === 'rate_limited' ? { blocked: true } : {}),
+            error: quota === 'rate_limited' ? 'Has alcanzado el límite de preguntas. Espera un momento antes de continuar.'
+                : quota === 'denied' ? 'No tienes acceso a la ayuda de esta organización.'
+                    : 'La ayuda no está disponible en este momento. Intenta nuevamente.' }
+    }
+    if (!activeId) {
         const { data, error } = await client.from('help_chat_threads').insert({
             user_id: user.id, organization_id: org, title: question.trim().slice(0, 80),
         }).select('id').single()
@@ -317,7 +275,7 @@ async function askAndPersistHelp(
         if (error) return { success: false, threadId: activeId, error: 'No se pudo guardar tu pregunta. Intenta nuevamente.' }
     }
     trace.historyMessages = boundedHistory(context).length
-    const response = await processHelpQuestion(question, context, currentRoute, trace)
+    const response = await processHelpQuestion(question, org, context, currentRoute, trace)
     if (response.success && typeof response.message === 'string') response.message = publicHelpText(response.message)
     // Failed requests remain as an unanswered question; technical errors are not persisted as AI answers.
     if (activeId && response.success && typeof response.message === 'string') {

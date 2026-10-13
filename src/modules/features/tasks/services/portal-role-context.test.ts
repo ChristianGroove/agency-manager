@@ -40,3 +40,8 @@ it('reports uncertain lookup results so help can fail closed without changing le
     mocks.error = true
     expect(await resolveTaskPortalRoleContext({ ...staff, role: 'Project Manager' })).toMatchObject({ verified: false, isLeadOrPm: true })
 })
+
+it('honors structured management roles and their precedence over free-text labels', async () => {
+    expect(await resolveTaskPortalRoleContext({ ...staff, task_role: 'pm' })).toMatchObject({ isLeadOrPm: true })
+    expect(await resolveTaskPortalRoleContext({ ...staff, role: 'Project Manager', task_role: 'developer' })).toMatchObject({ isLeadOrPm: false })
+})

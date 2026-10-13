@@ -4,6 +4,8 @@ Inspección: 2026-10-12. Candidato inspeccionado: `pixyrobotpet` en `751aa83b`. 
 
 Actualización de separación: existe el candidato `codex/pixyrobotpet-release` en `tmp/pet-release`, basado en master local `fadd9ed7` y con los 30 commits de ayuda trasladados. El diff contra master excluye Cartera y no tiene colisiones de versiones SQL. Dependencias instaladas con `npm ci` en un directorio propio; 207 pruebas en 27 archivos correctas, corpus de 48 artículos idéntico tras publicación portable y build estándar completo con exit 0. Ver [verificación acotada y snapshot vigente](../../1-product/help-library/reviews/tasks-master-release-reverification-20261012.md). El detalle inicial de la mezcla siguiente corresponde a la rama del piloto preservada.
 
+Actualización posterior: cuota compartida y cinco guards de mutación implementados y probados SOLO local. Regresión final: 455 pruebas/38 archivos y prueba de 20 sesiones PostgreSQL con 10 permitidas/10 limitadas. El usuario eligió localhost para aceptación. La intervención cambia evidencias de 14 guías: mantener el corpus publicado y esperar [revisión incremental de Gemini](gemini-help-post-security-review-brief.md) antes de aprobar una nueva publicación. Ver [reporte táctico local](pixy-help-local-hardening-20261012.md).
+
 ## Estado y alcance de Git
 
 - Referencia remota `master`, comprobada con `git ls-remote`: `b0f3cf9e48edb83894822ea9c3bbcfb3ffc35840`.
@@ -20,21 +22,22 @@ Actualización de separación: existe el candidato `codex/pixyrobotpet-release` 
 | Migraciones sin colisiones | Resuelto dentro del candidato, sin renombrar migraciones ni alterar el historial de la base local. Aún se debe comprobar el historial real y compatibilidad de producción antes de aplicar. La rama del piloto conserva las colisiones históricas con Cartera. |
 | Dependencias y build portables | Resuelto: `npm ci` en directorio propio, manifiesto/lock coherentes, 207 pruebas correctas, publicación idéntica con hashes LF explícitos y build estándar completo correcto. Falta aceptación manual del candidato en el entorno de revisión. |
 | Base y entorno de destino | Confirmar aplicación, repositorio/rama de despliegue, base Supabase y estado de migraciones. La documentación existente refiere producción en Coolify; no se ha inspeccionado su configuración actual. No inferir despliegue por la presencia de `vercel.json`. |
-| Control de consumo del dashboard | El límite de 10 consultas/minuto por organización vive en un `Map` por proceso. Para apertura general, sustituirlo por una cuota compartida y atómica con pruebas de concurrencia; la gobernanza existente de AIEngine no convierte ese Map en un límite global. El portal ya usa cuotas PostgreSQL. |
-| Seguridad de Tasks antes de ampliar el portal | Revisar y corregir los guards de mutación pendientes, con regresiones negativas por perfil. La ayuda es consultiva y sus filtros no autorizan ni reparan las acciones del módulo. |
+| Control de consumo del dashboard | Resuelto en candidato/local: PostgreSQL 10 consultas/minuto por organización, RPC autenticado, sin acceso directo a contadores, con prueba real de concurrencia y rechazo si no puede comprobarse. Aplicar migración de cuota en el destino antes del código, también si V2 se deja apagado. |
+| Seguridad de Tasks antes de ampliar el portal | Corregidas prioridad, reasignación, borrado unitario/masivo del portal y borrado masivo del dashboard. Probados roles/PIN/tenant/módulo y ámbito por proyecto/espacio. Otros gaps/acciones del módulo no quedan certificados por esta corrección. Pendientes aceptación manual y revalidación de guías. |
 | Aceptación del candidato desplegado | Pruebas manuales del usuario con usuarios/tenants distintos, PIN, revocación, historial privado, tema, branding, hibernación y apagado. Verificar respuestas reales, errores del proveedor, coste y latencia; los hits offline no miden estos aspectos. |
 
 Comprobación táctica acotada de los gaps de Tasks: `portalUpdateTaskPriority` y `portalAssignTask` validan token activo/organización y escriben con `supabaseAdmin`, sin comprobar rol ni desbloqueo PIN dentro de esas funciones. `deleteTasks` resuelve organización y borra con `supabaseAdmin`, sin comprobar `operations.tasks.manage`. No se ejecutaron mutaciones para demostrar explotación. Ver los informes de Gemini en `dashboard-preparation/tasks/gaps.md` y `portal-preparation/tasks/gaps.md`.
 
 ## Base de datos y configuración
 
-Las tres migraciones funcionales de esta entrega, aplicadas únicamente en local, son:
+Las cuatro migraciones funcionales nuevas contra master local, aplicadas únicamente en local, son:
 
 1. `20261011000001_platform_robot_pet.sql`: columna de configuración visual; robot deshabilitado por defecto.
 2. `20261011000003_help_chat_history.sql`: historial autenticado, RLS por usuario/organización y límite de 200 mensajes por conversación.
 3. `20261012000004_tasks_portal_help.sql`: historial separado por colaborador, RPCs restringidos a `service_role`, cuotas e idempotencia.
+4. `20261012000005_dashboard_help_quota.sql`: cuota compartida del dashboard, RPC exclusivo de sesiones autenticadas; ausencia/fallo bloquea llamadas a IA también en legacy.
 
-Las dos últimas crean tablas/funciones/políticas sin `IF NOT EXISTS`: ejecutar mediante un historial de migraciones controlado, una sola vez, tras comprobar compatibilidad y respaldo del destino. Validar RLS y privilegios después de aplicar. No usar un comando que aplique indistintamente todas las migraciones de esta rama, ni scripts de seed/activación local.
+Las migraciones de historial/cuotas crean tablas/funciones/políticas sin `IF NOT EXISTS`: ejecutar mediante un historial de migraciones controlado, una sola vez, tras comprobar compatibilidad y respaldo del destino. Validar RLS y privilegios después de aplicar. No usar un comando que aplique indistintamente todas las migraciones de esta rama, ni scripts de seed/activación local. Además, master local contiene dos commits de onboarding aún ausentes del remoto, con `20261011000000_atomic_tenant_provisioning.sql`: verificar también su estado en producción y el alcance aprobado de esa base; no asumir que ya está desplegada por estar en master local.
 
 | Control de servidor | Publicación inicial recomendada |
 |---|---|

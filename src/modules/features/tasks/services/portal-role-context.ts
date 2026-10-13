@@ -16,7 +16,7 @@ export async function resolveTaskPortalRoleContext(staff: PortalStaffRoleInput) 
         supabaseAdmin.from('task_workspaces').select('id').eq('organization_id', staff.organization_id).eq('lead_staff_id', staff.id).limit(1),
         supabaseAdmin.from('task_projects').select('id').eq('organization_id', staff.organization_id).eq('lead_staff_id', staff.id).limit(1),
     ])
-    const isLeadOrPm = Boolean(isStaffLeadOrPmRole(staff.role) || workspaces.data?.length || projects.data?.length)
+    const isLeadOrPm = Boolean(isStaffLeadOrPmRole(staff.role, staff.task_role) || workspaces.data?.length || projects.data?.length)
     const role = (staff.role || '').toLowerCase()
     const isQa = ['qa', 'tester', 'calidad', 'revisor', 'pruebas'].some(keyword => role.includes(keyword))
     const isSupport = (staff.task_role || inferTaskRole(staff.role)) === 'support' && !isLeadOrPm

@@ -1,13 +1,13 @@
 # Bot de ayuda Pixy: guía de mantenimiento
 
-Estado vigente: 2026-10-12. Candidato de entrega: `codex/pixyrobotpet-release`, basado en master local `fadd9ed7`, sin los commits de Cartera. El piloto de 3005 sigue en `pixyrobotpet`; su servidor no se cambia por preparar el candidato. Punto de entrada para cualquier agente que intervenga el robot, el chat o su biblioteca. Los documentos de fases anteriores son registros históricos; sus cifras y pendientes no describen necesariamente el runtime actual.
+Estado vigente: 2026-10-12. Candidato de entrega: `codex/pixyrobotpet-release`, basado en master local `fadd9ed7`, sin los commits de Cartera. El piloto de 3005 ejecuta ahora ESTE candidato, con cuota compartida y guards de Tasks. `pixyrobotpet` se conserva como rama anterior; su helper histórico no arranca el código actual. Punto de entrada para cualquier agente que intervenga el robot, el chat o su biblioteca. Los documentos de fases anteriores son registros históricos; sus cifras y pendientes no describen necesariamente el runtime actual.
 
 ## Estado y límites
 
 - Dashboard: robot integrado con branding, hibernación, estados de ayuda y algunas operaciones/alertas; chat con Markdown seguro, historial privado, selector de conversaciones y navegador de preguntas a la derecha.
 - Biblioteca V2: 48 guías publicadas, 26 dashboard (6 Tasks) y 22 portal Tasks. Recuperación offline: dashboard anterior 56/56; Tasks dashboard 35/35; portal 46/46 técnicos y 1 política local. Aclaración/abstención se mantienen separadas: 4/5 anterior, 10/10 Tasks dashboard y 12/11 portal. No equivale a exactitud de respuestas reales. Ver [cierre combinado](../../1-product/help-library/reviews/tasks-combined-integration-20261012.md).
 - Pilotos locales independientes: dashboard V2 en Pixy y Movilservicios; portal Tasks en Movilservicios, con robot/chat e historial privado. Movilservicios dashboard se activa en el helper mediante `--movilservicios-help-v2`, además de los flags anteriores. Las guías del portal no se comparten con el dashboard, que ahora tiene seis guías propias de Tasks, incluidas reuniones. Ver [integración vigente](../../2-architecture/modules/pixy-help-tasks-portal-integration.md). El [plan](../../2-architecture/modules/pixy-help-tasks-portal-plan.md) y la [base inicial](../../2-architecture/modules/pixy-help-tasks-portal-foundation.md) son antecedentes.
-- No hay consultas a datos vivos de negocio, acciones ejecutables, streaming, embeddings para esta biblioteca ni resumen automático. Tasks tiene cuotas/concurrencia compartidas en PostgreSQL; el dashboard conserva su límite en memoria. El bot explica procedimientos; no opera el sistema.
+- No hay consultas a datos vivos de negocio, acciones ejecutables, streaming, embeddings para esta biblioteca ni resumen automático. Tasks portal y dashboard tienen cuotas compartidas en PostgreSQL; dashboard mantiene 10 consultas/minuto por organización y bloquea si no puede comprobarlas. El bot explica procedimientos; no opera el sistema. Ver [cuota y guards locales](pixy-help-local-hardening-20261012.md).
 - Conversación: saludos, agradecimientos, confirmaciones y cierres completos reciben respuestas locales, sin modelo. La cortesía incluida en una consulta técnica no intercepta la consulta. En Tasks, una recomendación genérica usa el último tema del usuario en el historial del servidor, omitiendo cortesías y otras recomendaciones; filtra guías por acceso actual. Sin tema, pregunta qué función interesa. Sin guía verificada, no inventa consejos ni pide un estado/error arbitrario.
 
 ## Separación de responsabilidades
@@ -43,14 +43,14 @@ Rutas relativas al checkout:
 
 1. Validar consulta (3–500 caracteres), ruta, historial y UUID de hilo. Resolver usuario autenticado y organización en servidor.
 2. Si existe hilo, verificar propietario y tenant y cargar sus mensajes del servidor. No sustituirlos por historial del navegador si la carga falla. El historial del navegador solo sirve como fallback sin hilo persistido.
-3. Persistir la pregunta; aplicar límite actual de 10 solicitudes/minuto por organización en memoria y políticas de conversación.
+3. Reservar cuota compartida de 10 solicitudes/minuto por organización mediante el cliente autenticado. Rechazar antes de escribir mensajes o llamar al modelo si está agotada, el acceso no es válido o la comprobación falla. Después persistir la pregunta y aplicar políticas de conversación.
 4. V2: resolver membresía, permisos IAM, módulos y vertical. Filtrar guías antes de recuperar contexto. La ruta del navegador no otorga permisos.
 5. Buscar léxicamente. Máximo 5 artículos / 16.000 caracteres, sin cortar procedimientos. Solo cuando no se recupera ninguno y existen guías autorizadas, solicitar selección asistida sobre hasta 40 entradas del catálogo; validar hasta 3 IDs y descartar IDs inventados/no autorizados.
 6. Generar con guías autorizadas, contexto limitado de sesión y hasta 12 mensajes / 10.000 caracteres con roles. Las dos tareas V2 desactivan caché compartida y el KB legacy. Sin guías relevantes, aclarar sin inventar; solicitudes directas de chistes tienen respuesta breve local sin llamada al modelo.
 7. Normalizar el caso acotado de incertidumbre que repite ausencia de documentación, persistir la respuesta y devolverla sin fuentes ni diagnóstico visible. Nunca convertir falta de evidencia en ausencia de capacidad.
 8. Diagnóstico opcional: un registro de metadatos por solicitud, sin cuerpos de mensajes, claves, tokens, IDs de usuario/hilo ni errores del proveedor. Un fallo de logging no interrumpe el chat.
 
-La clasificación de conversación es limitada, no un clasificador semántico universal. El control de salida es estrecho: no editar fragmentos arbitrarios de respuestas ni ocultar negaciones verificadas. El límite en memoria no protege de forma global varias instancias.
+La clasificación de conversación es limitada, no un clasificador semántico universal. El control de salida es estrecho: no editar fragmentos arbitrarios de respuestas ni ocultar negaciones verificadas. La cuota del dashboard se comparte entre usuarios, pestañas e instancias; no es un presupuesto monetario ni una cuota diaria.
 
 ## Mantenimiento de artículos y publicación
 
@@ -90,8 +90,10 @@ Entorno de este tramo:
 - El `node_modules` del worktree es un enlace al del root; no borrar, podar ni reinstalar dependencias masivamente. `react-markdown` tiene runtime local auxiliar: preservar sus enlaces mientras el servidor los necesite.
 - Build en el worktree: `node node_modules/next/dist/bin/next build --webpack`.
 - Arranque desde el root mediante helper local ignorado: `node tmp/start-pet-isolated.cjs --help-v2-pilot --movilservicios-help-v2 --help-diagnostics --tasks-portal-pilot`. Verifica base local y usa el worktree aislado. El helper no forma parte del checkout portable: recrearlo/verificarlo si se cambia de máquina.
-- Antes de reiniciar, comprobar que el propietario de 3005 corresponde exactamente a `...\tmp\pet-workspace\node_modules\next\dist\bin\next start ... --port 3005`. No detener procesos genéricos Node ni Cartera/3000.
+- Antes de reiniciar el candidato actual, comprobar que el propietario de 3005 corresponde exactamente a `...\tmp\pet-release\node_modules\next\dist\bin\next start ... --port 3005`. No detener procesos genéricos Node ni Cartera/3000.
 - Migraciones ya aplicadas solo local: `20261011000001_platform_robot_pet.sql`, `20261011000003_help_chat_history.sql` y `20261012000004_tasks_portal_help.sql`. Este cierre de corpus no requiere migración nueva.
+
+Actualización de seguridad del candidato: también aplicada solo local `20261012000005_dashboard_help_quota.sql`. El piloto de revisión actualizado usa `node scripts/start-help-local.mjs` DESDE `tmp/pet-release`; el helper histórico del root conserva la rama anterior y no sirve para comprobar estos guards. La biblioteca pendiente de Gemini se documenta en [el encargo incremental](gemini-help-post-security-review-brief.md): 14 evidencias cambiaron, no refrescar hashes ni republish sin revisión.
 
 Apagar V2 restaura el camino legacy, no elimina historial ni configuración del robot. Para revertir contenido, recuperar un `published.json` anterior de Git, compilar y reiniciar; no publicar un manifiesto histórico sobre fuentes actuales distintas. No ejecutar resets globales. Una reversión o despliegue remoto requiere alcance explícito.
 

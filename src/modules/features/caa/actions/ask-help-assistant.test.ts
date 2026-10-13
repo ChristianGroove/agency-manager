@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
     org: '', user: 'user', enabled: true, threadExists: true, historyError: false,
     stored: [] as { role: 'user' | 'assistant'; content: string }[],
     inserted: [] as { table: string; value: Record<string, unknown> }[], eq: vi.fn(),
+    quota: vi.fn(),
 }))
 vi.mock('@/modules/infrastructure/ai-engine/service', () => ({ AIEngine: { executeTask: mocks.execute } }))
 vi.mock('@/modules/core/organizations/organization-actions', () => ({ getCurrentOrganizationId: async () => mocks.org }))
@@ -14,6 +15,7 @@ vi.mock('../library/session', () => ({ resolveHelpAccess: mocks.access }))
 vi.mock('../library/runtime', () => ({ helpV2Enabled: () => mocks.enabled, helpCorpus: { revision: 'a'.repeat(64), articles: mocks.articles } }))
 vi.mock('@/modules/core/database/supabase-server', () => ({ createClient: async () => ({
     auth: { getUser: async () => ({ data: { user: { id: mocks.user } } }) },
+    rpc: mocks.quota,
     from: (table: string) => {
         const result = { error: null }
         const query = {
@@ -45,6 +47,7 @@ beforeEach(() => {
     vi.spyOn(console, 'info').mockImplementation(() => {})
     mocks.org = `00000000-0000-4000-8000-${String(++sequence).padStart(12, '0')}`
     mocks.user = 'user'; mocks.enabled = true; mocks.threadExists = true; mocks.historyError = false
+    mocks.quota.mockResolvedValue({ data: { status: 'allowed' }, error: null })
     mocks.stored = []; mocks.inserted = []
     mocks.articles.splice(0, mocks.articles.length,
         article('theme.toggle', 'Cambiar tema oscuro', 'Usa el botón de tema para alternar claro y oscuro.'),
@@ -62,6 +65,25 @@ function diagnostic() {
 }
 
 describe('help conversations through the server action', () => {
+    it.each(['rate_limited', 'denied'])('rejects quota status %s before writes or model calls', async status => {
+        mocks.quota.mockResolvedValue({ data: { status }, error: null })
+        const response = await askHelpAssistant('Cambiar tema oscuro')
+        expect(response.success).toBe(false)
+        expect(response.blocked).toBe(status === 'rate_limited' ? true : undefined)
+        expect(mocks.quota).toHaveBeenCalledWith('reserve_dashboard_help_request', { p_org: mocks.org })
+        expect(mocks.inserted).toHaveLength(0)
+        expect(mocks.execute).not.toHaveBeenCalled()
+    })
+    it('fails closed when the shared quota cannot be checked, including the legacy path', async () => {
+        mocks.enabled = false
+        mocks.quota.mockResolvedValue({ data: null, error: { message: 'private database details' } })
+        const response = await askHelpAssistant('Cambiar tema oscuro')
+        expect(response.success).toBe(false)
+        expect(JSON.stringify(response)).not.toContain('private database')
+        expect(mocks.inserted).toHaveLength(0)
+        expect(mocks.execute).not.toHaveBeenCalled()
+        expect(diagnostic()).toMatchObject({ failure_stage: 'policy', model_calls: 0 })
+    })
     it.each([true, false])('does not return or persist internal permission keys with V2 enabled=%s', async enabled => {
         mocks.enabled = enabled
         mocks.execute.mockResolvedValue({ success: true, data: 'No tienes el permiso `can_bulk_delete_tasks`.' })
