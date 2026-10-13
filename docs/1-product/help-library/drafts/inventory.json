@@ -486,26 +486,6 @@
       ]
     },
     {
-      "id": "cartera",
-      "name": "Cartera y Cobranzas Multi-Industria",
-      "implementation_status": "partial",
-      "routes": [
-        "/cartera"
-      ],
-      "evidence_paths": [
-        "src/app/(dashboard)/cartera/page.tsx",
-        "src/modules/features/cartera/actions/cartera-actions.ts"
-      ],
-      "article_ids": [],
-      "gaps": [
-        "Módulo bajo desarrollo activo en rama paralela; la versión presente en esta rama es un avance de interfaz",
-        "Faltan tablas finales de amortización en migraciones consolidadas"
-      ],
-      "manual_checks_pending": [
-        "Comprobar consistencia de saldos morosos contra facturas vencidas"
-      ]
-    },
-    {
       "id": "contracts",
       "name": "Generador de Contratos",
       "implementation_status": "implemented",

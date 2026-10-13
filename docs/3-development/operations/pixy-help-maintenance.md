@@ -1,6 +1,6 @@
 # Bot de ayuda Pixy: guía de mantenimiento
 
-Estado vigente: 2026-10-12, rama `pixyrobotpet`. Punto de entrada para cualquier agente que intervenga el robot, el chat o su biblioteca. Los documentos de fases anteriores son registros históricos; sus cifras y pendientes no describen necesariamente el runtime actual.
+Estado vigente: 2026-10-12. Candidato de entrega: `codex/pixyrobotpet-release`, basado en master local `fadd9ed7`, sin los commits de Cartera. El piloto de 3005 sigue en `pixyrobotpet`; su servidor no se cambia por preparar el candidato. Punto de entrada para cualquier agente que intervenga el robot, el chat o su biblioteca. Los documentos de fases anteriores son registros históricos; sus cifras y pendientes no describen necesariamente el runtime actual.
 
 ## Estado y límites
 
@@ -57,6 +57,7 @@ La clasificación de conversación es limitada, no un clasificador semántico un
 1. Gemini revisa funciones y condiciones reales, redacta por tarea y superficie, conserva `status: draft` y `verification: source-only`, y añade evidencia con archivo/símbolo/afirmación. Las notas internas van en `Notas de verificación`.
 2. Mapea filtros reales: audiencia, módulos, permisos canónicos y vertical. Separar tareas si sus condiciones de acceso difieren; por ejemplo, pipeline y reportes CRM. La presencia de un botón o un filtro del menú no demuestra autorización en backend.
 3. Actualiza preguntas, inventario, gaps y handoff. Preparar `drafts/publication-review.json`: snapshot COMPLETO de la biblioteca deseada, con identidad de Gemini y SHA-256 UTF-8 de borradores y todas las evidencias. No fabricar revisión recalculando hashes de fuentes que nadie revisó.
+   En la entrega desde master, el snapshot vigente es `reviews/tasks-master-release-reviewed-20261012.json`, con `hash_encoding: utf8-lf`. Solo normaliza CRLF a LF; los snapshots históricos conservan su contrato de bytes exactos. Ver [verificación del traslado](../../1-product/help-library/reviews/tasks-master-release-reverification-20261012.md).
 4. Integración verifica diferencias/omisiones, contratos, permisos y hashes. Si cambió una fuente durante trabajo concurrente, devolver la incidencia al revisor. Un cambio de saltos de línea también cambia los hashes: no saltarse el control ni inventar equivalencias.
 5. Conservar la propuesta aceptada bajo un nombre nuevo en `reviews/`; no sobrescribir snapshots históricos. Ejecutar:
 
@@ -88,9 +89,9 @@ Entorno de este tramo:
 - Aplicación: `http://127.0.0.1:3005`; Supabase local: API `55321`, DB `55322`. No usar otro stack ni credenciales/remoto por inferencia. No imprimir `.env`.
 - El `node_modules` del worktree es un enlace al del root; no borrar, podar ni reinstalar dependencias masivamente. `react-markdown` tiene runtime local auxiliar: preservar sus enlaces mientras el servidor los necesite.
 - Build en el worktree: `node node_modules/next/dist/bin/next build --webpack`.
-- Arranque desde el root mediante helper local ignorado: `node tmp/start-pet-isolated.cjs --help-v2-pilot --help-diagnostics`. Verifica base local y usa el worktree aislado. El helper no forma parte del checkout portable: recrearlo/verificarlo si se cambia de máquina.
+- Arranque desde el root mediante helper local ignorado: `node tmp/start-pet-isolated.cjs --help-v2-pilot --movilservicios-help-v2 --help-diagnostics --tasks-portal-pilot`. Verifica base local y usa el worktree aislado. El helper no forma parte del checkout portable: recrearlo/verificarlo si se cambia de máquina.
 - Antes de reiniciar, comprobar que el propietario de 3005 corresponde exactamente a `...\tmp\pet-workspace\node_modules\next\dist\bin\next start ... --port 3005`. No detener procesos genéricos Node ni Cartera/3000.
-- Migraciones ya aplicadas solo local: `20261011000001_platform_robot_pet.sql` y `20261011000003_help_chat_history.sql`. Este cierre de corpus no requiere migración.
+- Migraciones ya aplicadas solo local: `20261011000001_platform_robot_pet.sql`, `20261011000003_help_chat_history.sql` y `20261012000004_tasks_portal_help.sql`. Este cierre de corpus no requiere migración nueva.
 
 Apagar V2 restaura el camino legacy, no elimina historial ni configuración del robot. Para revertir contenido, recuperar un `published.json` anterior de Git, compilar y reiniciar; no publicar un manifiesto histórico sobre fuentes actuales distintas. No ejecutar resets globales. Una reversión o despliegue remoto requiere alcance explícito.
 
@@ -104,6 +105,6 @@ Apagar V2 restaura el camino legacy, no elimina historial ni configuración del 
 
 ## Cierre y siguiente intervención
 
-Actualización Tasks: corpus de 48 artículos con superficies aisladas, publicado mediante `reviews/tasks-combined-reviewed-20261012.json`. Ver [cierre combinado y pruebas manuales](../../1-product/help-library/reviews/tasks-combined-integration-20261012.md). El usuario verifica respuestas reales; los hallazgos de autorización del módulo permanecen como trabajo independiente. Próximas revisiones: snapshot nuevo y completo desde esta base, sin refrescar hashes con importadores históricos ni perder filtros o artículos del otro ámbito.
+Actualización Tasks: corpus de 48 artículos con superficies aisladas. El snapshot `reviews/tasks-combined-reviewed-20261012.json` corresponde a la rama del piloto; la entrega sin Cartera usa `reviews/tasks-master-release-reviewed-20261012.json` y publica exactamente el mismo corpus. Ver [cierre combinado y pruebas manuales](../../1-product/help-library/reviews/tasks-combined-integration-20261012.md). El usuario verifica respuestas reales; los hallazgos de autorización del módulo permanecen como trabajo independiente. Próximas revisiones: snapshot nuevo y completo desde esta base, sin refrescar hashes con importadores históricos ni perder filtros o artículos del otro ámbito.
 
-Ver [cierre del tramo](../../1-product/help-library/reviews/dashboard-closeout-20261012.md) y [plan Tasks](../../2-architecture/modules/pixy-help-tasks-portal-plan.md). Siguiente entrega: biblioteca y matriz de capacidades del portal a cargo de Gemini; sesión/acceso, contratos por superficie, UI/historial y pruebas a cargo táctico. El estado «preparado» no implica portal activo ni autorización ya implementada.
+El [cierre inicial del dashboard](../../1-product/help-library/reviews/dashboard-closeout-20261012.md) y el [plan Tasks](../../2-architecture/modules/pixy-help-tasks-portal-plan.md) son antecedentes históricos. Dashboard y portal ya tienen biblioteca e integración en el piloto local. Para preparar una entrega a master, consultar [pendientes de producción](pixy-help-production-readiness.md); el piloto no acredita despliegue remoto ni corrige los gaps del módulo Tasks.

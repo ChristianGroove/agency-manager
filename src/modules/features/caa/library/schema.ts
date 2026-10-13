@@ -30,7 +30,7 @@ export const draftSchema = draftMetadataSchema.superRefine(validateSurface)
 
 // A reviewer maps editorial requirements to real authorization. Draft audience alone never grants access.
 export const reviewSchema = z.object({
-    schema_version: z.literal(1), articles: z.array(z.object({
+    schema_version: z.literal(1), hash_encoding: z.literal('utf8-lf').optional(), articles: z.array(z.object({
         id, draft_sha256: z.string().regex(/^[a-f0-9]{64}$/), reviewed_by: z.string().min(3).max(100),
         reviewed_on: z.string().regex(/^\d{4}-\d{2}-\d{2}$/),
         evidence_sha256: z.record(z.string(), z.string().regex(/^[a-f0-9]{64}$/)),

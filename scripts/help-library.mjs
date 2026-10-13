@@ -9,6 +9,8 @@ const { draftSchema, reviewSchema, corpusSchema } = SchemaModule.default || Sche
 const root = fs.realpathSync(process.cwd())
 const draftRoot = path.join(root, 'docs/1-product/help-library/drafts/articles')
 const sha = text => crypto.createHash('sha256').update(text).digest('hex')
+// Explicit opt-in for portable reviews; historical snapshots retain their exact-byte contract.
+const reviewText = (text, encoding) => encoding === 'utf8-lf' ? text.replace(/\r\n/g, '\n') : text
 function safeRead(relative) {
     if (path.isAbsolute(relative) || relative.includes('..') || !/^(src\/|docs\/(1-product|2-architecture)\/)/.test(relative)) throw new Error(`Ruta no permitida: ${relative}`)
     const resolved = fs.realpathSync(path.join(root, relative))
@@ -16,8 +18,8 @@ function safeRead(relative) {
     if (fs.statSync(resolved).size > 2000000) throw new Error('Evidencia demasiado grande')
     return fs.readFileSync(resolved, 'utf8')
 }
-function parseDraft(filename) {
-    const raw = fs.readFileSync(filename, 'utf8').replace(/^\uFEFF/, '')
+function parseDraft(filename, encoding) {
+    const raw = reviewText(fs.readFileSync(filename, 'utf8').replace(/^\uFEFF/, ''), encoding)
     if (raw.length > 24000) throw new Error('Artículo demasiado grande')
     const match = raw.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n([\s\S]+)$/)
     if (!match) throw new Error('Frontmatter ausente')
@@ -39,12 +41,14 @@ function parseDraft(filename) {
 const command = process.argv[2]
 try {
     if (!['validate', 'publish'].includes(command)) throw new Error('Uso: npm run help:validate | npm run help:publish -- <review.json>')
+    if (command === 'publish' && !process.argv[3]) throw new Error('Se requiere revisión explícita con hashes y permisos')
+    const review = command === 'publish' ? reviewSchema.parse(JSON.parse(fs.readFileSync(process.argv[3], 'utf8'))) : null
     const files = fs.existsSync(draftRoot) ? fs.readdirSync(draftRoot).filter(f => f.endsWith('.md')).sort() : []
     const errors = []
     const drafts = files.map(file => {
         const candidate = path.join(draftRoot, file)
         if (fs.lstatSync(candidate).isSymbolicLink() || !fs.realpathSync(candidate).startsWith(root + path.sep)) throw new Error('No se permiten artículos enlazados o fuera del checkout')
-        try { return parseDraft(candidate) } catch (error) { errors.push(`${file}: ${error.message}`); return null }
+        try { return parseDraft(candidate, review?.hash_encoding) } catch (error) { errors.push(`${file}: ${error.message}`); return null }
     }).filter(Boolean)
     if (errors.length) throw new Error(errors.join('\n'))
     if (new Set(drafts.map(d => d.meta.id)).size !== drafts.length) throw new Error('IDs duplicados')
@@ -57,9 +61,9 @@ try {
             routes: z.array(z.string()), evidence_paths: z.array(z.string()), article_ids: z.array(z.string()), gaps: z.array(z.string()), manual_checks_pending: z.array(z.string()),
         })) }).parse(JSON.parse(fs.readFileSync(inventoryPath, 'utf8')))
         if (new Set(inventory.modules.map(module => module.id)).size !== inventory.modules.length) throw new Error('Módulos duplicados en inventario')
-        for (const module of inventory.modules) {
-            for (const id of module.article_ids) if (!articleIds.has(id)) throw new Error(`Artículo inexistente en inventario: ${id}`)
-            for (const evidence of module.evidence_paths) safeRead(evidence)
+        for (const inventoryModule of inventory.modules) {
+            for (const id of inventoryModule.article_ids) if (!articleIds.has(id)) throw new Error(`Artículo inexistente en inventario: ${id}`)
+            for (const evidence of inventoryModule.evidence_paths) safeRead(evidence)
         }
     }
     const questionsPath = path.join(draftFolder, 'questions.json')
@@ -78,14 +82,12 @@ try {
     }
     console.log(`Artículos estructuralmente válidos: ${drafts.length}. Esto no certifica sus procedimientos.`)
     if (command === 'publish') {
-        if (!process.argv[3]) throw new Error('Se requiere revisión explícita con hashes y permisos')
-        const review = reviewSchema.parse(JSON.parse(fs.readFileSync(process.argv[3], 'utf8')))
         if (new Set(review.articles.map(a => a.id)).size !== review.articles.length) throw new Error('Revisión con IDs duplicados')
         const articles = review.articles.map(approval => {
             const draft = drafts.find(d => d.meta.id === approval.id)
             if (!draft || draft.hash !== approval.draft_sha256) throw new Error(`Borrador modificado/no encontrado: ${approval.id}`)
             for (const evidence of draft.meta.evidence) {
-                if (approval.evidence_sha256[evidence.path] !== sha(safeRead(evidence.path))) throw new Error(`Evidencia no revisada o modificada: ${evidence.path}`)
+                if (approval.evidence_sha256[evidence.path] !== sha(reviewText(safeRead(evidence.path), review.hash_encoding))) throw new Error(`Evidencia no revisada o modificada: ${evidence.path}`)
             }
             if (approval.link_route && (!draft.meta.routes.includes(approval.link_route) || approval.link_route.includes('['))) throw new Error('Enlace no revisado o dinámico')
             const { id, title, module, audience, routes, keywords, surface } = draft.meta
