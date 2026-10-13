@@ -148,18 +148,12 @@ export const getEffectiveBranding = cache(async (orgId?: string | null): Promise
     const { data: org } = orgResult
     const { data: tenantSettings } = tenantSettingsResult
 
-    const tierFeatures = (org?.branding_tier as any)?.features || {}
-    const tierId = org?.branding_tier_id || ''
-    const isPremiumTier = tierId.includes('whitelabel') || tierId.includes('custom')
-
-    const canCustomizeLogo = !!tierFeatures.custom_logo || isPremiumTier
-    const canCustomizeColors = !!tierFeatures.custom_colors || isPremiumTier
-    const canRemoveBranding = !!tierFeatures.remove_pixy_branding || isPremiumTier
+    const { canCustomizeLogo, canCustomizeColors } = getBrandingPermissions(org)
 
     if (!tenantSettings) return platformBranding
 
-    const pickLogo = (tenantVal: any, platformVal: any) => tenantVal || platformVal
-    const pickColor = (tenantVal: any, platformVal: any) => tenantVal || platformVal
+    const pickLogo = (tenantVal: any, platformVal: any) => canCustomizeLogo ? tenantVal || platformVal : platformVal
+    const pickColor = (tenantVal: any, platformVal: any) => canCustomizeColors ? tenantVal || platformVal : platformVal
     const pickGeneral = (tenantVal: any, platformVal: any) => tenantVal || platformVal
 
     return {
@@ -318,28 +312,45 @@ export async function updateOrganizationBranding(settings: BrandingConfig) {
 
     const supabase = await createClient()
 
-    const { data: existing } = await supabase
-        .from("organization_settings")
-        .select("id")
-        .eq("organization_id", orgId)
-        .maybeSingle()
+    const [orgResult, platformBranding, existingResult] = await Promise.all([
+        supabase.from("organizations")
+            .select("branding_tier_id, branding_tier:branding_tiers(features)")
+            .eq("id", orgId)
+            .single(),
+        getPlatformSettings(),
+        supabase.from("organization_settings")
+            .select("id")
+            .eq("organization_id", orgId)
+            .maybeSingle()
+    ])
+    if (orgResult.error || !orgResult.data || existingResult.error) {
+        throw new Error("No se pudo verificar la configuración de marca de la organización")
+    }
+    const { data: existing } = existingResult
+    const { canCustomizeLogo, canCustomizeColors } = getBrandingPermissions(orgResult.data)
+
+    // Effective branding includes platform defaults. Persist only actual tenant overrides.
+    const logoOverride = (value: string | null | undefined, globalValue: string | null | undefined) =>
+        canCustomizeLogo ? (value === undefined ? undefined : value && value !== globalValue ? value : null) : null
+    const colorOverride = (value: string | null | undefined, globalValue: string | null | undefined) =>
+        canCustomizeColors ? (value === undefined ? undefined : value && value !== globalValue ? value : null) : null
 
     const payload = {
         organization_id: orgId,
         agency_name: settings.name,
-        main_logo_url: settings.logos.main,
-        main_logo_light_url: settings.logos.main_light,
-        portal_logo_url: settings.logos.portal,
-        isotipo_url: settings.logos.favicon,
-        portal_login_background_url: settings.logos.login_bg,
-        portal_primary_color: settings.colors.primary,
-        portal_secondary_color: settings.colors.secondary,
+        main_logo_url: logoOverride(settings.logos.main, platformBranding.logos.main),
+        main_logo_light_url: logoOverride(settings.logos.main_light, platformBranding.logos.main_light),
+        portal_logo_url: logoOverride(settings.logos.portal, platformBranding.logos.portal),
+        isotipo_url: logoOverride(settings.logos.favicon, platformBranding.logos.favicon),
+        portal_login_background_url: logoOverride(settings.logos.login_bg, platformBranding.logos.login_bg),
+        portal_primary_color: colorOverride(settings.colors.primary, platformBranding.colors.primary),
+        portal_secondary_color: colorOverride(settings.colors.secondary, platformBranding.colors.secondary),
         agency_website: settings.website,
         agency_email: settings.email,
         agency_phone: settings.phone,
         agency_address: settings.address,
         brand_font_family: settings.font_family,
-        portal_login_background_color: settings.login_bg_color,
+        portal_login_background_color: colorOverride(settings.login_bg_color, platformBranding.login_bg_color),
         custom_domain: settings.custom_domain,
         invoice_footer: settings.invoice_footer,
         document_logo_size: settings.document_logo_size,
@@ -384,4 +395,15 @@ export async function updateOrganizationBranding(settings: BrandingConfig) {
     revalidatePath("/", "layout")
     revalidatePath("/portal", "layout")
     return { success: true }
+}
+
+function getBrandingPermissions(org: any) {
+    const tier = Array.isArray(org?.branding_tier) ? org.branding_tier[0] : org?.branding_tier
+    const features = tier?.features || {}
+    const tierId = org?.branding_tier_id || ''
+    const isPremiumTier = tierId.includes('whitelabel') || tierId.includes('custom')
+    return {
+        canCustomizeLogo: features.custom_logo === true || isPremiumTier,
+        canCustomizeColors: features.custom_colors === true || isPremiumTier,
+    }
 }

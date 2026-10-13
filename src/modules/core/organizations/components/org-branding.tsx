@@ -1,62 +1,55 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { createBrowserClient } from "@supabase/ssr" // Keep if needed or remove unused
 import { Building2 } from "lucide-react"
 import { getEffectiveBranding } from "@/modules/core/branding/actions"
 import { useTheme } from "next-themes"
+import { type BrandingConfig } from "@/types/branding"
 
-const brandingCache = new Map<string, any>()
-
-export function OrgBranding({ orgId, collapsed = false, initialBranding }: { orgId: string | null, collapsed?: boolean, initialBranding?: any }) {
-    // Priority: Initial Prop > Cache > Null
-    const [branding, setBranding] = useState<any>(
-        initialBranding || brandingCache.get(orgId || 'platform') || null
-    )
-    // If we have initial data, we are NOT loading
-    const [loading, setLoading] = useState(!branding)
+export function OrgBranding({ orgId, collapsed = false, initialBranding }: { orgId: string | null, collapsed?: boolean, initialBranding?: BrandingConfig }) {
+    const [brandingState, setBrandingState] = useState({ orgId, branding: initialBranding || null })
+    const branding = brandingState.orgId === orgId ? brandingState.branding : initialBranding || null
+    const [loading, setLoading] = useState(!initialBranding)
     const { resolvedTheme } = useTheme()
     const [mounted, setMounted] = useState(false)
 
     useEffect(() => {
         setMounted(true)
+        let active = true
+        let requestVersion = 0
 
-        const fetchBranding = async (force = false) => {
-            // Check if we already have valid data from props or cache
-            if (!force && branding) {
-                setLoading(false)
-                return
-            }
-            // Check cache unless forced
-            if (!force && brandingCache.has(orgId || 'platform')) {
-                setBranding(brandingCache.get(orgId || 'platform'))
-                setLoading(false)
-                return
-            }
-
+        const fetchBranding = async () => {
+            const version = ++requestVersion
             setLoading(true)
             try {
                 const data = await getEffectiveBranding(orgId)
-                brandingCache.set(orgId || 'platform', data)
-                setBranding(data)
+                if (active && version === requestVersion) setBrandingState({ orgId, branding: data })
             } catch (error) {
                 console.error("Failed to load branding", error)
             } finally {
-                setLoading(false)
+                if (active && version === requestVersion) setLoading(false)
             }
         }
 
-        fetchBranding()
+        if (initialBranding) {
+            setBrandingState({ orgId, branding: initialBranding })
+            setLoading(false)
+        } else {
+            setBrandingState({ orgId, branding: null })
+            fetchBranding()
+        }
 
         // Listener for updates
         const handleUpdate = () => {
-            brandingCache.delete(orgId || 'platform')
-            fetchBranding(true)
+            fetchBranding()
         }
 
         window.addEventListener('branding-updated', handleUpdate)
-        return () => window.removeEventListener('branding-updated', handleUpdate)
-    }, [orgId])
+        return () => {
+            active = false
+            window.removeEventListener('branding-updated', handleUpdate)
+        }
+    }, [orgId, initialBranding])
 
     if (!mounted) {
         // Hydration fix: Always render skeleton on server to guarantee match
