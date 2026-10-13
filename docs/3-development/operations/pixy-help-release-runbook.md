@@ -1,18 +1,20 @@
 # Publicación del robot y ayuda Pixy
 
-Preparación: 2026-10-12. Candidato: `codex/pixyrobotpet-release`, checkout `G:\Pixy\agency-manager\tmp\pet-release`; base master local `fadd9ed7`. El usuario confirmó que producción es **pixy CRM Backend** en Coolify, `https://app.pixy.com.co`, con despliegue automático al actualizar master. No se ha actualizado master, hecho push, aplicado SQL remoto ni inspeccionado la configuración real del contenedor.
+Preparación: 2026-10-12; configuración de despliegue aclarada por el usuario el 2026-10-13. Candidato: `codex/pixyrobotpet-release`, checkout `G:\Pixy\agency-manager\tmp\pet-release`; base master local `fadd9ed7`. Producción es **pixy CRM Backend** en Coolify, `https://app.pixy.com.co`. Los despliegues son manuales: actualizar master no despliega la aplicación. No se ha actualizado master, hecho push, aplicado SQL remoto ni inspeccionado la configuración real del contenedor.
 
 ## Puertas antes de publicar
 
 1. Aceptar el candidato actualizado en localhost:3005. El usuario hace navegador y respuestas reales; los resultados offline no sustituyen esta aceptación.
 2. Ejecutar [consulta de esquema](../../../scripts/migrations/check-pixy-help-release.sql) en el SQL Editor del proyecto Supabase que usa ese backend. Es `BEGIN READ ONLY` con `ROLLBACK`, consulta catálogos y versiones, sin preguntas, mensajes, tokens ni filas de negocio. Confirmar la identidad del proyecto desde Coolify; el enlace CLI histórico «Pixy control» del root no prueba que sea el destino actual.
 3. Comparar versiones **y nombres**, además de objetos/privilegios presentes. Registrar respaldo/restauración disponible y el commit/artefacto de aplicación anterior. Una versión registrada no demuestra que se aplicó este archivo.
-4. Preparar configuración con robot y V2/portal inicialmente apagados. Aplicar las migraciones pendientes aprobadas y comprobar otra vez el esquema **antes** de actualizar master: la nueva cuota también afecta legacy. Una migración ausente puede dejar la ayuda indisponible aunque V2 esté apagado.
+4. Preparar configuración con robot y V2/portal inicialmente apagados. Aplicar las migraciones pendientes aprobadas y comprobar otra vez el esquema **antes del despliegue manual**: la nueva cuota también afecta legacy. Una migración ausente puede dejar la ayuda indisponible aunque V2 esté apagado. La comprobación SQL no es un requisito técnico para integrar o subir código a master mientras no se despliegue esa versión.
 5. Confirmar que la entrega incluye los dos commits de onboarding de master local aún ausentes del remoto y su migración. Resolver cualquier colisión real de versión en el destino; no borrar ni sobrescribir registros existentes para hacer coincidir el listado.
 
 Si falta información del destino, mantener el candidato local. El acceso a producción no se deduce de `.env.local`, del backup antiguo ni de otro worktree.
 
 ## Migraciones de esta entrega y su base
+
+Resultado del usuario recibido el 2026-10-13: faltan las cinco migraciones de ayuda y su dependencia `organization_members.status`. Lote transaccional concreto y evidencia de pruebas en [preparación de migraciones de producción](pixy-help-production-batch-20261013.md). Onboarding se mantiene aparte; no está instalado según ese resultado. El lote de ayuda aún no se ha ejecutado en producción.
 
 | Versión / nombre | Dependencia y comprobación |
 |---|---|
@@ -32,7 +34,7 @@ Lectura del informe: todos los `baseline_columns.present` deben ser true. Todas 
 - En Coolify: `PIXY_HELP_V2_ENABLED=false`, `PIXY_HELP_TASKS_PORTAL_ENABLED=false`, listas de tenants sin wildcard; mantener inicialmente `PIXY_HELP_DIAGNOSTICS_ENABLED=false` o activarlo solo para diagnóstico de metadatos. No imprimir valores de claves del proveedor ni copiar UUIDs del helper local por suposición.
 - Confirmar PIN/session signing, proveedor, presupuesto y estado de IA del tenant con sus mecanismos existentes. No crear ni reactivar tenants como parte del despliegue.
 - Revisar diff final y SHA remota antes de integrar. Referencia de master comprobada en este cierre: `b0f3cf9e48edb83894822ea9c3bbcfb3ffc35840`. Si cambia, incorporar/revisar la nueva base y verificar de nuevo lo afectado. No trasladar la rama antigua `pixyrobotpet`: contiene Cartera.
-- Después de aceptar SQL, respaldo y alcance, integrar el candidato en master preservando su checkout y cambios ajenos. Publicar master es la acción que dispara Coolify; requiere autorización explícita para ese despliegue concreto. No se ejecuta un push preliminar a master como ensayo.
+- Integrar y publicar el candidato en master preservando su checkout y cambios ajenos dentro del alcance autorizado. Ese push no despliega producción. El despliegue manual en Coolify se realiza por separado, después de aceptar SQL, respaldo, configuración y alcance; no confundir publicación de código con migración o despliegue.
 - Esperar build/deploy correcto y comprobar login, acceso simple a ayuda y errores de servidor. Activar dashboard V2 solo en tenants de producción verificados; configurar mascota en super admin. Portal se activa por separado tras aceptar PIN/perfiles/ámbito. Cambios de variables pueden requerir redeploy en Coolify.
 
 ## Aceptación y reversión
