@@ -28,7 +28,7 @@ export function TaskMetricsView({
   tasks = [],
   collaborators = [],
   projects = [],
-  brandColor = "#8ec045",
+  brandColor,
   sprints = [],
   activeSprint,
   onSprintCreated,

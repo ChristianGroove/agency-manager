@@ -1036,6 +1036,8 @@ export function TaskManagerView({
           allTasks={projectTasks}
           selectedMemberId={selectedMemberFilter}
           onSelectMember={setSelectedMemberFilter}
+          brandColor={tenantBranding?.primaryColor}
+          organizationName={tenantBranding?.name}
         />
       )}
 
@@ -1344,6 +1346,7 @@ export function TaskManagerView({
             tasks={visibleTasks}
             onSelectTask={handleSelectTask}
             onQuickMoveTask={handleQuickMoveTask}
+            brandColor={tenantBranding?.primaryColor}
             onNewTaskInColumn={(colStatus) => {
               setNewTaskColumnStatus(colStatus)
               setIsTaskModalOpen(true)
@@ -1380,6 +1383,7 @@ export function TaskManagerView({
             sprints={sprints}
             includeMeetings={includeMeetings}
             onTaskClick={handleSelectTask}
+            brandColor={tenantBranding?.primaryColor}
           />
         )}
 
@@ -1391,6 +1395,7 @@ export function TaskManagerView({
             workspaces={workspaces}
             onSelectTask={handleSelectTask}
             tenantBranding={tenantBranding}
+            brandColor={tenantBranding?.primaryColor}
           />
         )}
 
@@ -1402,6 +1407,7 @@ export function TaskManagerView({
             projects={availableProjects}
             sprints={sprints}
             activeSprint={activeSprintObj}
+            brandColor={tenantBranding?.primaryColor}
             onSprintCreated={(newSprint) => {
               setSprints((prev) => [newSprint, ...prev])
               router.refresh()
@@ -1452,6 +1458,7 @@ export function TaskManagerView({
         collaborators={collaborators}
         availableTasks={tasks}
         onSelectTask={(t) => setSelectedTask(t)}
+        brandColor={tenantBranding?.primaryColor}
       />
 
       {/* Task Creation Modal */}

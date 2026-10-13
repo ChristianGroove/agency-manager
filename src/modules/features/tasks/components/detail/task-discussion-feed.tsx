@@ -22,6 +22,7 @@ import type { TaskComment, TaskCollaborator, TaskItem, TaskAttachment } from "..
 import { parseSystemAuditNote } from "../../types"
 import { renderFormattedComment } from "../../utils/task-comment-utils"
 import { getCollaboratorAvatar } from "../../utils/avatar-presets"
+import { cn } from "@/modules/infrastructure/utils/utils"
 
 export interface TaskDiscussionFeedProps {
   comments: TaskComment[]
@@ -43,7 +44,7 @@ export function TaskDiscussionFeed({
   onSelectTask,
   onAddComment,
   onUploadCommentAttachment,
-  brandColor = "#8ec045",
+  brandColor,
   disabled = false,
 }: TaskDiscussionFeedProps) {
   const [newCommentText, setNewCommentText] = useState("")
@@ -265,14 +266,14 @@ export function TaskDiscussionFeed({
                 >
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      <Avatar className="w-5 h-5 shrink-0" style={{ backgroundColor: brandColor }}>
+                      <Avatar className="w-5 h-5 shrink-0 bg-transparent">
                         <AvatarImage
                           src={getCollaboratorAvatar(c.author_avatar, c.author_name)}
                           className="object-cover"
                         />
                         <AvatarFallback
-                          className="text-[9px] font-bold text-white"
-                          style={{ backgroundColor: brandColor }}
+                          className={cn("text-[9px] font-bold", brandColor ? "text-white" : "bg-muted text-muted-foreground")}
+                          style={brandColor ? { backgroundColor: brandColor } : undefined}
                         >
                           {c.author_name ? c.author_name.slice(0, 2).toUpperCase() : "US"}
                         </AvatarFallback>

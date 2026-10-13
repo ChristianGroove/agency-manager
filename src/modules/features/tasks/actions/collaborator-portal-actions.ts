@@ -368,7 +368,7 @@ export const getCollaboratorPortalData = cache(async (token: string): Promise<Co
       .select("brand_color_primary, brand_color_secondary")
       .eq("id", 1)
       .maybeSingle();
-    tenantPrimary = platform?.brand_color_primary || "#8ec045";
+    tenantPrimary = platform?.brand_color_primary || "#4F46E5";
     tenantSecondary = platform?.brand_color_secondary || "#5c8ea9";
   }
 
@@ -405,7 +405,7 @@ export const getCollaboratorPortalData = cache(async (token: string): Promise<Co
     logo_dark_url: logoDark || logoLight,
     logo_light_url: logoLight || logoDark,
     isotipo_url: tenantIsotipo,
-    primary_color: tenantPrimary || "#8ec045",
+    primary_color: tenantPrimary || "#4F46E5",
     secondary_color: tenantSecondary || "#5c8ea9"
   };
 

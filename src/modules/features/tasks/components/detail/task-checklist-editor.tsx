@@ -40,7 +40,7 @@ export function TaskChecklistEditor({
   canManageChecklist = true,
   canToggleItem,
   currentStaffId,
-  brandColor = "#8ec045",
+  brandColor,
   onToggleItem,
   onUpdateAssignee,
   onUpdateWeek,

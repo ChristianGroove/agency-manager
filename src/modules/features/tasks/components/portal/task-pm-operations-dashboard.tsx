@@ -204,7 +204,7 @@ export function TaskPmOperationsDashboard({
   projects,
   workspaces = [],
   organization = { name: "Plataforma" },
-  brandColor = organization?.primary_color || "#8ec045",
+  brandColor = organization?.primary_color || undefined,
   sprints = [],
   activeSprint = null,
   token,
@@ -1823,7 +1823,7 @@ export function TaskPmOperationsDashboard({
                           <span className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded-md bg-zinc-200/60 dark:bg-white/10 font-medium text-muted-foreground">
                             <span
                               className="w-1.5 h-1.5 rounded-full shrink-0"
-                              style={{ backgroundColor: project.color || "#8ec045" }}
+                              style={{ backgroundColor: project.color || brandColor || "var(--primary)" }}
                             />
                             <span className="truncate max-w-[120px]">{project.name}</span>
                           </span>
@@ -1912,9 +1912,9 @@ export function TaskPmOperationsDashboard({
                     )}
                     {member && (
                       <div className="flex items-center gap-2">
-                        <Avatar className="w-6 h-6 border border-background shadow-xs" style={{ backgroundColor: brandColor }}>
+                        <Avatar className="w-6 h-6 border border-background shadow-xs bg-transparent">
                           <AvatarImage src={getCollaboratorAvatar(member.photo_url, member.first_name)} className="object-cover" />
-                          <AvatarFallback className="text-[9px] font-bold text-white" style={{ backgroundColor: brandColor }}>
+                          <AvatarFallback className="text-[9px] font-bold text-white" style={brandColor ? { backgroundColor: brandColor } : undefined}>
                             {member.first_name[0]}
                           </AvatarFallback>
                         </Avatar>

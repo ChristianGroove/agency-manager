@@ -71,7 +71,7 @@ export function TaskCollaboratorRibbon({
   allTasks,
   selectedMemberId,
   onSelectMember,
-  brandColor = "#8ec045",
+  brandColor,
   organizationName = "",
   className,
 }: TaskCollaboratorRibbonProps) {

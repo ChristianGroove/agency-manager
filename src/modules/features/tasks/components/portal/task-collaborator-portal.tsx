@@ -569,7 +569,7 @@ export function TaskCollaboratorPortal({
   helpEnabled = false,
 }: TaskCollaboratorPortalProps) {
   const { staff, organization, projects: initialProjects = [], workspaces: initialWorkspaces = [], isLeadOrPm, isQa } = portalData
-  const brandColor = organization?.primary_color || "#8ec045"
+  const brandColor = organization?.primary_color || "#4F46E5"
 
   // Bulk delete permissions & selection state
   const canBulkDelete = Boolean(
@@ -3800,7 +3800,7 @@ export function TaskCollaboratorPortal({
                       <div className="flex items-center gap-2">
                         {task.assigned_staff ? (
                           <div className="flex items-center gap-2 text-xs text-zinc-700 dark:text-zinc-300">
-                            <Avatar className="w-6 h-6 rounded-full border border-border shrink-0 shadow-2xs" style={{ backgroundColor: brandColor }}>
+                            <Avatar className="w-6 h-6 rounded-full border border-border shrink-0 shadow-2xs bg-transparent">
                               <AvatarImage src={getCollaboratorAvatar(task.assigned_staff.photo_url, task.assigned_staff.first_name)} className="object-cover" />
                               <AvatarFallback className="text-[9px] text-white font-bold" style={{ backgroundColor: brandColor }}>
                                 {task.assigned_staff.first_name[0]}
@@ -4241,7 +4241,7 @@ export function TaskCollaboratorPortal({
                   {/* Compact Footer */}
                   <div className="flex items-center justify-between gap-2 pt-2 border-t border-zinc-100 dark:border-white/5 text-xs">
                     <div className="flex items-center gap-1.5 truncate">
-                      <Avatar className="w-5 h-5 rounded-full border shrink-0 shadow-2xs" style={{ backgroundColor: brandColor }}>
+                      <Avatar className="w-5 h-5 rounded-full border shrink-0 shadow-2xs bg-transparent">
                         <AvatarImage src={getCollaboratorAvatar(task.assigned_staff?.photo_url, task.assigned_staff?.first_name)} className="object-cover" />
                         <AvatarFallback className="text-[8px] font-bold text-white" style={{ backgroundColor: brandColor }}>
                           {task.assigned_staff?.first_name?.[0] || "?"}
@@ -4498,7 +4498,7 @@ export function TaskCollaboratorPortal({
                               <td className="px-4 py-3.5" onClick={(e) => e.stopPropagation()}>
                                 {task.assigned_staff ? (
                                   <div className="flex items-center gap-1.5">
-                                    <Avatar className="w-5 h-5 rounded-full border shrink-0 shadow-2xs" style={{ backgroundColor: brandColor }}>
+                                    <Avatar className="w-5 h-5 rounded-full border shrink-0 shadow-2xs bg-transparent">
                                       <AvatarImage src={getCollaboratorAvatar(task.assigned_staff.photo_url, task.assigned_staff.first_name)} className="object-cover" />
                                       <AvatarFallback className="text-[8px] font-bold text-white" style={{ backgroundColor: brandColor }}>
                                         {task.assigned_staff.first_name[0]}

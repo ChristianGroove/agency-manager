@@ -76,6 +76,7 @@ interface TaskDetailModalProps {
   onSelectTask?: (task: TaskItem) => void
   isLeadOrPm?: boolean
   currentStaffId?: string | null
+  brandColor?: string
 }
 
 export function TaskDetailModal({
@@ -89,6 +90,7 @@ export function TaskDetailModal({
   onSelectTask,
   isLeadOrPm = true,
   currentStaffId,
+  brandColor,
 }: TaskDetailModalProps) {
   if (!task) return null
 
@@ -830,6 +832,7 @@ export function TaskDetailModal({
                 onUpdateWeek={handleUpdateChecklistWeek}
                 onRemoveItem={handleRemoveChecklistItem}
                 onAddItem={handleAddChecklistItem}
+                brandColor={brandColor}
               />
 
               {/* Modular References, Links & Attachments Section */}
@@ -860,6 +863,7 @@ export function TaskDetailModal({
                 onAddComment={handleAddComment}
                 onUploadCommentAttachment={handleUploadCommentAttachment}
                 disabled={isTerminalLocked}
+                brandColor={brandColor}
               />
             </div>
 

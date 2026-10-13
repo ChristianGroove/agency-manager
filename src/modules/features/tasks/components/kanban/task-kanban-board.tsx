@@ -149,7 +149,7 @@ const SortableTaskCard = React.memo(
     task,
     onSelectTask,
     isOverlay = false,
-    brandColor = "#8ec045",
+    brandColor,
   }: {
     task: TaskItem
     onSelectTask?: (task: TaskItem) => void
@@ -437,7 +437,7 @@ export function TaskKanbanBoard({
   onSelectTask,
   onQuickMoveTask,
   onNewTaskInColumn,
-  brandColor = "#8ec045",
+  brandColor,
 }: TaskKanbanBoardProps) {
   const [activeId, setActiveId] = useState<string | null>(null)
 

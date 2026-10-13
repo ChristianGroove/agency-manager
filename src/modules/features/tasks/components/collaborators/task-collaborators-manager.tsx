@@ -736,9 +736,9 @@ export function TaskCollaboratorsManager({
                     {/* Colaborador Avatar + Nombre */}
                     <td className="p-3.5 pl-4">
                       <div className="flex items-center gap-3">
-                        <Avatar className="w-9 h-9 border border-border/60 shrink-0 shadow-sm" style={{ backgroundColor: "#8ec045" }}>
+                        <Avatar className="w-9 h-9 border border-border/60 shrink-0 shadow-sm bg-transparent">
                           <AvatarImage src={getCollaboratorAvatar(collab.photo_url, collab.first_name)} className="object-cover" />
-                          <AvatarFallback className="text-xs bg-primary/10 text-primary font-bold">
+                          <AvatarFallback className="text-xs bg-muted text-muted-foreground font-bold">
                             {collab.first_name[0]}
                             {collab.last_name[0]}
                           </AvatarFallback>

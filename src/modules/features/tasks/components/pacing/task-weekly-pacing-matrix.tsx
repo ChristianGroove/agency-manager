@@ -132,10 +132,11 @@ export function TaskWeeklyPacingMatrix({
   projects = [],
   workspaces = [],
   onSelectTask,
-  brandColor = "#8ec045",
+  brandColor,
   tenantBranding,
   className,
 }: TaskWeeklyPacingMatrixProps) {
+  const effectiveBrandColor = tenantBranding?.primaryColor || brandColor
   const [currentDate, setCurrentDate] = useState<Date>(new Date())
   const [searchQuery, setSearchQuery] = useState("")
   const [selectedMember, setSelectedMember] = useState("all")
@@ -1208,7 +1209,7 @@ export function TaskWeeklyPacingMatrix({
         filterPreset={filterPreset}
         metrics={metrics}
         tenantBranding={tenantBranding}
-        brandColor={brandColor}
+        brandColor={effectiveBrandColor}
       />
     </div>
   )

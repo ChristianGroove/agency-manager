@@ -80,13 +80,13 @@ export function TaskPacingPdfModal({
   filterPreset,
   metrics,
   tenantBranding,
-  brandColor = "#8ec045",
+  brandColor,
 }: TaskPacingPdfModalProps) {
   const [isExporting, setIsExporting] = useState(false)
   const reportRef = useRef<HTMLDivElement>(null)
 
   const monthName = format(currentDate, "MMMM yyyy", { locale: es })
-  const effectiveBrandColor = tenantBranding?.primaryColor || brandColor || "#8ec045"
+  const effectiveBrandColor = tenantBranding?.primaryColor || brandColor || "#0284c7"
 
   const totalEstimated = useMemo(() => {
     if (metrics.totalEstimatedHours !== undefined) return metrics.totalEstimatedHours

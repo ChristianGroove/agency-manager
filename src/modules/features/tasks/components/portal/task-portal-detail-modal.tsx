@@ -154,7 +154,7 @@ export function TaskPortalDetailModal({
   defaultStatus,
   defaultProjectId,
   defaultType = "task",
-  brandColor = "#8ec045",
+  brandColor,
   currentStaffId,
   onTaskCreated,
   onTaskUpdated,
@@ -1467,9 +1467,9 @@ export function TaskPortalDetailModal({
                 </Select>
               ) : (
                 <div className="flex items-center gap-2 p-2 rounded-xl bg-background border border-border/60 text-xs">
-                  <Avatar className="w-6 h-6 shrink-0 rounded-full" style={{ backgroundColor: brandColor }}>
+                  <Avatar className="w-6 h-6 shrink-0 rounded-full bg-transparent">
                     <AvatarImage src={getCollaboratorAvatar(task?.assigned_staff?.photo_url, task?.assigned_staff?.first_name)} className="object-cover" />
-                    <AvatarFallback className="text-[10px] font-bold text-white" style={{ backgroundColor: brandColor }}>
+                    <AvatarFallback className="text-[10px] font-bold text-white" style={brandColor ? { backgroundColor: brandColor } : undefined}>
                       {(task?.assigned_staff?.first_name || "A").slice(0, 1)}
                     </AvatarFallback>
                   </Avatar>
