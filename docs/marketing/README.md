@@ -9,9 +9,11 @@ La [segunda sincronización del 13 de octubre](master-sync-2026-10-13.md) incorp
 
 El [preflight de producción](production-preflight-2026-10-13.md) confirma el destino y las 16 migraciones de Marketing pendientes mediante consultas reales y un dry-run acotado; documenta índices y el punto de recuperación antes de aplicarlas.
 
+El [cierre de base del 13 de octubre](production-db-closeout-2026-10-13.md) registra la aplicación posterior autorizada de esas 16 migraciones, sus comprobaciones y la integración local a master. El preflight anterior se conserva como antecedente, no como estado pendiente actual.
+
 ## Estado de entrega
 
-La implementación actual está terminada y guardada localmente. Se ha comprobado con pruebas automatizadas y build, pero **no está habilitada para envíos masivos en producción**. Las migraciones de Marketing se aplicaron únicamente en Supabase Docker local. La revisión visual autenticada y una campaña real pequeña siguen pendientes.
+La implementación actual está terminada y guardada localmente. Se ha comprobado con pruebas automatizadas y build, pero **no está habilitada para envíos masivos en producción**. Las 16 migraciones de Marketing se aplicaron también al proyecto de producción confirmado el 13 de octubre, sin Cartera. La publicación del código, el despliegue manual, la revisión visual autenticada y una campaña real pequeña siguen pendientes.
 
 WhatsApp y email mediante SMTP verificado comparten el flujo de campañas; SMS sigue aplazado. Email tiene permisos, bajas y outbox propios, sin sustituir el transporte Meta ni los correos transaccionales. SMTP solo acredita aceptación del servidor. Consulta la [etapa 14](implementation-stage-14.md) para migraciones, configuración y límites.
 

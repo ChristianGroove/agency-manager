@@ -2,6 +2,8 @@
 
 13 de octubre de 2026. Candidato: `codex/marketing-campaign-hardening` en `99b6aa6e`; `master` y `origin/master` en `c5918870`.
 
+Actualización posterior: el usuario autorizó y se aplicaron las 16 migraciones. El [cierre real](production-db-closeout-2026-10-13.md) sustituye el estado pendiente de este preflight; se conserva el informe para trazabilidad.
+
 ## Veredicto
 
 La rama contiene el master actual, no tiene archivos pendientes y conserva las validaciones de la segunda sincronización: build/TypeScript y 733 casos comprobados, incluida la repetición aislada de un timeout. Está preparada técnicamente para integrarse. La revisión visual autenticada y el envío controlado con proveedor siguen pendientes: publicar el código no equivale a habilitar masivos.

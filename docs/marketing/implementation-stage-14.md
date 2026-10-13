@@ -2,6 +2,8 @@
 
 11 de octubre de 2026. Rama `codex/marketing-campaign-hardening`. Implementación local; no publicación ni envíos reales.
 
+Actualización del 13 de octubre: las migraciones se aplicaron posteriormente al proyecto de producción confirmado, con autorización explícita y sin activar envíos. Ver el [cierre de base](production-db-closeout-2026-10-13.md). La evidencia local y las pruebas pendientes de esta etapa siguen conservadas debajo como antecedentes.
+
 ## Producto
 
 Campañas masivas permite escoger WhatsApp o el SMTP verificado de la organización en el mismo espacio flotante. WhatsApp conserva sus plantillas Meta; email utiliza asunto y mensaje de texto con vista previa y variables `{{nombre}}`, `{{empresa}}` y `{{email}}`. El contenido se convierte en HTML escapado, sin permitir scripts, archivos locales o recursos obtenidos por Nodemailer desde URLs.
