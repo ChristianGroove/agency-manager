@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "revision": "cbcc2331e83a2c7ee16417a8f5ecca8ca6e688456c005e1484d0dc54017187a7",
+  "revision": "8bf83e3f9b3431b635e0856f59e3e5baafc5ff5e866005120e0dbeab16897fae",
   "articles": [
     {
       "id": "automation.create-workflows",
@@ -585,7 +585,7 @@
       ],
       "verticals": [],
       "link_route": "/operations/tasks",
-      "revision": "ba026b1bbca6916173bbfb6245e1d7055586f0401e99f98d56386bab9c9c4c2c"
+      "revision": "dd2d63269e7b5981a4ab9f665aafd46dce7e97f6ab557d016148316c3aacf2ae"
     },
     {
       "id": "theme.toggle-theme",
@@ -646,7 +646,7 @@
       "required_permissions": [],
       "verticals": [],
       "link_route": null,
-      "revision": "64992c37c9abfb0dd6657ae34175fb33adbd8cc29395b7879a837e38b5efbb9c",
+      "revision": "b2812ba3fc775a6094b1ff7e80119b27bd4c587eabf91b912a9ea1d85c057010",
       "portal_profiles": [
         "collaborator",
         "qa",
@@ -712,7 +712,7 @@
       "required_permissions": [],
       "verticals": [],
       "link_route": null,
-      "revision": "3f52843051e5157f95a138b1b167535ad18a666ce9f6e8d01aa2ba339536d9ff",
+      "revision": "b2a24f725e4e3936d5b3762b17c545db3953cb4d803391e2dae44456b86525b3",
       "portal_profiles": [
         "collaborator",
         "qa",
@@ -1257,7 +1257,7 @@
       "required_permissions": [],
       "verticals": [],
       "link_route": null,
-      "revision": "3b299052213ff62a758157faf11ba2490fce87584f4240b8ae4af45242678112",
+      "revision": "09d425a308bdcc985d94cf8fd5840ca4efd845b9f581d185fd07cc3c0fea1c22",
       "portal_profiles": [
         "collaborator",
         "qa",

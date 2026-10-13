@@ -1,5 +1,7 @@
 # Preparación de publicación de la ayuda Pixy
 
+Guía operativa vigente: [secuencia de publicación y comprobación de esquema](pixy-help-release-runbook.md). Este documento conserva los antecedentes de separación y validación. El cierre posterior añade una quinta migración de ayuda (`20261012000006_help_function_privileges`) y corrige la resolución del espacio de una tarea a través de su proyecto.
+
 Inspección: 2026-10-12. Candidato inspeccionado: `pixyrobotpet` en `751aa83b`. Este documento registra pendientes; no autoriza ni acredita merge, push, despliegue o cambios en la base remota.
 
 Actualización de separación: existe el candidato `codex/pixyrobotpet-release` en `tmp/pet-release`, basado en master local `fadd9ed7` y con los 30 commits de ayuda trasladados. El diff contra master excluye Cartera y no tiene colisiones de versiones SQL. Dependencias instaladas con `npm ci` en un directorio propio; 207 pruebas en 27 archivos correctas, corpus de 48 artículos idéntico tras publicación portable y build estándar completo con exit 0. Ver [verificación acotada y snapshot vigente](../../1-product/help-library/reviews/tasks-master-release-reverification-20261012.md). El detalle inicial de la mezcla siguiente corresponde a la rama del piloto preservada.

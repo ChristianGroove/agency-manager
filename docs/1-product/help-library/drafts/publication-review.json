@@ -364,14 +364,14 @@
     },
     {
       "id": "tasks.manage-tasks",
-      "draft_sha256": "ba026b1bbca6916173bbfb6245e1d7055586f0401e99f98d56386bab9c9c4c2c",
-      "reviewed_by": "Gemini (revisión incremental); Codex (lenguaje y límites de integración)",
+      "draft_sha256": "dd2d63269e7b5981a4ab9f665aafd46dce7e97f6ab557d016148316c3aacf2ae",
+      "reviewed_by": "Gemini (editorial); Codex (lenguaje y contraste del diff de esquema Tasks)",
       "reviewed_on": "2026-10-12",
       "evidence_sha256": {
         "src/app/(dashboard)/operations/tasks/page.tsx": "f02df8c679610577511ec8da178e028bb69b298d27a7c6d896ebca9654277c53",
         "src/modules/features/tasks/components/task-manager-view.tsx": "f0ca2c3ee76a428607278139e1d0dddfb2e45708f463729ba8191a32c1fc27f0",
         "src/modules/core/iam/actions/permissions.ts": "d254478fa40e35db44125d1a70c8fa7fee5f7a7dc8e53639bb0d48ffe5ca1fdd",
-        "src/modules/features/tasks/services/task-mutation-access.ts": "24afe0a24d068fabf9a2d9cfda3b56dc94f348360abb01fff5b3ce9e20f8da3e",
+        "src/modules/features/tasks/services/task-mutation-access.ts": "9c5e61ab70345180cbd99b903e3ad40fd77678809c2cda5008fc02720b82d66d",
         "src/modules/features/tasks/actions/task-actions.ts": "8b179566ee5a243b484fc9c5530093426a9c8beea73b86015ae974b98f872650"
       },
       "required_modules": [
@@ -400,14 +400,14 @@
     },
     {
       "id": "tasks-portal.access-and-pin",
-      "draft_sha256": "64992c37c9abfb0dd6657ae34175fb33adbd8cc29395b7879a837e38b5efbb9c",
-      "reviewed_by": "Gemini (revisión incremental); Codex (lenguaje y límites de integración)",
+      "draft_sha256": "b2812ba3fc775a6094b1ff7e80119b27bd4c587eabf91b912a9ea1d85c057010",
+      "reviewed_by": "Gemini (editorial); Codex (lenguaje y contraste del diff de esquema Tasks)",
       "reviewed_on": "2026-10-12",
       "evidence_sha256": {
         "src/app/(public)/portal/tasks/[token]/page.tsx": "1de062f7df1717f78d23450e0db256c5eb6bda8e39af6de3fb36b2939aacf9c7",
         "src/modules/features/portal-security/actions/portal-security-actions.ts": "fdb0b51a2fafc9e2d32864bd74ad5fce0b139f169f0714b771711cb18116e2d8",
         "src/modules/features/portal-security/components/portal-lockscreen.tsx": "288e7f17d8287eb24dff8aba40994231cf514142e8f4e7a3a749b2f7a68c738b",
-        "src/modules/features/tasks/services/task-mutation-access.ts": "24afe0a24d068fabf9a2d9cfda3b56dc94f348360abb01fff5b3ce9e20f8da3e"
+        "src/modules/features/tasks/services/task-mutation-access.ts": "9c5e61ab70345180cbd99b903e3ad40fd77678809c2cda5008fc02720b82d66d"
       },
       "required_modules": [
         "module_tasks"
@@ -447,13 +447,13 @@
     },
     {
       "id": "tasks-portal.bulk-actions",
-      "draft_sha256": "3f52843051e5157f95a138b1b167535ad18a666ce9f6e8d01aa2ba339536d9ff",
-      "reviewed_by": "Gemini (revisión incremental); Codex (lenguaje y límites de integración)",
+      "draft_sha256": "b2a24f725e4e3936d5b3762b17c545db3953cb4d803391e2dae44456b86525b3",
+      "reviewed_by": "Gemini (editorial); Codex (lenguaje y contraste del diff de esquema Tasks)",
       "reviewed_on": "2026-10-12",
       "evidence_sha256": {
         "src/modules/features/tasks/actions/collaborator-portal-actions.ts": "3dbb2eff369ba13e067e4b29eb99a7783eee47d63102b14a463b29ab145933b3",
         "src/modules/core/ui/components/bulk-actions-floating-bar.tsx": "0aebc02692989ef427cac26cd395a90b5444a508c4f862c62d1b2a24d4564864",
-        "src/modules/features/tasks/services/task-mutation-access.ts": "24afe0a24d068fabf9a2d9cfda3b56dc94f348360abb01fff5b3ce9e20f8da3e"
+        "src/modules/features/tasks/services/task-mutation-access.ts": "9c5e61ab70345180cbd99b903e3ad40fd77678809c2cda5008fc02720b82d66d"
       },
       "required_modules": [
         "module_tasks"
@@ -780,13 +780,13 @@
     },
     {
       "id": "tasks-portal.task-lifecycle-and-status",
-      "draft_sha256": "3b299052213ff62a758157faf11ba2490fce87584f4240b8ae4af45242678112",
-      "reviewed_by": "Gemini (revisión incremental); Codex (lenguaje y límites de integración)",
+      "draft_sha256": "09d425a308bdcc985d94cf8fd5840ca4efd845b9f581d185fd07cc3c0fea1c22",
+      "reviewed_by": "Gemini (editorial); Codex (lenguaje y contraste del diff de esquema Tasks)",
       "reviewed_on": "2026-10-12",
       "evidence_sha256": {
         "src/modules/features/tasks/actions/collaborator-portal-actions.ts": "3dbb2eff369ba13e067e4b29eb99a7783eee47d63102b14a463b29ab145933b3",
         "src/modules/features/tasks/components/shared/task-status-interactive-badge.tsx": "17745c2ed8453c3069fc8ec455ecdc2095b66dae3d91e067d3759e8728766260",
-        "src/modules/features/tasks/services/task-mutation-access.ts": "24afe0a24d068fabf9a2d9cfda3b56dc94f348360abb01fff5b3ce9e20f8da3e"
+        "src/modules/features/tasks/services/task-mutation-access.ts": "9c5e61ab70345180cbd99b903e3ad40fd77678809c2cda5008fc02720b82d66d"
       },
       "required_modules": [
         "module_tasks"
