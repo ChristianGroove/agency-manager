@@ -6,7 +6,7 @@ module: tasks
 status: draft
 surface: portal.tasks
 audience: portal-collaborator
-source_revision: 5aaeec98767f13ec9b495eed33486fcdba65ab86
+source_revision: 4063682d86bc2ad07e4977e54e89fbbddcd6d47b
 verified_on: 2026-10-12
 verification: source-only
 routes:
@@ -42,6 +42,9 @@ evidence:
   - path: src/modules/features/portal-security/components/portal-lockscreen.tsx
     symbol: PortalLockscreen
     claim: Despliega el teclado numérico de desbloqueo cuando el colaborador tiene un código PIN activo.
+  - path: src/modules/features/tasks/services/task-mutation-access.ts
+    symbol: requirePortalTaskMutation
+    claim: Valida que la sesión esté desbloqueada por PIN mediante isPortalSessionUnlocked antes de permitir mutaciones de tareas en el portal.
 ---
 
 # Acceder al portal de tareas y configurar protección con código PIN
@@ -54,6 +57,7 @@ Los perfiles de usuario del bot de ayuda no otorgan acceso a enlaces de terceros
 - **Token único por colaborador:** Cada enlace web está asociado a un registro individual activo en `organization_staff`. El token es privado, no caduca por simple cierre de pestaña y pertenece exclusivamente al colaborador.
 - **Perfiles aplicables:** Todos los colaboradores con token de acceso activo (Desarrolladores, Diseñadores, Especialistas, QA, PMs y Soporte).
 - **Aislamiento de sesión:** La cookie de desbloqueo de PIN se emite de forma estricta (`HttpOnly`) para el navegador y dispositivo en uso.
+- **PIN para acciones de gestión:** Si tu portal tiene un PIN configurado, debes desbloquearlo antes de cambiar prioridades, reasignar o eliminar tareas, individualmente o en grupo. El enlace privado por sí solo no permite ejecutar esas acciones mientras la sesión está bloqueada.
 
 ## Ubicación en pantalla
 - **Ruta web:** `/portal/tasks/[token]` (tu URL privada única).
@@ -98,3 +102,4 @@ Acceso directo, seguro y protegido a tus entregables, impidiendo que personas no
 - Entrada de página: `src/app/(public)/portal/tasks/[token]/page.tsx`
 - Acciones de servidor: `src/modules/features/portal-security/actions/portal-security-actions.ts`
 - Componente visual de bloqueo: `src/modules/features/portal-security/components/portal-lockscreen.tsx`
+- Guard de seguridad de mutación con verificación de PIN: `src/modules/features/tasks/services/task-mutation-access.ts` (`requirePortalTaskMutation`)

@@ -1,5 +1,5 @@
 {
-  "corpus_revision": "b4d8246f80785623dda03822d5bb7a9ad045c149b685ff413095d1ddb2b2fcea",
+  "corpus_revision": "cbcc2331e83a2c7ee16417a8f5ecca8ca6e688456c005e1484d0dc54017187a7",
   "articles": 48,
   "questions": 65,
   "covered_answer_cases": 56,
@@ -50,8 +50,7 @@
       ],
       "retrieved": [
         "help.chat-and-history",
-        "pet.pet-interaction",
-        "tasks.import-data"
+        "pet.pet-interaction"
       ],
       "status": "retrieval_hit"
     },
@@ -110,8 +109,7 @@
       ],
       "retrieved": [
         "help.chat-and-history",
-        "inbox.manage-conversations",
-        "crm.manage-contacts"
+        "inbox.manage-conversations"
       ],
       "status": "retrieval_hit"
     },
@@ -302,8 +300,7 @@
       ],
       "retrieved": [
         "inbox.manage-conversations",
-        "help.chat-and-history",
-        "dashboard.overview"
+        "inbox.saved-replies-and-templates"
       ],
       "status": "retrieval_hit"
     },
@@ -490,8 +487,7 @@
       ],
       "retrieved": [
         "tasks.manage-tasks",
-        "tasks.task-lifecycle-and-views",
-        "tasks.collaborators-and-portals"
+        "tasks.task-lifecycle-and-views"
       ],
       "status": "retrieval_hit"
     },
@@ -631,8 +627,8 @@
         "dashboard.overview"
       ],
       "retrieved": [
+        "tasks.manage-tasks",
         "iam.invite-members",
-        "inbox.manage-conversations",
         "dashboard.overview"
       ],
       "status": "boundary_requires_action_or_model_check"
@@ -697,8 +693,8 @@
       ],
       "published_expected": [],
       "retrieved": [
-        "tasks.manage-tasks",
-        "inbox.saved-replies-and-templates"
+        "help.chat-and-history",
+        "tasks.manage-tasks"
       ],
       "status": "boundary_requires_action_or_model_check"
     },
@@ -743,8 +739,7 @@
       ],
       "retrieved": [
         "dashboard.overview",
-        "help.chat-and-history",
-        "billing.manage-invoices"
+        "help.chat-and-history"
       ],
       "status": "retrieval_hit"
     },
@@ -759,8 +754,7 @@
       ],
       "retrieved": [
         "iam.manage-roles",
-        "help.chat-and-history",
-        "iam.invite-members"
+        "help.chat-and-history"
       ],
       "status": "retrieval_hit"
     },
@@ -899,8 +893,8 @@
       ],
       "retrieved": [
         "iam.invite-members",
-        "tasks.task-lifecycle-and-views",
-        "tasks.manage-tasks"
+        "tasks.manage-tasks",
+        "iam.manage-roles"
       ],
       "status": "retrieval_hit"
     },

@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "source_revision": "047fa7ee0cadc0f49d9ce08220f633885b0801a7",
+  "source_revision": "4063682d86bc2ad07e4977e54e89fbbddcd6d47b",
   "modules": [
     {
       "id": "dashboard",
@@ -90,7 +90,8 @@
         "src/modules/features/caa/components/ai-chat-panel.tsx",
         "src/modules/features/caa/components/help-history-menu.tsx",
         "src/modules/features/caa/actions/help-history.ts",
-        "src/modules/features/caa/actions/ask-help-assistant.ts"
+        "src/modules/features/caa/actions/ask-help-assistant.ts",
+        "src/modules/features/caa/library/dashboard-quota.ts"
       ],
       "article_ids": [
         "help.chat-and-history"
@@ -324,14 +325,15 @@
       "evidence_paths": [
         "src/app/(dashboard)/operations/tasks/page.tsx",
         "src/modules/features/tasks/components/kanban/task-kanban-board.tsx",
-        "src/modules/features/tasks/actions/task-actions.ts"
+        "src/modules/features/tasks/actions/task-actions.ts",
+        "src/modules/features/tasks/services/task-mutation-access.ts"
       ],
       "article_ids": [
         "tasks.manage-tasks"
       ],
       "gaps": [
-        "Eliminación masiva de tareas requiere el permiso granular can_bulk_delete_tasks",
-        "Portal de colaboradores externo solo expone tareas asignadas mediante token protegido"
+        "Eliminación masiva en dashboard requiere operations.tasks.manage en el tenant destinatario; en portal can_bulk_delete_tasks no otorga borrado unitario ni reasignación",
+        "Portal de colaboradores externo solo expone tareas asignadas mediante token protegido y validación de PIN en mutaciones sensibles"
       ],
       "manual_checks_pending": [
         "Verificar vista Kanban vs vista lista y asignación de colaboradores"

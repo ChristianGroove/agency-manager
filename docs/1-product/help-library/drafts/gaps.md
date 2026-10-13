@@ -1,8 +1,8 @@
 # Listado de Carencias y Contradicciones Detectadas (Gaps)
 
 Fecha de auditoría: 12 de octubre de 2026.
-Rama inspeccionada: `pixyrobotpet` en `tmp/pet-workspace`.
-Revisión de referencia (HEAD): `047fa7ee0cadc0f49d9ce08220f633885b0801a7`.
+Rama inspeccionada: `codex/pixyrobotpet-release` en `tmp/pet-release`.
+Revisión de referencia (HEAD): `4063682d86bc2ad07e4977e54e89fbbddcd6d47b` (post-seguridad y cuota).
 
 ---
 
@@ -94,3 +94,26 @@ Es imprescindible distinguir entre el comportamiento del runtime histórico prev
 | Visibilidad en Menú Lateral | `src/modules/core/saas/module-config.ts` (`MODULE_ROUTES`) define `/crm/reports` con `parentModule: 'module_crm_reports'` y `access: { allowedRoles: ['owner'] }`. | `filterRoutesByModules` oculta el enlace de reportes a cualquier usuario que no tenga rol de Dueño (`owner` / `dueño`), requiriendo además el módulo `module_crm_reports`. |
 | Autorización de Página y Server Action | `src/app/(dashboard)/crm/reports/page.tsx` (`ReportsPage`) invoca `getAdvancedReports` en `src/modules/features/crm/services/logic/analytics-actions.ts`. | `getAdvancedReports` valida el `organization_id` de la sesión pero no comprueba `owner` ni el módulo `module_crm_reports` antes de ejecutar la RPC `get_advanced_crm_reports`. No hay guard de rol a nivel de servidor ni middleware para esa ruta. |
 | Tratamiento en Biblioteca de Ayuda | Separación de `crm.crm-reports` (exclusivo para analítica comercial, audiencia `tenant-admin`, módulo `module_crm_reports`) respecto a `crm.manage-pipeline` (audiencia `tenant-user`, módulo `core_crm`, permiso `crm.leads.view`). | Se evita mezclar reportes en la guía de pipeline para no ofrecer instrucciones de reportes a roles operativos o tenants sin el módulo de reportes. |
+
+---
+
+## 8. Cuota Compartida del Asistente de Ayuda en PostgreSQL
+
+| Aspecto | Comprobación en código fuente | Comportamiento y salvaguardas vigentes |
+|---|---|---|
+| Almacenamiento y Concurrencia | Migración `20261012000005_dashboard_help_quota.sql` crea `help_dashboard_tenant_limits` con RLS estricto (revocado a anon/authenticated) y función SECURITY DEFINER `reserve_dashboard_help_request`. | Concurrencia real garantizada mediante `FOR UPDATE` en PostgreSQL; la marca temporal se lee con `clock_timestamp()` *después* de adquirir el bloqueo de fila. Sobrevive a reinicios del servidor y coordina múltiples procesos concurrentes. |
+| Límites y Compartición | 10 consultas por minuto por organización (`CHECK request_count BETWEEN 0 AND 10`). | Todas las pestañas y miembros activos del tenant comparten el mismo contador central. Casos inválidos (menor a 3 o mayor a 500 caracteres) e hilos inaccesibles se rechazan antes de reservar cuota y no consumen turnos. Aplica a V2, legacy y turnos casuales/cortesía. |
+| Límites del Mecanismo | Si una consulta autorizada falla posteriormente al persistir o llamar al modelo, la cuota consumida no se devuelve. | No constituye un presupuesto de tokens, saldo monetario ni cupo diario acumulativo; es una barrera anti-abuso de tasa por minuto. |
+
+---
+
+## 9. Seguridad y Guards de Mutación en Tareas (Tasks)
+
+| Nivel / Acción | Implementación en `task-mutation-access.ts` | Alcance y limitaciones comprobadas |
+|---|---|---|
+| Acciones endurecidas en Portal | Cuatro mutaciones focales: `portalUpdateTaskPriority`, `portalAssignTask`, `portalDeleteTask` y `portalBulkDeleteTasks`. | Requieren token activo en `organization_staff`, sesión desbloqueada por PIN si está configurado (`isPortalSessionUnlocked`), tenant activo (`status = 'active'`) y módulo Tasks activo (`requireActiveTasks`). Roles estructurados (`task_role`) tienen precedencia sobre etiquetas libres. |
+| Ámbito de liderazgo asignado | En el portal, los líderes por asignación (`lead_staff_id`) solo pueden gestionar tareas dentro de su workspace o proyecto asignado (incluyendo espacios heredados del proyecto). | Tareas fuera de su ámbito asignado son rechazadas con error de acceso antes de cualquier mutación. La reasignación exige que el destinatario pertenezca activamente al mismo tenant. |
+| Regla de borrado masivo portal | `can_bulk_delete_tasks: false` deniega explícitamente el lote incluso a Project Managers; `true` autoriza lote pero no concede borrado unitario ni reasignación; `null` recurre al rol de liderazgo. | Se validan y deduplican entre 1 y 1000 IDs de tareas; consultas y borrado se ejecutan en chunks de 100. Selecciones mixtas (con tareas inaccesibles) fallan íntegramente antes de borrar. Los filtros de ámbito se repiten en las sentencias de eliminación. |
+| Borrado masivo en Dashboard (`deleteTasks`) | Requiere concesión canónica de gestión en el tenant destinatario (`operations.tasks.manage` en membresía o rol perteneciente a ese tenant, `owner` o superadministrador). | No permite heredar o prestar permisos de otros tenants activos; membresías bloqueadas son rechazadas. Valida y deduplica entre 1 y 1000 IDs por lote. |
+| Gaps pendientes de Tasks | Solo se endurecieron esas 5 acciones de mutación. | **NO afirmar que todas las acciones del portal o dashboard están protegidas por estos guards:** creación de tareas (`portalCreateTask`), actualización de estado (`portalUpdateTaskStatus`), notas rápidas (`portalUpdateTaskQuickNote`), checklist (`portalToggleChecklist`), subida de adjuntos (`portalUploadTaskAttachment`) e imputación de horas continúan usando comprobaciones aisladas previas. |
+| Atomicidad con Google Calendar | Cancelación de reuniones en Google Calendar y borrado en base de datos son llamadas secuenciales separadas. | No constituyen una transacción distribuida atómica de dos fases (2PC). Errores externos de Calendar no revierten la eliminación local. Los rechazos por falta de permisos o ámbito no disparan cancelaciones externas. |

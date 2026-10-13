@@ -6,7 +6,7 @@ module: tasks
 status: draft
 surface: portal.tasks
 audience: portal-collaborator
-source_revision: 5aaeec98767f13ec9b495eed33486fcdba65ab86
+source_revision: 4063682d86bc2ad07e4977e54e89fbbddcd6d47b
 verified_on: 2026-10-12
 verification: source-only
 routes:
@@ -75,7 +75,7 @@ Explicar el funcionamiento de las actividades de tipo Reunión en el portal de t
 
 ## Errores y límites conocidos
 - **No se pueden mover en Kanban:** Las reuniones no forman parte de las columnas de desarrollo técnico (no se pueden arrastrar a *Por hacer* ni *En revisión*).
-- **Cancelación de evento en Google Calendar:** Si un Project Manager elimina una reunión desde el portal, el sistema intentará de forma automática cancelar y eliminar la cita en Google Calendar si la cuenta del convocante está vinculada.
+- **Cancelación de evento en Google Calendar:** Si un Project Manager o usuario autorizado elimina una reunión, el sistema intentará de forma automática cancelar y eliminar la cita en Google Calendar si la cuenta del convocante está vinculada. La cancelación del evento y la eliminación de la tarea se procesan por separado: ante un fallo, revisa ambos resultados. Si la comprobación inicial de acceso rechaza la operación, no se inicia la cancelación del evento.
 
 ## Notas de verificación
 - Lógica de cierre: `src/modules/features/tasks/actions/collaborator-portal-actions.ts` (`portalCompleteMeetingSession`)

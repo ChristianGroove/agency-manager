@@ -1,5 +1,5 @@
 {
-  "corpus_revision": "b4d8246f80785623dda03822d5bb7a9ad045c149b685ff413095d1ddb2b2fcea",
+  "corpus_revision": "cbcc2331e83a2c7ee16417a8f5ecca8ca6e688456c005e1484d0dc54017187a7",
   "dashboard_tasks_articles": 6,
   "total_cases": 55,
   "answer_cases": 35,
@@ -18,8 +18,7 @@
       ],
       "retrieved": [
         "tasks.meetings-and-calendar",
-        "tasks.manage-tasks",
-        "tasks.import-data"
+        "tasks.manage-tasks"
       ],
       "status": "retrieval_hit"
     },
@@ -43,7 +42,8 @@
         "tasks.meetings-and-calendar"
       ],
       "retrieved": [
-        "tasks.meetings-and-calendar"
+        "tasks.meetings-and-calendar",
+        "tasks.manage-tasks"
       ],
       "status": "retrieval_hit"
     },
@@ -55,8 +55,7 @@
       ],
       "retrieved": [
         "tasks.meetings-and-calendar",
-        "tasks.manage-tasks",
-        "tasks.import-data"
+        "tasks.manage-tasks"
       ],
       "status": "retrieval_hit"
     },
@@ -174,7 +173,8 @@
         "tasks.task-lifecycle-and-views"
       ],
       "retrieved": [
-        "tasks.task-lifecycle-and-views"
+        "tasks.task-lifecycle-and-views",
+        "tasks.manage-tasks"
       ],
       "status": "retrieval_hit"
     },
@@ -224,8 +224,7 @@
       ],
       "retrieved": [
         "tasks.manage-tasks",
-        "tasks.collaborators-and-portals",
-        "tasks.task-lifecycle-and-views"
+        "tasks.collaborators-and-portals"
       ],
       "status": "retrieval_hit"
     },
@@ -250,8 +249,7 @@
       ],
       "retrieved": [
         "tasks.manage-tasks",
-        "tasks.task-lifecycle-and-views",
-        "tasks.collaborators-and-portals"
+        "tasks.task-lifecycle-and-views"
       ],
       "status": "retrieval_hit"
     },
@@ -458,8 +456,8 @@
         "tasks.task-lifecycle-and-views"
       ],
       "retrieved": [
+        "tasks.manage-tasks",
         "tasks.task-lifecycle-and-views",
-        "pet.pet-interaction",
         "tasks.import-data"
       ],
       "status": "requires_model_or_manual_boundary_check"
@@ -567,7 +565,7 @@
       "retrieved": [
         "tasks.manage-tasks",
         "tasks.import-data",
-        "tasks.meetings-and-calendar"
+        "tasks.sprint-planning-and-pacing"
       ],
       "status": "requires_model_or_manual_boundary_check"
     },
@@ -615,6 +613,7 @@
       "expected_behavior": "abstain",
       "expected_article_ids": [],
       "retrieved": [
+        "help.chat-and-history",
         "tasks.meetings-and-calendar"
       ],
       "status": "requires_model_or_manual_boundary_check"

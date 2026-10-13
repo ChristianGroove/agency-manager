@@ -1,6 +1,6 @@
 {
   "schema_version": 1,
-  "source_revision": "047fa7ee0cadc0f49d9ce08220f633885b0801a7",
+  "source_revision": "4063682d86bc2ad07e4977e54e89fbbddcd6d47b",
   "questions": [
     {
       "id": "Q01",
@@ -160,11 +160,12 @@
         "help.chat-and-history"
       ],
       "expected_points": [
-        "Utilizar los marcadores de la guía lateral izquierda del chat",
-        "Pasar el cursor sobre un marcador para previsualizar la pregunta y respuesta",
+        "Utilizar los marcadores de la guía de navegación en el margen derecho del chat (HelpTurnNavigator)",
+        "Pasar el cursor sobre un marcador para previsualizar la tarjeta flotante hacia la izquierda con la pregunta y respuesta",
         "Hacer clic en el marcador para desplazarse suavemente al mensaje"
       ],
       "must_not_claim": [
+        "No afirmar que los marcadores se ubican en el lateral izquierdo del chat",
         "No inventar un buscador de palabras clave dentro del chat"
       ],
       "expected_behavior": "answer"
@@ -564,12 +565,13 @@
       ],
       "expected_points": [
         "Pasar a la vista de Lista en el módulo de tareas",
-        "Seleccionar las casillas de las tareas deseadas",
+        "Seleccionar las casillas de las tareas deseadas (entre 1 y 1000 identificadores únicos)",
         "En la barra flotante inferior de acciones masivas, hacer clic en Eliminar",
-        "Requiere autorización de gestión en la organización; el flag de colaborador del portal no es un permiso IAM del dashboard"
+        "Requiere autorización canónica de gestión en el tenant destinatario (owner, superadmin, o permiso operations.tasks.manage en membresía o rol perteneciente a ese tenant); el flag can_bulk_delete_tasks del portal no es un permiso IAM del dashboard"
       ],
       "must_not_claim": [
-        "No afirmar que cualquier usuario puede borrar tareas en masa sin el permiso específico"
+        "No afirmar que cualquier usuario puede borrar tareas en masa sin autorización canónica en el tenant destino",
+        "No afirmar que se pueden tomar prestados permisos de otra organización activa"
       ],
       "expected_behavior": "answer"
     },

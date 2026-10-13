@@ -6,7 +6,7 @@ module: tasks
 status: draft
 surface: portal.tasks
 audience: portal-collaborator
-source_revision: 5aaeec98767f13ec9b495eed33486fcdba65ab86
+source_revision: 4063682d86bc2ad07e4977e54e89fbbddcd6d47b
 verified_on: 2026-10-12
 verification: source-only
 routes:
@@ -47,6 +47,9 @@ evidence:
   - path: src/modules/features/tasks/components/shared/task-status-interactive-badge.tsx
     symbol: TaskStatusInteractiveBadge
     claim: Renderiza la insignia interactiva de estado con menú desplegable contextual.
+  - path: src/modules/features/tasks/services/task-mutation-access.ts
+    symbol: requirePortalTaskMutation
+    claim: Valida token, PIN desbloqueado, tenant activo y precedencia de roles estructurados antes de autorizar mutaciones de tareas en el portal.
 ---
 
 # Gestionar el ciclo de vida y cambiar el estado de las tareas
@@ -60,6 +63,7 @@ Los perfiles de usuario del portal de ayuda son informativos y no autorizan muta
 - **Revisor de Calidad asignado:** El paso de *En revisión* (`in_review`) a *Completada* (`done`) está reservado al especialista de QA asignado formalmente a la tarea (`qa_reviewer_id`) o al Project Manager.
 - **Pertenencia al Workspace / Proyecto:** El colaborador debe tener acceso vigente al proyecto o espacio de trabajo del requerimiento.
 - **Project Managers / Líderes:** Tienen facultad de gestión integral sobre todas las fases, incluyendo promover iniciativas desde el *Backlog* y reabrir tareas concluidas.
+- **Prioridad, reasignación y eliminación:** Necesitas acceso activo al portal, una organización con Tasks habilitado y autorización de gestión sobre esas tareas. Si tienes PIN, desbloquea la sesión. La reasignación solo admite colaboradores activos de la misma organización. El perfil configurado determina tus facultades; escribir un cargo en una etiqueta no las amplía.
 
 ## Ubicación en pantalla
 - **En tarjetas y tabla:** Insignia interactiva de estado con selector desplegable (`TaskStatusInteractiveBadge`).
@@ -126,3 +130,4 @@ Si intentas marcar como *Completada* una tarea que aún tiene subtareas pendient
 ## Notas de verificación
 - Lógica de transiciones y guards por registro: `src/modules/features/tasks/actions/collaborator-portal-actions.ts` (`portalUpdateTaskStatus`)
 - Desbloqueo automático de dependencias: función interna `handlePortalTaskUnblocking`
+- Guard de seguridad de mutaciones de tareas: `src/modules/features/tasks/services/task-mutation-access.ts` (`requirePortalTaskMutation`)

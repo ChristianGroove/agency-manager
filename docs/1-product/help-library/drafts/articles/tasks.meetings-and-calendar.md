@@ -6,7 +6,7 @@ module: tasks
 status: draft
 surface: dashboard
 audience: tenant-user
-source_revision: 5aaeec98767f13ec9b495eed33486fcdba65ab86
+source_revision: 4063682d86bc2ad07e4977e54e89fbbddcd6d47b
 verified_on: 2026-10-12
 verification: source-only
 routes:

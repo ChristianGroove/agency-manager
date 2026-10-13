@@ -6,7 +6,7 @@ module: tasks
 status: draft
 surface: portal.tasks
 audience: portal-collaborator
-source_revision: 5aaeec98767f13ec9b495eed33486fcdba65ab86
+source_revision: 4063682d86bc2ad07e4977e54e89fbbddcd6d47b
 verified_on: 2026-10-12
 verification: source-only
 routes:
@@ -27,6 +27,9 @@ evidence:
   - path: src/modules/core/ui/components/bulk-actions-floating-bar.tsx
     symbol: BulkActionsFloatingBar
     claim: Despliega la barra flotante en la parte inferior de la pantalla al seleccionar una o más casillas de verificación.
+  - path: src/modules/features/tasks/services/task-mutation-access.ts
+    symbol: requirePortalTaskMutation
+    claim: Valida token activo, PIN, tenant activo, módulo habilitado, ámbito de liderazgo y regla de can_bulk_delete_tasks antes de autorizar el lote.
 ---
 
 # Ejecutar acciones masivas y eliminación en lote de tareas
@@ -36,9 +39,12 @@ Explicar el procedimiento para seleccionar múltiples requerimientos de forma si
 
 ## Requisitos y perfiles
 - **Quiénes pueden eliminar en lote:**
-  - Project Managers y Líderes Técnicos (`isLeadOrPm: true`).
-  - Colaboradores a quienes se les haya otorgado explícitamente el permiso `can_bulk_delete_tasks` en la configuración de personal de la empresa.
-- **Restricción:** Colaboradores estándar sin este permiso pueden seleccionar tareas para consulta agrupada, pero el botón de eliminación masiva no estará disponible en la barra flotante o será rechazado por el servidor.
+  - Colaboradores autorizados expresamente para eliminar tareas en grupo. Esa autorización permite el lote dentro de su organización.
+  - Project Managers y líderes con facultad de gestión, si la empresa no les ha deshabilitado expresamente esta acción.
+- **Restricción configurada por la empresa:** La eliminación en grupo puede estar deshabilitada incluso para un Project Manager.
+- **Liderazgo por proyecto o espacio:** Cuando el acceso depende de ser líder asignado y no de una autorización expresa para eliminar en grupo, solo puedes eliminar tareas de los proyectos o espacios que lideras.
+- **Condiciones previas de seguridad:** El colaborador debe contar con token activo en un tenant activo con el módulo Tasks habilitado. Si tiene configurado un código PIN, la sesión del portal debe estar desbloqueada.
+- **Alcance de la autorización:** La autorización para eliminar en grupo permite únicamente esa acción; no concede privilegios para reasignar tareas ni para eliminarlas individualmente desde su modal de detalle.
 
 ## Ubicación en pantalla
 - **Modo de vista:** Requiere activar la **Vista de Lista (Tabla)** en el extremo superior derecho.
@@ -50,7 +56,7 @@ Explicar el procedimiento para seleccionar múltiples requerimientos de forma si
 1. En la barra de herramientas superior derecha, haz clic en el icono de **Vista de Lista** (icono de lista/tabla).
 2. En la primera columna de la tabla encontrarás casillas de verificación (*Checkboxes*):
    - Marca la casilla de la cabecera si deseas seleccionar **todas las tareas de la página actual**.
-   - O marca individualmente las casillas correspondientes a las tareas específicas que deseas intervenir.
+   - O marca individualmente las casillas correspondientes a las tareas específicas que deseas intervenir (hasta un máximo de 1000 tareas).
 3. Observarás que en la parte inferior de la ventana emerge la **Barra flotante de acciones masivas** indicando el número de ítems seleccionados (por ejemplo: `3 tareas seleccionadas`).
 
 ### 2. Ejecutar la eliminación masiva
@@ -59,7 +65,9 @@ Explicar el procedimiento para seleccionar múltiples requerimientos de forma si
    *«¿Estás seguro de que deseas eliminar permanentemente las tareas seleccionadas? Esta acción no se puede deshacer».*
 3. Si entre las tareas seleccionadas existen actividades de tipo *Reunión*, el sistema advertirá que los eventos vinculados en Google Calendar también serán cancelados y removidos automáticamente.
 4. Presiona **Confirmar Eliminación**.
-5. Las tareas serán purgadas de la base de datos y desaparecerán de los tableros de inmediato.
+5. Selecciona como máximo 1000 tareas por operación.
+6. Si la selección inicial incluye tareas fuera de tu organización o alcance autorizado, se rechaza antes de empezar a borrar. Si ocurre un fallo durante el procesamiento de un lote, revisa qué tareas permanecen antes de reintentar.
+7. Las tareas serán purgadas de la base de datos y desaparecerán de los tableros de inmediato.
 
 ### 3. Cancelar la selección masiva
 - Para deseleccionar los elementos y ocultar la barra flotante, presiona el botón **Cancelar** en la barra inferior o desmarca la casilla general de la cabecera de la tabla.
@@ -68,9 +76,13 @@ Explicar el procedimiento para seleccionar múltiples requerimientos de forma si
 Depuración ágil de requerimientos duplicados, cancelados o pruebas operativas sin necesidad de abrir y eliminar cada ticket uno por uno.
 
 ## Errores y límites conocidos
-- **Error "No tienes permiso para eliminar tareas en masa":** Aparece si un colaborador intenta invocar la eliminación sin contar con el permiso `can_bulk_delete_tasks` habilitado en su registro de personal.
-- **Discrepancia con eliminación individual:** Si cuentas con el permiso `can_bulk_delete_tasks` pero no eres Project Manager, podrás borrar tareas en lote mediante la barra flotante, pero no verás el botón de papelera individual dentro del modal de detalle de una sola tarea.
+- **Error "No tienes permiso para eliminar tareas en masa" o acceso denegado:** Puede aparecer cuando no tienes autorización de gestión o eliminación en grupo, la empresa deshabilitó esta acción, falta desbloquear el PIN, la organización está inactiva o la selección excede tu alcance.
+- **Discrepancia con eliminación individual:** Si solo tienes autorización para eliminar en grupo, podrás borrar tareas en lote mediante la barra flotante, pero no verás el botón de papelera individual dentro del modal de detalle de una sola tarea.
+- **Límite de selección:** Se admite un máximo de 1000 tareas únicas por lote; selecciones mayores o con identificadores inválidos son rechazadas antes de procesar.
+- **Reuniones vinculadas:** La cancelación en Google Calendar y la eliminación de la tarea se procesan por separado. Si ocurre un error, comprueba ambos resultados antes de reintentar. Una selección rechazada al comprobar el acceso no inicia esas cancelaciones.
+- **Ocultamiento de detalles internos:** Si se produce un error imprevisto de base de datos o de módulos, el sistema responde de forma controlada sin exponer detalles privados de la infraestructura.
 
 ## Notas de verificación
 - Lógica de backend: `src/modules/features/tasks/actions/collaborator-portal-actions.ts` (`portalBulkDeleteTasks`)
+- Guard de seguridad de mutación: `src/modules/features/tasks/services/task-mutation-access.ts` (`requirePortalTaskMutation`)
 - Barra flotante: `src/modules/core/ui/components/bulk-actions-floating-bar.tsx`

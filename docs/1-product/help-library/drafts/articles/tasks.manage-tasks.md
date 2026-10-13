@@ -6,7 +6,7 @@ module: tasks
 status: draft
 surface: dashboard
 audience: tenant-user
-source_revision: 5aaeec98767f13ec9b495eed33486fcdba65ab86
+source_revision: 4063682d86bc2ad07e4977e54e89fbbddcd6d47b
 verified_on: 2026-10-12
 verification: source-only
 routes:
@@ -41,6 +41,12 @@ evidence:
   - path: src/modules/core/iam/actions/permissions.ts
     symbol: PERMISSIONS.OPERATIONS.TASKS_VIEW
     claim: Define el permiso canonico para consultar la vista de tareas, tableros Kanban, listas y metricas.
+  - path: src/modules/features/tasks/services/task-mutation-access.ts
+    symbol: requireDashboardTaskManagement
+    claim: Verifica autorización canónica en el tenant destinatario, membresía activa y rol perteneciente a ese tenant antes de permitir mutaciones operativas.
+  - path: src/modules/features/tasks/actions/task-actions.ts
+    symbol: deleteTasks
+    claim: Valida y deduplica entre 1 y 1000 IDs de tareas, exige autorización de gestión y ejecuta el borrado por lotes de 100 cancelando reuniones vinculadas.
 ---
 
 # Gestionar proyectos, tableros y requerimientos en el modulo de Tareas
@@ -93,8 +99,11 @@ El boton principal desplegable **Nuevo** ofrece acceso directo a la creacion de 
 
 ## Acciones en grupo en la vista de lista
 1. Accede a la pestana **Lista**.
-2. Marca las casillas de seleccion de los requerimientos que deseas procesar.
+2. Marca las casillas de seleccion de los requerimientos que deseas procesar (entre 1 y 1000 tareas por lote).
 3. En la barra flotante inferior podras revisar el conteo de elementos seleccionados o ejecutar la eliminacion permanente en grupo si cuentas con autorizacion de gestion en la organizacion.
+- **Autorizacion requerida:** Debes contar con autorizacion para gestionar tareas en la organizacion donde vas a borrarlas. Los accesos de otra empresa no sirven para esta operacion; una membresia bloqueada tampoco puede ejecutarla.
+- **Seleccion:** Se admiten entre 1 y 1000 tareas por operacion.
+- **Reuniones asociadas:** Si entre los requerimientos eliminados existen reuniones vinculadas a Google Calendar, el sistema procesa su cancelacion previa. Los rechazos por falta de autorizacion no disparan cancelaciones externas ni revelan detalles internos de la base de datos.
 
 ## Resultado esperado
 Comprension global de la organizacion del trabajo, capacidad de localizar cualquier entregable mediante filtros cruzados y seleccion del modo de visualizacion optimo para cada fase del proyecto.
@@ -102,9 +111,12 @@ Comprension global de la organizacion del trabajo, capacidad de localizar cualqu
 ## Limites conocidos
 - El tablero Kanban oculta las reuniones programadas para centrarse en el flujo de entregables tecnicos; para visualizar reuniones se debe utilizar la vista de lista o el calendario.
 - La eliminacion en lote desde la barra flotante borra las tareas seleccionadas de manera definitiva sin enviarlas a una papelera temporal.
+- Se admite un maximo de 1000 tareas unicas por lote; solicitudes que excedan este limite o con identificadores invalidos se rechazan sin efectuar cambios parciales.
 
 ## Notas de verificacion
 - Verificado contra TasksPage en src/app/(dashboard)/operations/tasks/page.tsx lineas 19-58.
 - Componente principal verificado en src/modules/features/tasks/components/task-manager-view.tsx lineas 313-400 y 970-1340.
-- Auditoria de permisos: La vista requiere el permiso canonico operations.tasks.view; las acciones de mutacion requieren operations.tasks.manage.
-- Rectificacion editorial: La guia antigua afirmaba que la eliminacion masiva dependia de un permiso IAM canónico denominado can_bulk_delete_tasks. El codigo real demuestra que can_bulk_delete_tasks es una columna en organization_staff exclusiva del portal de colaboradores; en el dashboard la eliminacion en lote se canaliza mediante la accion deleteTasks condicionada a la pertenencia de la organizacion y autorizacion de gestion.
+- Guard de gestion operativa en servidor: src/modules/features/tasks/services/task-mutation-access.ts (requireDashboardTaskManagement).
+- Accion de borrado en grupo y sincronizacion de calendario: src/modules/features/tasks/actions/task-actions.ts (deleteTasks).
+- Auditoria de permisos: La vista requiere el permiso canonico operations.tasks.view; las acciones de mutacion en el dashboard exigen operations.tasks.manage resuelto en el tenant destino.
+- Rectificacion editorial: La guia antigua afirmaba que la eliminacion masiva dependia de un permiso IAM canonico denominado can_bulk_delete_tasks. El codigo real demuestra que can_bulk_delete_tasks es una columna en organization_staff exclusiva del portal de colaboradores; en el dashboard la eliminacion en lote se canaliza mediante deleteTasks con requireDashboardTaskManagement.
