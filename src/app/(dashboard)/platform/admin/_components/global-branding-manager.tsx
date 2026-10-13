@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { getPlatformSettings, updatePlatformSettings } from "@/modules/core/branding/actions"
 import { BrandingConfig } from "@/types/branding"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -13,6 +14,7 @@ import { Separator } from "@/components/ui/separator"
 import { ImageUpload } from "@/components/ui/image-upload"
 
 export function GlobalBrandingManager() {
+    const router = useRouter()
     const [loading, setLoading] = useState(true)
     const [saving, setSaving] = useState(false)
     const [branding, setBranding] = useState<BrandingConfig | null>(null)
@@ -38,6 +40,8 @@ export function GlobalBrandingManager() {
         setSaving(true)
         try {
             await updatePlatformSettings(branding)
+            window.dispatchEvent(new Event('branding-updated'))
+            router.refresh()
             toast.success("Marca Global actualizada correctamente")
         } catch (error) {
             console.error(error)
@@ -124,6 +128,7 @@ export function GlobalBrandingManager() {
                                 <div className="space-y-3">
                                     <Label>Logo Principal (Oscuro)</Label>
                                     <ImageUpload
+                                        scope="platform"
                                         value={branding.logos.main}
                                         onChange={(url) => updateLogo('main', url)}
                                         label="Subir"
@@ -133,6 +138,7 @@ export function GlobalBrandingManager() {
                                 <div className="space-y-3">
                                     <Label>Logo Principal (Claro)</Label>
                                     <ImageUpload
+                                        scope="platform"
                                         value={branding.logos.main_light || ''}
                                         onChange={(url) => updateLogo('main_light', url)}
                                         label="Subir"
@@ -142,6 +148,7 @@ export function GlobalBrandingManager() {
                                 <div className="space-y-3">
                                     <Label>Logo Portal</Label>
                                     <ImageUpload
+                                        scope="platform"
                                         value={branding.logos.portal}
                                         onChange={(url) => updateLogo('portal', url)}
                                         label="Subir"
@@ -151,6 +158,7 @@ export function GlobalBrandingManager() {
                                 <div className="space-y-3">
                                     <Label>Favicon</Label>
                                     <ImageUpload
+                                        scope="platform"
                                         value={branding.logos.favicon}
                                         onChange={(url) => updateLogo('favicon', url)}
                                         label="Subir"
@@ -235,6 +243,7 @@ export function GlobalBrandingManager() {
                             <div className="space-y-3">
                                 <Label>Background URL</Label>
                                 <ImageUpload
+                                    scope="platform"
                                     value={branding.logos.login_bg}
                                     onChange={(url) => updateLogo('login_bg', url)}
                                     label="Subir Fondo"

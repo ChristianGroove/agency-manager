@@ -5,6 +5,7 @@ import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import { cache } from "react"
 import { revalidatePath } from "next/cache"
 import { requireOrgRole } from "@/modules/core/iam/services/org-roles"
+import { requireSuperAdmin } from "@/modules/core/iam/services/platform-roles"
 import { BrandingConfig } from "@/types/branding"
 
 function debugLog(step: string, data: any) {
@@ -16,7 +17,7 @@ const DEFAULT_BRANDING: BrandingConfig = {
     name: "Pixy",
     logos: {
         main: "/branding/logo dark.svg",
-        main_light: null,
+        main_light: "/branding/logo light.svg",
         portal: "/branding/iso.svg",
         favicon: "/pixy-isotipo.png",
         dashboard_bg: null,
@@ -82,24 +83,25 @@ export const getPlatformSettings = cache(async () => {
  * Update Platform Settings (Super Admin Only)
  */
 export async function updatePlatformSettings(data: Partial<BrandingConfig>) {
+    await requireSuperAdmin()
     const updatePayload: any = {}
 
     if (data.name) updatePayload.agency_name = data.name
-    if (data.logos?.main) updatePayload.main_logo_url = data.logos.main
+    if (data.logos?.main !== undefined) updatePayload.main_logo_url = data.logos.main
     if (data.logos?.main_light !== undefined) updatePayload.main_logo_light_url = data.logos.main_light
-    if (data.logos?.portal) updatePayload.portal_logo_url = data.logos.portal
-    if (data.logos?.favicon) updatePayload.favicon_url = data.logos.favicon
-    if (data.logos?.login_bg) updatePayload.login_background_url = data.logos.login_bg
+    if (data.logos?.portal !== undefined) updatePayload.portal_logo_url = data.logos.portal
+    if (data.logos?.favicon !== undefined) updatePayload.favicon_url = data.logos.favicon
+    if (data.logos?.login_bg !== undefined) updatePayload.login_background_url = data.logos.login_bg
     if (data.colors?.primary) updatePayload.brand_color_primary = data.colors.primary
     if (data.colors?.secondary) updatePayload.brand_color_secondary = data.colors.secondary
-    if (data.socials) updatePayload.social_links = data.socials
+    if (data.socials) updatePayload.social_links = { ...data.socials }
     if (data.website && updatePayload.social_links) {
         updatePayload.social_links.website = data.website
     } else if (data.website) {
         updatePayload.social_links = { website: data.website }
     }
 
-    const { error } = await (await createClient())
+    const { error } = await supabaseAdmin
         .from("platform_settings")
         .upsert({
             id: 1,
@@ -108,11 +110,13 @@ export async function updatePlatformSettings(data: Partial<BrandingConfig>) {
         })
 
     if (error) {
-        throw new Error(error.message)
+        console.error("[updatePlatformSettings] Save failed:", { code: error.code })
+        throw new Error("No se pudo guardar la marca global. Intenta nuevamente.")
     }
 
-    revalidatePath("/platform/admin/branding")
+    revalidatePath("/platform/admin")
     revalidatePath("/platform/adn")
+    revalidatePath("/", "layout")
     return { success: true }
 }
 
@@ -215,7 +219,9 @@ export async function uploadBrandingAsset(formData: FormData) {
     }
 
     const { getCurrentOrganizationId } = await import('@/modules/core/organizations/actions/crud')
-    const orgId = await getCurrentOrganizationId()
+    const isPlatformAsset = formData.get("scope") === "platform"
+    if (isPlatformAsset) await requireSuperAdmin()
+    const orgId = isPlatformAsset ? null : await getCurrentOrganizationId()
     if (orgId) {
         try {
             await requireOrgRole('admin')
@@ -299,34 +305,6 @@ export async function uploadBrandingAsset(formData: FormData) {
         .getPublicUrl(fileName)
 
     return { success: true, url: publicUrl }
-}
-
-/**
- * Delete Storage Asset physically from Supabase Storage to prevent garbage accumulation
- */
-export async function deleteBrandingAsset(imageUrl: string) {
-    if (!imageUrl || !imageUrl.includes("/storage/v1/object/public/")) {
-        return { success: false, message: "URL no válida para eliminación" }
-    }
-
-    try {
-        const parts = imageUrl.split("/storage/v1/object/public/")[1]?.split("/")
-        if (!parts || parts.length < 2) return { success: false, message: "Ruta de archivo no válida" }
-
-        const bucket = parts[0]
-        const filePath = parts.slice(1).join("/")
-
-        const { error } = await supabaseAdmin.storage.from(bucket).remove([filePath])
-        if (error) {
-            console.error("[Storage Delete Error]:", error)
-            return { success: false, error: error.message }
-        }
-
-        return { success: true }
-    } catch (err: any) {
-        console.error("[Storage Delete Exception]:", err)
-        return { success: false, error: err.message }
-    }
 }
 
 /**

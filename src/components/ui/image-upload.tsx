@@ -3,7 +3,7 @@
 import { useState, useRef } from "react"
 import { Loader2, Upload, X } from "lucide-react"
 import { toast } from "sonner"
-import { uploadBrandingAsset, deleteBrandingAsset } from "@/modules/core/branding/actions"
+import { uploadBrandingAsset } from "@/modules/core/branding/actions"
 
 interface ImageUploadProps {
     value?: string | null
@@ -13,6 +13,7 @@ interface ImageUploadProps {
     className?: string
     bucket?: string
     compact?: boolean
+    scope?: 'organization' | 'platform'
 }
 
 export function ImageUpload({
@@ -22,7 +23,8 @@ export function ImageUpload({
     label = "Subir Imagen",
     className,
     bucket = "public-assets",
-    compact = false
+    compact = false,
+    scope = 'organization'
 }: ImageUploadProps) {
     const [isUploading, setIsUploading] = useState(false)
     const fileInputRef = useRef<HTMLInputElement>(null)
@@ -35,6 +37,7 @@ export function ImageUpload({
         const formData = new FormData()
         formData.append("file", file)
         formData.append("bucket", bucket)
+        formData.append("scope", scope)
 
         try {
             const result = await uploadBrandingAsset(formData)
@@ -53,28 +56,15 @@ export function ImageUpload({
         }
     }
 
-    const handleRemove = async (e: React.MouseEvent) => {
+    const handleRemove = (e: React.MouseEvent) => {
         e.stopPropagation()
         e.preventDefault()
 
-        const previousUrl = value
-
-        // 1. Inmediato cambio visual sin demoras
+        if (disabled || isUploading) return
+        // Only change the draft. The asset may still be saved or inherited by other tenants.
         onChange("")
         if (fileInputRef.current) {
             fileInputRef.current.value = ""
-        }
-
-        // 2. Eliminación física en segundo plano en Supabase Storage para evitar basura
-        if (previousUrl) {
-            try {
-                const res = await deleteBrandingAsset(previousUrl)
-                if (res.success) {
-                    toast.success("Imagen eliminada de almacenamiento")
-                }
-            } catch (error) {
-                console.warn("[ImageUpload] Error al eliminar imagen de storage:", error)
-            }
         }
     }
 
@@ -95,7 +85,8 @@ export function ImageUpload({
                             onClick={handleRemove}
                             className="absolute -top-2 -right-2 bg-red-500 text-white p-1.5 rounded-full shadow-lg opacity-90 group-hover:opacity-100 transition-opacity hover:bg-red-600 z-20 cursor-pointer"
                             type="button"
-                            title="Eliminar imagen definitivamente"
+                            disabled={disabled || isUploading}
+                            title="Quitar imagen del formulario"
                         >
                             <X className="h-3.5 w-3.5" />
                         </button>
