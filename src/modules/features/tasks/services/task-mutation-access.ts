@@ -63,13 +63,12 @@ interface PortalMutationStaff {
     pin_code: string | null; can_bulk_delete_tasks: boolean | null
 }
 interface MutationTask {
-    id: string; workspace_id: string | null; project_id: string | null; type: string; external_meeting_id: string | null
+    id: string; project_id: string | null; type: string; external_meeting_id: string | null
 }
 export interface PortalTaskMutationAccess {
     staff: PortalMutationStaff
     tasks: MutationTask[]
     allTasks: boolean
-    workspaceIds: string[]
     projectIds: string[]
 }
 
@@ -91,7 +90,7 @@ async function checkPortalTaskMutation(token: unknown, taskIds: string[], operat
     const tasks: MutationTask[] = []
     const ids = [...new Set(taskIds)]
     for (let offset = 0; offset < ids.length; offset += 100) {
-        const batch = await supabaseAdmin.from('task_items').select('id,workspace_id,project_id,type,external_meeting_id')
+        const batch = await supabaseAdmin.from('task_items').select('id,project_id,type,external_meeting_id')
             .eq('organization_id', staff.organization_id).in('id', ids.slice(offset, offset + 100))
         if (batch.error) throw new TaskMutationAccessError(unavailable)
         tasks.push(...(batch.data || []) as MutationTask[])
@@ -104,10 +103,8 @@ async function checkPortalTaskMutation(token: unknown, taskIds: string[], operat
             .select('id,workspace_id,lead_staff_id').eq('organization_id', staff.organization_id).in('id', relevantProjects)
             : { data: [], error: null }
         if (projects.error) throw new TaskMutationAccessError(unavailable)
-        const relevantWorkspaces = [...new Set([
-            ...tasks.flatMap(task => task.workspace_id ? [task.workspace_id] : []),
-            ...(projects.data || []).flatMap(project => project.workspace_id ? [project.workspace_id] : []),
-        ])]
+        // Tasks inherit their workspace through task_projects; task_items has no workspace_id.
+        const relevantWorkspaces = [...new Set((projects.data || []).flatMap(project => project.workspace_id ? [project.workspace_id] : []))]
         const workspaces = relevantWorkspaces.length ? await supabaseAdmin.from('task_workspaces').select('id')
             .eq('organization_id', staff.organization_id).eq('lead_staff_id', staff.id).in('id', relevantWorkspaces)
             : { data: [], error: null }
@@ -115,9 +112,9 @@ async function checkPortalTaskMutation(token: unknown, taskIds: string[], operat
         workspaceIds = (workspaces.data || []).map(workspace => workspace.id)
         projectIds = (projects.data || []).filter(project => project.lead_staff_id === staff.id
             || workspaceIds.includes(project.workspace_id)).map(project => project.id)
-        if (tasks.some(task => !workspaceIds.includes(task.workspace_id || '') && !projectIds.includes(task.project_id || ''))) throw new TaskMutationAccessError(denied)
+        if (tasks.some(task => !projectIds.includes(task.project_id || ''))) throw new TaskMutationAccessError(denied)
     }
-    return { staff, tasks, allTasks, workspaceIds, projectIds }
+    return { staff, tasks, allTasks, projectIds }
 }
 
 export async function requirePortalTaskMutation(token: unknown, taskIds: string[], operation: 'manage' | 'delete' | 'bulk-delete'): Promise<PortalTaskMutationAccess> {
@@ -128,12 +125,8 @@ export async function requirePortalTaskMutation(token: unknown, taskIds: string[
 /** Repeat record-scope filters on writes in case a task moved after the authorization lookup. */
 export function portalTaskMutationFilter(access: PortalTaskMutationAccess): string | null {
     if (access.allTasks) return null
-    const parts = [
-        access.workspaceIds.length ? `workspace_id.in.(${access.workspaceIds.join(',')})` : '',
-        access.projectIds.length ? `project_id.in.(${access.projectIds.join(',')})` : '',
-    ].filter(Boolean)
-    if (!parts.length) throw new TaskMutationAccessError(denied)
-    return parts.join(',')
+    if (!access.projectIds.length) throw new TaskMutationAccessError(denied)
+    return `project_id.in.(${access.projectIds.join(',')})`
 }
 
 export function validateTaskMutationIds(ids: unknown): string[] {

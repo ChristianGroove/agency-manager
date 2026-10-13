@@ -1,6 +1,20 @@
 -- Run ONLY against local supabase_db_agency-manager. Fixtures always roll back.
 \set ON_ERROR_STOP on
 BEGIN;
+DO $$ BEGIN
+ IF has_function_privilege('anon','public.can_access_help_tenant(uuid)','EXECUTE')
+   OR has_function_privilege('service_role','public.can_access_help_tenant(uuid)','EXECUTE') THEN
+   RAISE EXCEPTION 'History predicate has unexpected caller grants';
+ END IF;
+ IF NOT has_function_privilege('authenticated','public.can_access_help_tenant(uuid)','EXECUTE') THEN
+   RAISE EXCEPTION 'Authenticated history predicate missing';
+ END IF;
+ IF has_function_privilege('anon','public.limit_help_chat_messages()','EXECUTE')
+   OR has_function_privilege('authenticated','public.limit_help_chat_messages()','EXECUTE')
+   OR has_function_privilege('service_role','public.limit_help_chat_messages()','EXECUTE') THEN
+   RAISE EXCEPTION 'Trigger function can be directly invoked';
+ END IF;
+END $$;
 INSERT INTO public.organizations(id,name,slug) VALUES
  ('81111111-1111-4111-8111-111111111111','History test A','history-rls-test-a'),
  ('82222222-2222-4222-8222-222222222222','History test B','history-rls-test-b');

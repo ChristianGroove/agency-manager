@@ -47,9 +47,9 @@ beforeEach(() => {
             { id: assignee, organization_id: tenant, is_active: true }, { id: foreignAssignee, organization_id: otherTenant, is_active: true },
         ],
         task_items: [
-            { id: task, organization_id: tenant, workspace_id: workspace, project_id: project, type: 'task', external_meeting_id: null },
-            { id: otherTask, organization_id: tenant, workspace_id: otherWorkspace, project_id: otherProject, type: 'task', external_meeting_id: null },
-            { id: foreignTask, organization_id: otherTenant, workspace_id: null, project_id: null, type: 'task', external_meeting_id: null },
+            { id: task, organization_id: tenant, project_id: project, type: 'task', external_meeting_id: null },
+            { id: otherTask, organization_id: tenant, project_id: otherProject, type: 'task', external_meeting_id: null },
+            { id: foreignTask, organization_id: otherTenant, project_id: null, type: 'task', external_meeting_id: null },
         ],
         task_workspaces: [{ id: workspace, organization_id: tenant, lead_staff_id: 'someone-else' }],
         task_projects: [{ id: project, organization_id: tenant, workspace_id: workspace, lead_staff_id: 'someone-else' },
@@ -57,18 +57,25 @@ beforeEach(() => {
     }
     state.from.mockImplementation((table: string) => {
         const predicates: ((row: Row) => boolean)[] = []
-        let method = '', scope: string | null = null
+        let method = '', scope: string | null = null, invalidColumn = false
         const result = () => {
             const rows = (state.tables[table] || []).filter(row => predicates.every(test => test(row)))
             if (method) state.writes.push({ table, method, scope })
-            return { data: method && state.noWriteRow ? [] : rows, error: state.failTable === table ? { message: 'private db failure' } : null, count: rows.length }
+            return { data: method && state.noWriteRow ? [] : rows, error: invalidColumn || state.failTable === table ? { message: 'private db failure' } : null, count: rows.length }
         }
         const query = {
-            select: () => query,
+            select: (columns: string = '*') => {
+                if (table === 'task_items' && /\bworkspace_id\b/.test(columns)) invalidColumn = true
+                return query
+            },
             eq: (key: string, value: unknown) => { state.filters.push({ table, key, value }); predicates.push(row => row[key] === value); return query },
             in: (key: string, values: unknown[]) => { predicates.push(row => values.includes(row[key])); return query },
             not: (key: string, _operator: string, value: unknown) => { predicates.push(row => row[key] !== value); return query },
-            or: (value: string) => { scope = value; return query },
+            or: (value: string) => {
+                scope = value
+                if (table === 'task_items' && /\bworkspace_id\b/.test(value)) invalidColumn = true
+                return query
+            },
             update: () => { method = 'update'; return query }, delete: () => { method = 'delete'; return query },
             maybeSingle: async () => { const value = result(); return { ...value, data: value.data[0] || null } },
             single: async () => { const value = result(); return { ...value, data: value.data[0] || null } },
@@ -120,15 +127,20 @@ describe('Tasks mutation server authorization', () => {
     it('allows a workspace lead only on records in that workspace, binding writes to the scope', async () => {
         state.tables.task_workspaces[0].lead_staff_id = staffId
         expect((await portalUpdateTaskPriority(token, task, 'high')).success).toBe(true)
-        expect(state.writes[0].scope).toContain(`workspace_id.in.(${workspace})`)
+        expect(state.writes[0].scope).toBe(`project_id.in.(${project})`)
         state.writes = []
         expect((await portalUpdateTaskPriority(token, otherTask, 'high')).success).toBe(false); noSideEffects()
     })
-    it('resolves inherited project workspace leadership when the task workspace is null', async () => {
-        state.tables.task_items[0].workspace_id = null
+    it('uses the real project hierarchy without a workspace column on task_items', async () => {
         state.tables.task_workspaces[0].lead_staff_id = staffId
         expect((await portalAssignTask(token, task, assignee)).success).toBe(true)
         expect(state.writes[0].scope).toContain(`project_id.in.(${project})`)
+    })
+    it('does not grant workspace leadership to a task without an authorized project', async () => {
+        state.tables.task_workspaces[0].lead_staff_id = staffId
+        state.tables.task_items[0].project_id = null
+        expect((await portalUpdateTaskPriority(token, task, 'high')).success).toBe(false)
+        noSideEffects()
     })
     it('permits project leadership only for that project', async () => {
         state.tables.task_projects[0].lead_staff_id = staffId
