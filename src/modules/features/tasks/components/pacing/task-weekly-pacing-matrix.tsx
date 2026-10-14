@@ -62,7 +62,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { cn } from "@/modules/infrastructure/utils/utils"
-import { SearchFilterBar } from "@/modules/core/ui/components/search-filter-bar"
+import { SpotlightFilterBar } from "@/modules/core/ui/components/spotlight-filter-bar"
+import { TASK_FILTER_ICONS } from "../task-filter-icons"
 import type { TaskItem, TaskProject, TaskWorkspace, TaskStatus } from "../../types"
 import { RECURRENCE_INTERVAL_LABELS } from "../../types"
 import { getTaskWeeklyPacing, parseTaskChecklist, getTaskMemberHours } from "../../types"
@@ -429,18 +430,17 @@ export function TaskWeeklyPacingMatrix({
       {/* 1. Extended Toolbar: SearchFilterBar Combobox + Workspace & Team Selectors + Month + Copy */}
       <div className="flex flex-col xl:flex-row items-stretch xl:items-center justify-between gap-3 w-full pt-1">
         {/* Combobox Search & Active/Completed Filter Pills */}
-        <SearchFilterBar
+        <SpotlightFilterBar
           searchTerm={searchQuery}
           onSearchChange={setSearchQuery}
           searchPlaceholder="Buscar por código, título o colaborador..."
           filters={[
-            { id: "all", label: "Todas", count: countAll, color: "gray" },
-            { id: "active", label: "Activas", count: countActive, color: "emerald" },
-            { id: "completed", label: "Completas", count: countCompleted, color: "slate" },
+            { id: "all", label: "Todas", count: countAll, color: "gray", icon: TASK_FILTER_ICONS.all },
+            { id: "active", label: "Activas", count: countActive, color: "emerald", icon: TASK_FILTER_ICONS.active },
+            { id: "completed", label: "Completas", count: countCompleted, color: "slate", icon: TASK_FILTER_ICONS.done },
           ]}
           activeFilter={filterPreset}
           onFilterChange={setFilterPreset}
-          defaultShowFilters={false}
           className="flex-1 min-w-0"
         />
 

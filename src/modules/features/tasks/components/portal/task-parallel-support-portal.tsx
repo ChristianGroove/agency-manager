@@ -51,7 +51,8 @@ import type { CollaboratorPortalData } from "../../actions/collaborator-portal-a
 import { portalCreateTask, portalUploadTaskAttachment } from "../../actions/collaborator-portal-actions"
 import { getCollaboratorAvatar } from "../../utils/avatar-presets"
 import { TaskSupportTicketDetailModal } from "./task-support-ticket-detail-modal"
-import { SearchFilterBar } from "@/modules/core/ui/components/search-filter-bar"
+import { SpotlightFilterBar } from "@/modules/core/ui/components/spotlight-filter-bar"
+import { TASK_FILTER_ICONS } from "../task-filter-icons"
 import { getTicketReadState, getUnreadCommentCount, type SupportReadState } from "../../utils/support-thread-read-state"
 import { toast } from "sonner"
 import {
@@ -612,19 +613,18 @@ export function TaskParallelSupportPortal({
 
         {/* Toolbar: SearchFilterBar Combobox + Espacio Radix Select */}
         <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
-          <SearchFilterBar
+          <SpotlightFilterBar
             searchTerm={searchQuery}
             onSearchChange={setSearchQuery}
             searchPlaceholder="Buscar por código, título o descripción..."
             filters={[
-              { id: "all", label: "Todos", count: totalCount },
-              { id: "received", label: "Recibidos", count: receivedCount, color: "sky" },
-              { id: "in_progress", label: "En Atención", count: inProgressCount, color: "amber" },
-              { id: "resolved", label: "Resueltos", count: resolvedCount, color: "emerald" },
+              { id: "all", label: "Todos", count: totalCount, icon: TASK_FILTER_ICONS.all },
+              { id: "received", label: "Recibidos", count: receivedCount, color: "sky", icon: TASK_FILTER_ICONS.received },
+              { id: "in_progress", label: "En Atención", count: inProgressCount, color: "amber", icon: TASK_FILTER_ICONS.attending },
+              { id: "resolved", label: "Resueltos", count: resolvedCount, color: "emerald", icon: TASK_FILTER_ICONS.resolved },
             ]}
             activeFilter={statusFilter}
             onFilterChange={(f) => setStatusFilter(f as any)}
-            defaultShowFilters={false}
             className="flex-1"
           />
 

@@ -28,7 +28,8 @@ import { TASK_PRIORITY_LABELS, type TaskItem, type TaskWorkspace, type TaskProje
 import type { SupportTeamMember } from "../../actions/collaborator-portal-actions"
 import { portalUpdateTask } from "../../actions/collaborator-portal-actions"
 import { getCollaboratorAvatar } from "../../utils/avatar-presets"
-import { SearchFilterBar } from "@/modules/core/ui/components/search-filter-bar"
+import { SpotlightFilterBar } from "@/modules/core/ui/components/spotlight-filter-bar"
+import { TASK_FILTER_ICONS } from "../task-filter-icons"
 import { TaskSupportTicketDetailModal } from "./task-support-ticket-detail-modal"
 import { getTicketReadState, getUnreadCommentCount, type SupportReadState } from "../../utils/support-thread-read-state"
 
@@ -399,19 +400,18 @@ export function TaskSupportChannelView({
 
       {/* Toolbar: SearchFilterBar Combobox + Radix Select de Espacios */}
       <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
-        <SearchFilterBar
+        <SpotlightFilterBar
           searchTerm={searchQuery}
           onSearchChange={setSearchQuery}
           searchPlaceholder="Buscar por código, título o especialista..."
           filters={[
-            { id: "all", label: "Todos", count: totalCount },
-            { id: "received", label: "Recibidos", count: receivedCount, color: "sky" },
-            { id: "in_progress", label: "En Atención", count: inProgressCount, color: "amber" },
-            { id: "resolved", label: "Resueltos", count: resolvedCount, color: "emerald" },
+            { id: "all", label: "Todos", count: totalCount, icon: TASK_FILTER_ICONS.all },
+            { id: "received", label: "Recibidos", count: receivedCount, color: "sky", icon: TASK_FILTER_ICONS.received },
+            { id: "in_progress", label: "En Atención", count: inProgressCount, color: "amber", icon: TASK_FILTER_ICONS.attending },
+            { id: "resolved", label: "Resueltos", count: resolvedCount, color: "emerald", icon: TASK_FILTER_ICONS.resolved },
           ]}
           activeFilter={statusFilter}
           onFilterChange={(f) => setStatusFilter(f)}
-          defaultShowFilters={false}
           className="flex-1"
         />
 

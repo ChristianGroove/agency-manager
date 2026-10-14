@@ -74,7 +74,8 @@ import { TaskMeetingModal } from "./meetings/task-meeting-modal"
 import { TaskMeetingDetailModal } from "./meetings/task-meeting-detail-modal"
 import { updateTaskStatus, getTasks, deleteTasks } from "../actions/task-actions"
 import { toast } from "sonner"
-import { SearchFilterBar } from "@/modules/core/ui/components/search-filter-bar"
+import { SpotlightFilterBar } from "@/modules/core/ui/components/spotlight-filter-bar"
+import { TASK_FILTER_ICONS } from "./task-filter-icons"
 import { SectionHeader } from "@/components/layout/section-header"
 import { BulkActionsFloatingBar } from "@/modules/core/ui/components/bulk-actions-floating-bar"
 
@@ -1044,30 +1045,30 @@ export function TaskManagerView({
       {/* Unified SearchFilterBar & Actions Row - For Kanban, List and Calendar views */}
       {(activeTab === "kanban" || activeTab === "list" || activeTab === "calendar") && (
         <div className="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-3">
-          <SearchFilterBar
+          <SpotlightFilterBar
             searchTerm={searchTerm}
             onSearchChange={setSearchTerm}
             searchPlaceholder="Buscar por ticket, título o responsable..."
             filters={[
-              { id: "all", label: "Todas", count: totalCount },
-              { id: "backlog", label: "Backlog", count: backlogCount, color: "slate" },
+              { id: "all", label: "Todas", count: totalCount, icon: TASK_FILTER_ICONS.all },
+              { id: "backlog", label: "Backlog", count: backlogCount, color: "slate", icon: TASK_FILTER_ICONS.backlog },
               {
                 id: "active",
                 label: "Activas",
                 count: activeCount,
                 color: "emerald",
+                icon: TASK_FILTER_ICONS.active,
                 subOptions: [
-                  { id: "todo", label: "Por Hacer", count: todoCount, color: "sky" },
-                  { id: "in_progress", label: "En Curso", count: inProgressCount, color: "indigo" },
-                  { id: "in_review", label: "En QA", count: inQaCount, color: "amber" },
-                  { id: "blocked", label: "Bloqueadas", count: blockedCount, color: "red" },
+                  { id: "todo", label: "Por Hacer", count: todoCount, color: "sky", icon: TASK_FILTER_ICONS.todo },
+                  { id: "in_progress", label: "En Curso", count: inProgressCount, color: "indigo", icon: TASK_FILTER_ICONS.in_progress },
+                  { id: "in_review", label: "En QA", count: inQaCount, color: "amber", icon: TASK_FILTER_ICONS.in_review },
+                  { id: "blocked", label: "Bloqueadas", count: blockedCount, color: "red", icon: TASK_FILTER_ICONS.blocked },
                 ],
               },
-              { id: "done", label: "Completadas", count: completedCount, color: "emerald" },
+              { id: "done", label: "Completadas", count: completedCount, color: "emerald", icon: TASK_FILTER_ICONS.done },
             ]}
             activeFilter={statusFilter}
             onFilterChange={setStatusFilter}
-            defaultShowFilters={false}
             className="flex-1"
           />
 
