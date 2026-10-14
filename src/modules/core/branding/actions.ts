@@ -16,8 +16,8 @@ function debugLog(step: string, data: any) {
 const DEFAULT_BRANDING: BrandingConfig = {
     name: "Pixy",
     logos: {
-        main: "/branding/logo dark.svg",
-        main_light: "/branding/logo light.svg",
+        main: "/branding/logo light.svg", // Logo for dark backgrounds (white text)
+        main_light: "/branding/logo dark.svg", // Logo for light backgrounds (black text)
         portal: "/branding/iso.svg",
         favicon: "/pixy-isotipo.png",
         dashboard_bg: null,
@@ -41,6 +41,20 @@ const DEFAULT_BRANDING: BrandingConfig = {
     email_style: "neo"
 }
 
+// Known deleted storage objects from the October 2026 storage incident
+const DELETED_LEGACY_URLS = new Set([
+    'https://amwlwmkejdjskukdfwut.supabase.co/storage/v1/object/public/branding/c3b2058f-487c-442f-a9a0-c1c7d3fb0883/1769815057247_rgx43z2xg.png',
+    'https://amwlwmkejdjskukdfwut.supabase.co/storage/v1/object/public/branding/c3b2058f-487c-442f-a9a0-c1c7d3fb0883/1769815064697_1yqivrsbn.png',
+    'https://amwlwmkejdjskukdfwut.supabase.co/storage/v1/object/public/branding/c3b2058f-487c-442f-a9a0-c1c7d3fb0883/1767709889548_3ngmixl7c.svg'
+])
+
+function sanitizeAssetUrl(url?: string | null, fallback?: string | null): string | null {
+    if (!url || DELETED_LEGACY_URLS.has(url.trim())) {
+        return fallback || null
+    }
+    return url
+}
+
 /**
  * Get Platform Settings (Queen Brand) - Singleton ID=1
  */
@@ -59,17 +73,17 @@ export const getPlatformSettings = cache(async () => {
     }
 
     return {
-        name: data.agency_name,
+        name: data.agency_name || DEFAULT_BRANDING.name,
         logos: {
-            main: data.main_logo_url,
-            main_light: data.main_logo_light_url,
-            portal: data.portal_logo_url,
-            favicon: data.favicon_url,
-            login_bg: data.login_background_url
+            main: sanitizeAssetUrl(data.main_logo_url, DEFAULT_BRANDING.logos.main),
+            main_light: sanitizeAssetUrl(data.main_logo_light_url, DEFAULT_BRANDING.logos.main_light),
+            portal: sanitizeAssetUrl(data.portal_logo_url, DEFAULT_BRANDING.logos.portal),
+            favicon: sanitizeAssetUrl(data.favicon_url, DEFAULT_BRANDING.logos.favicon),
+            login_bg: data.login_background_url || null
         },
         colors: {
-            primary: data.brand_color_primary,
-            secondary: data.brand_color_secondary
+            primary: data.brand_color_primary || DEFAULT_BRANDING.colors.primary,
+            secondary: data.brand_color_secondary || DEFAULT_BRANDING.colors.secondary
         },
         website: data.social_links?.website || "https://pixy.com.co",
         font_family: "Inter",
@@ -152,7 +166,12 @@ export const getEffectiveBranding = cache(async (orgId?: string | null): Promise
 
     if (!tenantSettings) return platformBranding
 
-    const pickLogo = (tenantVal: any, platformVal: any) => canCustomizeLogo ? tenantVal || platformVal : platformVal
+    const sanitizeTenantLogo = (val: any) => sanitizeAssetUrl(val, null)
+    const pickLogo = (tenantVal: any, platformVal: any) => {
+        const cleanTenant = sanitizeTenantLogo(tenantVal)
+        const cleanPlatform = sanitizeAssetUrl(platformVal, null)
+        return canCustomizeLogo ? (cleanTenant || cleanPlatform) : cleanPlatform
+    }
     const pickColor = (tenantVal: any, platformVal: any) => canCustomizeColors ? tenantVal || platformVal : platformVal
     const pickGeneral = (tenantVal: any, platformVal: any) => tenantVal || platformVal
 

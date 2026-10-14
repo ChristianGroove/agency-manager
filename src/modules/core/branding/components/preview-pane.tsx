@@ -42,6 +42,12 @@ export function PreviewPane({ settings, mode = 'dashboard' }: PreviewPaneProps) 
                                 src={settings.logos.main_light || settings.logos.main || ''}
                                 alt="Logo"
                                 className="h-8 object-contain"
+                                onError={(e) => {
+                                    const fallback = '/branding/logo dark.svg'
+                                    if (e.currentTarget.src !== fallback && !e.currentTarget.src.endsWith(fallback)) {
+                                        e.currentTarget.src = fallback
+                                    }
+                                }}
                             />
                         ) : (
                             <div className="h-8 w-24 bg-gray-200 rounded animate-pulse" />
@@ -85,6 +91,12 @@ export function PreviewPane({ settings, mode = 'dashboard' }: PreviewPaneProps) 
                             src={settings.logos.main_light || settings.logos.main || ''}
                             alt="Logo"
                             className="h-5 object-contain"
+                            onError={(e) => {
+                                const fallback = '/branding/logo dark.svg'
+                                if (e.currentTarget.src !== fallback && !e.currentTarget.src.endsWith(fallback)) {
+                                    e.currentTarget.src = fallback
+                                }
+                            }}
                         />
                     ) : (
                         <div className="h-5 w-16 bg-gray-200 rounded animate-pulse" />

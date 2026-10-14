@@ -75,7 +75,17 @@ export function OrgBranding({ orgId, collapsed = false, initialBranding }: { org
         if (isotypeUrl) {
             return (
                 <div className="w-9 h-9 flex items-center justify-center overflow-hidden">
-                    <img src={isotypeUrl} alt={branding.name} className="w-full h-full object-contain p-1" />
+                    <img
+                        src={isotypeUrl}
+                        alt={branding.name}
+                        className="w-full h-full object-contain p-1"
+                        onError={(e) => {
+                            const fallback = '/branding/iso.svg'
+                            if (e.currentTarget.src !== fallback && !e.currentTarget.src.endsWith(fallback)) {
+                                e.currentTarget.src = fallback
+                            }
+                        }}
+                    />
                 </div>
             )
         }
@@ -96,9 +106,12 @@ export function OrgBranding({ orgId, collapsed = false, initialBranding }: { org
     const logoLight = branding.logos?.main_light
 
     // Choose logo based on theme
-    // Default to dark logo if not mounted or theme is dark
-    const showLightLogo = mounted && resolvedTheme === 'light'
-    const logoUrl = (showLightLogo && logoLight) ? logoLight : logoDark
+    // branding.logos.main: Logo principal (para fondos oscuros / dark mode)
+    // branding.logos.main_light: Logo secundario (para fondos claros / light mode)
+    const isLightMode = mounted && resolvedTheme === 'light'
+    const logoUrl = isLightMode
+        ? (logoLight || logoDark)
+        : (logoDark || logoLight)
 
     if (logoUrl) {
         return (
@@ -107,6 +120,12 @@ export function OrgBranding({ orgId, collapsed = false, initialBranding }: { org
                 src={logoUrl}
                 alt={branding.name}
                 className="h-8 w-auto object-contain object-left"
+                onError={(e) => {
+                    const fallback = isLightMode ? '/branding/logo dark.svg' : '/branding/logo light.svg'
+                    if (e.currentTarget.src !== fallback && !e.currentTarget.src.endsWith(fallback)) {
+                        e.currentTarget.src = fallback
+                    }
+                }}
             />
         )
     }
