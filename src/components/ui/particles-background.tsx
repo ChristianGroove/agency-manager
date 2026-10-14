@@ -1,6 +1,7 @@
 "use client"
 
-import { useEffect, useRef } from "react"
+import { useEffect, useRef, useState } from "react"
+import { useTheme } from "next-themes"
 import { cn } from "@/modules/infrastructure/utils/utils"
 
 interface Particle {
@@ -18,12 +19,20 @@ interface Particle {
 export const ParticlesBackground = ({
     children,
     className,
-    theme = "dark",
+    theme: propTheme,
 }: {
     children?: React.ReactNode
     className?: string
     theme?: "dark" | "light"
 }) => {
+    const { resolvedTheme } = useTheme()
+    const [mounted, setMounted] = useState(false)
+
+    useEffect(() => {
+        setMounted(true)
+    }, [])
+
+    const theme = propTheme ?? (mounted && resolvedTheme === "light" ? "light" : "dark")
     const canvasRef = useRef<HTMLCanvasElement>(null)
     const containerRef = useRef<HTMLDivElement>(null)
     const mouseRef = useRef({ x: 0, y: 0 })
@@ -59,7 +68,7 @@ export const ParticlesBackground = ({
                 // Theme-based colors
                 let color;
                 if (theme === "light") {
-                    color = Math.random() > 0.5 ? "rgba(242, 5, 226, 0.4)" : "rgba(0, 224, 255, 0.4)" // Slightly more transparent for light
+                    color = Math.random() > 0.5 ? "rgba(242, 5, 226, 0.5)" : "rgba(0, 224, 255, 0.5)" // Subtle vibrant accents for soft gray
                 } else {
                     color = Math.random() > 0.5 ? "rgba(242, 5, 226, 0.6)" : "rgba(0, 224, 255, 0.6)"
                 }
@@ -149,27 +158,16 @@ export const ParticlesBackground = ({
 
     return (
         <div ref={containerRef} className={cn(
-            "relative min-h-screen w-full overflow-hidden flex flex-col items-center justify-center",
-            theme === "light" ? "bg-gray-50" : "bg-black",
+            "relative min-h-screen w-full overflow-hidden flex flex-col items-center justify-center bg-[#edf0f4] dark:bg-black transition-colors duration-300",
             className
         )}>
             {/* Dynamic Gradient Background */}
             <div className="absolute inset-0 z-0 pointer-events-none">
-                {theme === "light" ? (
-                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,_#ffffff_0%,_#f3f4f6_100%)]" />
-                ) : (
-                    <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,_#1a1a1a_0%,_#000000_100%)]" />
-                )}
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,_#edf0f4_0%,_#e2e6eb_100%)] dark:bg-[radial-gradient(circle_at_50%_50%,_#1a1a1a_0%,_#000000_100%)] transition-opacity duration-300" />
 
-                <div className="absolute top-0 left-0 w-full h-full opacity-40">
-                    <div className={cn(
-                        "absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full blur-[100px] animate-pulse",
-                        theme === "light" ? "bg-brand-pink/10" : "bg-brand-pink/20"
-                    )} />
-                    <div className={cn(
-                        "absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full blur-[100px] animate-pulse delay-1000",
-                        theme === "light" ? "bg-brand-cyan/10" : "bg-brand-cyan/20"
-                    )} />
+                <div className="absolute top-0 left-0 w-full h-full opacity-50 dark:opacity-40">
+                    <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] rounded-full blur-[100px] animate-pulse bg-brand-pink/15 dark:bg-brand-pink/20" />
+                    <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] rounded-full blur-[100px] animate-pulse delay-1000 bg-brand-cyan/15 dark:bg-brand-cyan/20" />
                 </div>
             </div>
 

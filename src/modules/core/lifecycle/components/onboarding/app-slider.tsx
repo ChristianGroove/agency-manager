@@ -95,11 +95,11 @@ export function AppSlider({ apps, selectedAppId, onSelect, primaryColor }: AppSl
                             className={`
                                 absolute w-[260px] h-[260px] rounded-3xl p-5 flex flex-col justify-between 
                                 cursor-grab active:cursor-grabbing transition-shadow duration-500
+                                bg-white/90 dark:bg-zinc-900/90 backdrop-blur-md
                                 ${isCenter ? 'z-20' : 'z-10'}
                                 ${isCenter ? 'shadow-2xl' : ''}
                             `}
                             style={{
-                                background: 'white',
                                 border: isCenter ? `2px solid ${app.color || primaryColor}` : '1px solid rgba(255,255,255,0.2)',
                                 boxShadow: isCenter
                                     ? `0 25px 50px -12px ${app.color || primaryColor}40`
@@ -152,7 +152,7 @@ export function AppSlider({ apps, selectedAppId, onSelect, primaryColor }: AppSl
                                 </div>
 
                                 <div className="text-center flex-1">
-                                    <h3 className="text-lg font-bold text-gray-900 leading-tight mb-2 px-2">
+                                    <h3 className="text-lg font-bold text-gray-900 dark:text-white leading-tight mb-2 px-2">
                                         {app.name}
                                     </h3>
                                     {isCenter && (
@@ -169,7 +169,7 @@ export function AppSlider({ apps, selectedAppId, onSelect, primaryColor }: AppSl
                                 {isCenter && (
                                     <div className="mt-auto pt-4">
                                         <div
-                                            className="h-8 w-8 rounded-full flex items-center justify-center bg-gray-50 text-gray-900"
+                                            className="h-8 w-8 rounded-full flex items-center justify-center bg-gray-50 dark:bg-zinc-800 text-gray-900 dark:text-white"
                                             style={{ color: app.color || primaryColor }}
                                         >
                                             <Check className="h-5 w-5" />

@@ -13,6 +13,7 @@ import { Loader2, ArrowLeft, CheckCircle2 } from "lucide-react"
 import { ParticlesBackground } from "@/components/ui/particles-background"
 import { toast } from "sonner"
 import { AnimatedBorderBeam } from "@/components/ui/animated-border-beam"
+import { AuthThemeToggle } from "@/components/ui/auth-theme-toggle"
 
 export default function ForgotPasswordPage() {
     const searchParams = useSearchParams()
@@ -74,20 +75,35 @@ export default function ForgotPasswordPage() {
                 </div>
             )}
 
-            <div className="z-10 flex flex-col items-center gap-6 animate-in fade-in zoom-in duration-500 w-full max-w-sm px-4">
-                <div className="mb-6">
-                    <img
-                        src={logoUrl}
-                        alt="Logo"
-                        className="h-11 w-auto object-contain drop-shadow-lg"
-                    />
+            <div className="z-10 flex flex-col items-center gap-5 animate-in fade-in zoom-in duration-500 w-full max-w-sm px-4">
+                <div className="mb-1">
+                    {branding?.portal_logo_url ? (
+                        <img
+                            src={branding.portal_logo_url}
+                            alt="Logo"
+                            className="h-11 w-auto object-contain drop-shadow-lg"
+                        />
+                    ) : (
+                        <>
+                            <img
+                                src="/branding/logo dark.svg"
+                                alt="Pixy Logo"
+                                className="h-11 w-auto object-contain drop-shadow-md dark:hidden"
+                            />
+                            <img
+                                src="/branding/logo light.svg"
+                                alt="Pixy Logo"
+                                className="h-11 w-auto object-contain drop-shadow-lg hidden dark:block"
+                            />
+                        </>
+                    )}
                 </div>
 
-                <Card className="w-full premium-glass-card text-white relative overflow-hidden bg-transparent">
+                <Card className="w-full premium-glass-card text-zinc-900 dark:text-white relative overflow-hidden bg-transparent">
                     <AnimatedBorderBeam className="rounded-[1.5rem]" />
                     <CardHeader className="space-y-1 text-center pb-6 pt-7 relative z-20">
-                        <CardTitle className="text-xl font-bold tracking-tight">Recuperar acceso</CardTitle>
-                        <CardDescription className="text-gray-300">
+                        <CardTitle className="text-xl font-bold tracking-tight text-zinc-900 dark:text-white">Recuperar acceso</CardTitle>
+                        <CardDescription className="text-zinc-500 dark:text-gray-300 text-xs">
                             Te enviaremos un enlace para restablecer tu contraseña
                         </CardDescription>
                     </CardHeader>
@@ -95,74 +111,77 @@ export default function ForgotPasswordPage() {
                         {!submitted ? (
                             <form onSubmit={handleSubmit} className="space-y-4">
                                 <div className="space-y-2">
-                                    <Label htmlFor="email" className="text-zinc-200 text-xs font-medium">Email</Label>
+                                    <Label htmlFor="email" className="text-zinc-700 dark:text-zinc-200 text-xs font-medium">Email</Label>
                                     <Input
                                         id="email"
                                         name="email"
                                         type="email"
                                         placeholder="nombre@empresa.com"
                                         required
-                                        style={{ color: 'white' }}
-                                        className="bg-white/[0.07] border-white/15 text-white placeholder:text-zinc-400 focus:border-white/35 focus:bg-white/[0.12] focus:ring-1 focus:ring-white/20 transition-all h-11 rounded-xl"
+                                        className="bg-black/[0.04] dark:bg-white/[0.07] border-black/10 dark:border-white/15 text-zinc-900 dark:text-white placeholder:text-zinc-400 dark:placeholder:text-zinc-500 focus:border-brand-pink/50 dark:focus:border-white/35 focus:bg-white/70 dark:focus:bg-white/[0.12] focus:ring-1 focus:ring-brand-pink/30 dark:focus:ring-white/20 transition-all h-11 rounded-xl"
                                     />
                                 </div>
 
-                                    {error && (
-                                        <div className="p-3 rounded-xl bg-red-500/20 border border-red-500/30 text-sm text-red-200 font-medium text-center animate-in fade-in slide-in-from-top-2">
-                                            {error}
-                                        </div>
+                                {error && (
+                                    <div className="p-3 rounded-xl bg-red-500/15 border border-red-500/30 text-sm text-red-600 dark:text-red-200 font-medium text-center animate-in fade-in slide-in-from-top-2">
+                                        {error}
+                                    </div>
+                                )}
+
+                                <Button
+                                    type="submit"
+                                    className="w-full bg-zinc-900 text-white hover:bg-zinc-800 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-100 font-semibold h-11 rounded-xl shadow-sm transition-all active:scale-[0.99] mt-2 cursor-pointer"
+                                    disabled={isLoading}
+                                >
+                                    {isLoading ? (
+                                        <>
+                                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                            Enviando...
+                                        </>
+                                    ) : (
+                                        "Enviar enlace de recuperación"
                                     )}
+                                </Button>
 
-                                    <Button
-                                        type="submit"
-                                        className="w-full bg-white text-zinc-950 hover:bg-zinc-100 font-semibold h-11 rounded-xl shadow-sm transition-all active:scale-[0.99] mt-2"
-                                        disabled={isLoading}
+                                <div className="flex justify-center pt-2">
+                                    <Link
+                                        href={loginHref}
+                                        className="text-sm text-zinc-500 hover:text-zinc-900 dark:text-white/70 dark:hover:text-white transition-colors flex items-center gap-2"
                                     >
-                                        {isLoading ? (
-                                            <>
-                                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                                Enviando...
-                                            </>
-                                        ) : (
-                                            "Enviar enlace de recuperación"
-                                        )}
-                                    </Button>
-
-                                    <div className="flex justify-center pt-2">
-                                        <Link
-                                            href={loginHref}
-                                            className="text-sm text-white/70 hover:text-white transition-colors flex items-center gap-2"
-                                        >
-                                            <ArrowLeft className="h-4 w-4" /> Volver al Login
-                                        </Link>
-                                    </div>
-                                </form>
-                            ) : (
-                                <div className="space-y-4">
-                                    <div className="p-4 rounded-xl bg-green-500/20 border border-green-500/30 text-green-200 text-center animate-in fade-in zoom-in duration-300 space-y-2">
-                                        <div className="flex justify-center mb-1">
-                                            <CheckCircle2 className="h-6 w-6 text-green-400" />
-                                        </div>
-                                        <h3 className="font-semibold text-sm">¡Enlace Enviado!</h3>
-                                        <p className="text-xs opacity-90">
-                                            Revisa tu correo electrónico para restablecer tu contraseña.
-                                        </p>
-                                    </div>
-
-                                    <Button
-                                        className="w-full bg-white text-zinc-950 hover:bg-zinc-100 font-semibold h-11 rounded-xl shadow-sm transition-all active:scale-[0.99] mt-2"
-                                        asChild
-                                    >
-                                        <Link href={loginHref}>Volver al inicio de sesión</Link>
-                                    </Button>
+                                        <ArrowLeft className="h-4 w-4" /> Volver al Login
+                                    </Link>
                                 </div>
-                            )}
-                        </CardContent>
-                    </Card>
+                            </form>
+                        ) : (
+                            <div className="space-y-4">
+                                <div className="p-4 rounded-xl bg-green-500/20 border border-green-500/30 text-green-700 dark:text-green-200 text-center animate-in fade-in zoom-in duration-300 space-y-2">
+                                    <div className="flex justify-center mb-1">
+                                        <CheckCircle2 className="h-6 w-6 text-green-500 dark:text-green-400" />
+                                    </div>
+                                    <h3 className="font-semibold text-sm">¡Enlace Enviado!</h3>
+                                    <p className="text-xs opacity-90">
+                                        Revisa tu correo electrónico para restablecer tu contraseña.
+                                    </p>
+                                </div>
 
-                    <p className="text-xs text-white font-medium z-10 text-center select-none">
+                                <Button
+                                    className="w-full bg-zinc-900 text-white hover:bg-zinc-800 dark:bg-white dark:text-zinc-950 dark:hover:bg-zinc-100 font-semibold h-11 rounded-xl shadow-sm transition-all active:scale-[0.99] mt-2 cursor-pointer"
+                                    asChild
+                                >
+                                    <Link href={loginHref}>Volver al inicio de sesión</Link>
+                                </Button>
+                            </div>
+                        )}
+                    </CardContent>
+                </Card>
+
+                {/* Footer branding and theme toggle */}
+                <div className="flex flex-col items-center gap-2 z-10 select-none">
+                    <p className="text-xs text-zinc-600 dark:text-white font-medium text-center">
                         <span className="animate-text-shimmer-slow">Powered by Pixy</span>
                     </p>
+                    <AuthThemeToggle />
+                </div>
             </div>
         </div>
     )

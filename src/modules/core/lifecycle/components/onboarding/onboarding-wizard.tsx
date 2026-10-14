@@ -12,6 +12,7 @@ import { getAvailableApps } from "@/modules/core/saas/saas-actions"
 import { useBranding } from "@/components/providers/branding-provider"
 
 import { AppSlider } from "./app-slider"
+import { AnimatedBorderBeam } from "@/components/ui/animated-border-beam"
 
 export function OnboardingWizard() {
     const submitting = useRef(false)
@@ -135,7 +136,7 @@ export function OnboardingWizard() {
             {/* Top: 3D Slider (Compact & Magnetic) */}
             {context && !context.organization && <div className="w-full mb-6 relative z-10">
                 <div className="text-center mb-4">
-                    <h2 className="text-xl font-bold text-gray-900">Elige tu espacio</h2>
+                    <h2 className="text-xl font-bold text-zinc-900 dark:text-white">Elige tu espacio</h2>
                 </div>
                 <AppSlider
                     apps={apps}
@@ -146,33 +147,33 @@ export function OnboardingWizard() {
             </div>}
 
             {/* Bottom: Minimal Form */}
-            <div className="w-full bg-white/60 backdrop-blur-xl p-6 rounded-3xl shadow-2xl border border-white/50 relative z-20">
-                <form onSubmit={handleSubmit} className="space-y-4">
-                    {context?.organization && <div className="space-y-2 text-sm text-gray-600">
-                        <h1 className="text-xl font-bold text-gray-900">Activa tu acceso</h1>
+            <div className="w-full premium-glass-card p-6 rounded-3xl relative z-20 overflow-hidden">
+                <AnimatedBorderBeam className="rounded-3xl" />
+                <form onSubmit={handleSubmit} className="space-y-4 relative z-20">
+                    {context?.organization && <div className="space-y-2 text-sm text-zinc-600 dark:text-zinc-300">
+                        <h1 className="text-xl font-bold text-zinc-900 dark:text-white">Activa tu acceso</h1>
                         <p>Tu organización ya está configurada. Completa tu acceso para empezar.</p>
-                        <div className="rounded-xl bg-white/80 p-4">
-                            <p className="font-semibold text-gray-900">{context.organization.name}</p>
+                        <div className="rounded-xl bg-black/[0.03] dark:bg-white/[0.05] border border-black/5 dark:border-white/10 p-4">
+                            <p className="font-semibold text-zinc-900 dark:text-white">{context.organization.name}</p>
                             <p>{context.organization.app_name}</p>
-                            <p className="text-xs mt-1">Identificador: {context.organization.slug}</p>
+                            <p className="text-xs mt-1 text-zinc-500 dark:text-zinc-400">Identificador: {context.organization.slug}</p>
                         </div>
                     </div>}
                     {context && !context.organization && <>
                     <div className="space-y-1.5">
-                        <Label htmlFor="name" className="text-gray-600 text-[10px] uppercase font-bold tracking-wider pl-1">Organización</Label>
+                        <Label htmlFor="name" className="text-zinc-700 dark:text-zinc-300 text-[10px] uppercase font-bold tracking-wider pl-1">Organización</Label>
                         <Input
                             id="name"
                             required
                             placeholder="Nombre de tu empresa"
                             value={formData.name}
                             onChange={handleNameChange}
-                            style={{ color: '#1f2937' }}
-                            className="bg-white/80 border-gray-200 focus:ring-2 focus:ring-offset-0 transition-all shadow-sm h-10 text-sm"
+                            className="bg-black/[0.04] dark:bg-white/[0.07] border-black/10 dark:border-white/15 text-zinc-900 dark:text-white placeholder:text-zinc-400 dark:placeholder:text-zinc-500 focus:ring-2 focus:ring-offset-0 transition-all shadow-sm h-10 text-sm rounded-xl"
                         />
                     </div>
 
                     <div className="space-y-1.5">
-                        <Label htmlFor="slug" className="text-gray-600 text-[10px] uppercase font-bold tracking-wider pl-1">URL del Espacio</Label>
+                        <Label htmlFor="slug" className="text-zinc-700 dark:text-zinc-300 text-[10px] uppercase font-bold tracking-wider pl-1">URL del Espacio</Label>
                         <div className="flex rounded-md shadow-sm h-9">
                             <Input
                                 id="slug"
@@ -180,41 +181,43 @@ export function OnboardingWizard() {
                                 pattern="[a-z0-9]+(-[a-z0-9]+)*"
                                 value={formData.slug}
                                 onChange={(e) => setFormData(prev => ({ ...prev, slug: e.target.value.toLowerCase() }))}
-                                style={{ color: '#1f2937' }}
-                                className="rounded-r-none bg-white/80 border-gray-200 focus:z-10 focus:ring-2 focus:ring-offset-0 text-right font-medium text-sm h-full"
+                                className="rounded-r-none bg-black/[0.04] dark:bg-white/[0.07] border-black/10 dark:border-white/15 text-zinc-900 dark:text-white placeholder:text-zinc-400 dark:placeholder:text-zinc-500 focus:z-10 focus:ring-2 focus:ring-offset-0 text-right font-medium text-sm h-full"
                                 placeholder="slug"
                             />
-                            <span className="inline-flex items-center px-3 rounded-r-md border border-l-0 border-gray-200 bg-gray-50/50 text-gray-500 text-[10px] select-none font-medium h-full">
+                            <span className="inline-flex items-center px-3 rounded-r-md border border-l-0 border-black/10 dark:border-white/15 bg-black/[0.02] dark:bg-white/[0.04] text-zinc-500 dark:text-zinc-400 text-[10px] select-none font-medium h-full">
                                 {domainBase || '.pixy.com.co'}
                             </span>
                         </div>
                     </div>
-                    <p className="text-xs text-gray-500">El identificador se usa en el subdominio de tu organización. Usa letras, números y guiones.</p>
+                    <p className="text-xs text-zinc-500 dark:text-zinc-400">El identificador se usa en el subdominio de tu organización. Usa letras, números y guiones.</p>
                     {!apps.length && <p role="alert" className="text-sm text-red-600">No hay espacios disponibles. Contacta a soporte.</p>}
                     </>}
                     {context?.requiresPassword && <>
                         <div className="space-y-1.5">
-                            <Label htmlFor="fullName">Tu nombre</Label>
+                            <Label htmlFor="fullName" className="text-zinc-700 dark:text-zinc-300 text-xs font-medium">Tu nombre</Label>
                             <Input id="fullName" autoComplete="name" required value={formData.fullName}
-                                onChange={e => setFormData(prev => ({ ...prev, fullName: e.target.value }))} />
+                                onChange={e => setFormData(prev => ({ ...prev, fullName: e.target.value }))}
+                                className="bg-black/[0.04] dark:bg-white/[0.07] border-black/10 dark:border-white/15 text-zinc-900 dark:text-white placeholder:text-zinc-400 dark:placeholder:text-zinc-500 focus:ring-2 focus:ring-offset-0 transition-all shadow-sm h-10 text-sm rounded-xl" />
                         </div>
-                        <p className="text-sm text-gray-600">Crea una contraseña para ingresar después con tu correo.</p>
+                        <p className="text-sm text-zinc-600 dark:text-zinc-300">Crea una contraseña para ingresar después con tu correo.</p>
                         <div className="space-y-1.5">
-                            <Label htmlFor="password">Contraseña</Label>
+                            <Label htmlFor="password" className="text-zinc-700 dark:text-zinc-300 text-xs font-medium">Contraseña</Label>
                             <Input id="password" type="password" autoComplete="new-password" minLength={6} required value={formData.password}
-                                onChange={e => setFormData(prev => ({ ...prev, password: e.target.value }))} />
+                                onChange={e => setFormData(prev => ({ ...prev, password: e.target.value }))}
+                                className="bg-black/[0.04] dark:bg-white/[0.07] border-black/10 dark:border-white/15 text-zinc-900 dark:text-white placeholder:text-zinc-400 dark:placeholder:text-zinc-500 focus:ring-2 focus:ring-offset-0 transition-all shadow-sm h-10 text-sm rounded-xl" />
                         </div>
                         <div className="space-y-1.5">
-                            <Label htmlFor="confirmPassword">Confirmar contraseña</Label>
+                            <Label htmlFor="confirmPassword" className="text-zinc-700 dark:text-zinc-300 text-xs font-medium">Confirmar contraseña</Label>
                             <Input id="confirmPassword" type="password" autoComplete="new-password" minLength={6} required value={formData.confirmPassword}
-                                onChange={e => setFormData(prev => ({ ...prev, confirmPassword: e.target.value }))} />
+                                onChange={e => setFormData(prev => ({ ...prev, confirmPassword: e.target.value }))}
+                                className="bg-black/[0.04] dark:bg-white/[0.07] border-black/10 dark:border-white/15 text-zinc-900 dark:text-white placeholder:text-zinc-400 dark:placeholder:text-zinc-500 focus:ring-2 focus:ring-offset-0 transition-all shadow-sm h-10 text-sm rounded-xl" />
                         </div>
                     </>}
-                    {error && <p role="alert" className="text-sm text-red-600">{error}</p>}
+                    {error && <p role="alert" className="text-sm text-red-600 dark:text-red-400">{error}</p>}
 
                     <Button
                         type="submit"
-                        className="w-full text-white shadow-lg h-10 font-bold text-sm hover:scale-[1.02] active:scale-[0.98] transition-all mt-2"
+                        className="w-full text-white shadow-lg h-10 font-bold text-sm hover:scale-[1.02] active:scale-[0.98] transition-all mt-2 cursor-pointer"
                         style={{
                             backgroundColor: primaryColor,
                             boxShadow: `0 8px 16px -4px ${primaryColor}50`
@@ -230,7 +233,7 @@ export function OnboardingWizard() {
                             context?.organization ? 'Guardar y entrar' : 'Crear y entrar'
                         )}
                     </Button>
-                    <a href="/login" className="block text-center text-sm text-gray-500 underline">Volver al inicio de sesión</a>
+                    <a href="/login" className="block text-center text-sm text-zinc-500 dark:text-zinc-400 hover:text-zinc-900 dark:hover:text-white underline transition-colors">Volver al inicio de sesión</a>
                 </form>
             </div>
         </div>
