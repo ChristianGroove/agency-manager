@@ -1,20 +1,35 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
+import { useSearchParams } from "next/navigation"
+import Link from "next/link"
 import { resetPasswordRequest } from "@/modules/core/auth/actions"
+import { getPublicBranding } from "@/modules/core/settings/actions/public"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Loader2, ArrowLeft } from "lucide-react"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Loader2, ArrowLeft, CheckCircle2 } from "lucide-react"
 import { ParticlesBackground } from "@/components/ui/particles-background"
-import Link from "next/link"
 import { toast } from "sonner"
+import { AnimatedBorderBeam } from "@/components/ui/animated-border-beam"
 
 export default function ForgotPasswordPage() {
+    const searchParams = useSearchParams()
+    const orgSlug = searchParams.get('org')
+
     const [isLoading, setIsLoading] = useState(false)
     const [submitted, setSubmitted] = useState(false)
     const [error, setError] = useState<string | null>(null)
+    const [branding, setBranding] = useState<any>(null)
+
+    useEffect(() => {
+        if (orgSlug) {
+            getPublicBranding(orgSlug).then((b) => {
+                setBranding(b)
+            }).catch((e) => console.error(e))
+        }
+    }, [orgSlug])
 
     const handleSubmit = async (event: React.FormEvent<HTMLFormElement>) => {
         event.preventDefault()
@@ -34,87 +49,121 @@ export default function ForgotPasswordPage() {
         setIsLoading(false)
     }
 
+    // Dynamic Styles matching LoginPage
+    const bgImage = branding?.portal_login_background_url ? `url('${branding.portal_login_background_url}')` : undefined
+    const bgColor = branding?.portal_login_background_color || undefined
+    const logoUrl = branding?.portal_logo_url || "/branding/logo light.svg"
+    const loginHref = orgSlug ? `/login?org=${orgSlug}` : "/login"
+
     return (
-        <ParticlesBackground>
-            <div className="z-10 flex flex-col items-center gap-6 animate-in fade-in zoom-in duration-500">
+        <div className="relative min-h-screen w-full overflow-hidden flex flex-col items-center justify-center">
+            {/* Dynamic Background */}
+            {branding ? (
+                <div
+                    className="absolute inset-0 z-0 bg-cover bg-center transition-all duration-700"
+                    style={{
+                        backgroundImage: bgImage,
+                        backgroundColor: bgColor || '#111827'
+                    }}
+                >
+                    <div className="absolute inset-0 bg-black/20 backdrop-blur-[1px]" />
+                </div>
+            ) : (
+                <div className="absolute inset-0 z-0">
+                    <ParticlesBackground />
+                </div>
+            )}
+
+            <div className="z-10 flex flex-col items-center gap-6 animate-in fade-in zoom-in duration-500 w-full max-w-sm px-4">
                 <div className="mb-6">
                     <img
-                        src="/branding/logo light.svg"
-                        alt="Pixy"
-                        className="h-16 w-auto"
+                        src={logoUrl}
+                        alt="Logo"
+                        className="h-11 w-auto object-contain drop-shadow-lg"
                     />
                 </div>
 
-                <Card className="w-[380px] bg-black/10 backdrop-blur-md border-white/10 text-white shadow-[0_0_40px_-10px_rgba(0,0,0,0.5)] ring-1 ring-white/10 hover:ring-white/20 transition-all duration-500">
-                    <CardHeader className="space-y-1 text-center pb-8">
-                        <CardTitle className="text-2xl font-bold tracking-tight">Recuperar acceso</CardTitle>
-                        <CardDescription className="text-gray-400">
+                <Card className="w-full premium-glass-card text-white relative overflow-hidden bg-transparent">
+                    <AnimatedBorderBeam className="rounded-[1.5rem]" />
+                    <CardHeader className="space-y-1 text-center pb-6 pt-7 relative z-20">
+                        <CardTitle className="text-xl font-bold tracking-tight">Recuperar acceso</CardTitle>
+                        <CardDescription className="text-gray-300">
                             Te enviaremos un enlace para restablecer tu contraseña
                         </CardDescription>
                     </CardHeader>
-                    {!submitted ? (
-                        <form onSubmit={handleSubmit}>
-                            <CardContent className="space-y-4">
+                    <CardContent className="space-y-4 px-6 pb-7 pt-0 relative z-20">
+                        {!submitted ? (
+                            <form onSubmit={handleSubmit} className="space-y-4">
                                 <div className="space-y-2">
-                                    <Label htmlFor="email" className="text-gray-300">Email</Label>
+                                    <Label htmlFor="email" className="text-zinc-200 text-xs font-medium">Email</Label>
                                     <Input
                                         id="email"
                                         name="email"
                                         type="email"
-                                        placeholder="tu@email.com"
+                                        placeholder="nombre@empresa.com"
                                         required
                                         style={{ color: 'white' }}
-                                        className="bg-white/5 border-white/10 text-white placeholder:text-gray-500 focus:border-brand-pink/50 focus:ring-brand-pink/20 transition-all h-11 backdrop-blur-sm"
+                                        className="bg-white/[0.07] border-white/15 text-white placeholder:text-zinc-400 focus:border-white/35 focus:bg-white/[0.12] focus:ring-1 focus:ring-white/20 transition-all h-11 rounded-xl"
                                     />
                                 </div>
-                                {error && (
-                                    <div className="p-3 rounded-lg bg-red-500/10 border border-red-500/20 text-sm text-red-400 font-medium text-center animate-in fade-in slide-in-from-top-2">
-                                        {error}
-                                    </div>
-                                )}
-                            </CardContent>
-                            <CardFooter className="pt-4 pb-8 flex flex-col gap-4">
-                                <Button
-                                    type="submit"
-                                    className="w-full bg-gradient-to-r from-brand-pink to-brand-pink/80 hover:from-brand-pink/90 hover:to-brand-pink/70 text-white h-11 font-medium shadow-[0_0_20px_rgba(242,5,226,0.3)] hover:shadow-[0_0_30px_rgba(242,5,226,0.5)] transition-all hover:scale-[1.02] border border-white/10"
-                                    disabled={isLoading}
-                                >
-                                    {isLoading ? (
-                                        <>
-                                            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                                            Enviando...
-                                        </>
-                                    ) : (
-                                        "Enviar enlace de recuperación"
-                                    )}
-                                </Button>
-                                <Link href="/login" className="text-sm text-gray-400 hover:text-white transition-colors flex items-center gap-2">
-                                    <ArrowLeft className="h-4 w-4" /> Volver al Login
-                                </Link>
-                            </CardFooter>
-                        </form>
-                    ) : (
-                        <CardContent className="space-y-6 pt-4 pb-8">
-                            <div className="p-4 bg-green-500/10 border border-green-500/20 rounded-xl text-center">
-                                <p className="text-green-400 font-medium">¡Correo enviado!</p>
-                                <p className="text-sm text-gray-400 mt-2">
-                                    Si la cuenta existe, recibirás instrucciones en unos momentos.
-                                </p>
-                            </div>
-                            <Button
-                                className="w-full bg-white/5 border border-white/10 hover:bg-white/10 text-white h-11 transition-colors"
-                                asChild
-                            >
-                                <Link href="/login">Volver al inicio de sesión</Link>
-                            </Button>
-                        </CardContent>
-                    )}
-                </Card>
 
-                <p className="text-sm text-gray-500/80 font-medium">
-                    &copy; 2026 Pixy Agency
-                </p>
+                                    {error && (
+                                        <div className="p-3 rounded-xl bg-red-500/20 border border-red-500/30 text-sm text-red-200 font-medium text-center animate-in fade-in slide-in-from-top-2">
+                                            {error}
+                                        </div>
+                                    )}
+
+                                    <Button
+                                        type="submit"
+                                        className="w-full bg-white text-zinc-950 hover:bg-zinc-100 font-semibold h-11 rounded-xl shadow-sm transition-all active:scale-[0.99] mt-2"
+                                        disabled={isLoading}
+                                    >
+                                        {isLoading ? (
+                                            <>
+                                                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                                Enviando...
+                                            </>
+                                        ) : (
+                                            "Enviar enlace de recuperación"
+                                        )}
+                                    </Button>
+
+                                    <div className="flex justify-center pt-2">
+                                        <Link
+                                            href={loginHref}
+                                            className="text-sm text-white/70 hover:text-white transition-colors flex items-center gap-2"
+                                        >
+                                            <ArrowLeft className="h-4 w-4" /> Volver al Login
+                                        </Link>
+                                    </div>
+                                </form>
+                            ) : (
+                                <div className="space-y-4">
+                                    <div className="p-4 rounded-xl bg-green-500/20 border border-green-500/30 text-green-200 text-center animate-in fade-in zoom-in duration-300 space-y-2">
+                                        <div className="flex justify-center mb-1">
+                                            <CheckCircle2 className="h-6 w-6 text-green-400" />
+                                        </div>
+                                        <h3 className="font-semibold text-sm">¡Enlace Enviado!</h3>
+                                        <p className="text-xs opacity-90">
+                                            Revisa tu correo electrónico para restablecer tu contraseña.
+                                        </p>
+                                    </div>
+
+                                    <Button
+                                        className="w-full bg-white text-zinc-950 hover:bg-zinc-100 font-semibold h-11 rounded-xl shadow-sm transition-all active:scale-[0.99] mt-2"
+                                        asChild
+                                    >
+                                        <Link href={loginHref}>Volver al inicio de sesión</Link>
+                                    </Button>
+                                </div>
+                            )}
+                        </CardContent>
+                    </Card>
+
+                    <p className="text-xs text-white font-medium z-10 text-center select-none">
+                        <span className="animate-text-shimmer-slow">Powered by Pixy</span>
+                    </p>
             </div>
-        </ParticlesBackground>
+        </div>
     )
 }

@@ -8,12 +8,14 @@ import { getPublicBranding } from "@/modules/core/settings/actions/public"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Loader2, Wand2, KeyRound, CheckCircle2 } from "lucide-react"
-
+import { Checkbox } from "@/components/ui/checkbox"
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
+import { Loader2, CheckCircle2 } from "lucide-react"
+import { AnimatedPasswordToggle } from "@/components/ui/animated-password-toggle"
 import { ParticlesBackground } from "@/components/ui/particles-background"
 import { BiometricButton } from "@/modules/core/auth/components/biometric-button"
-
+import { AnimatedBorderBeam } from "@/components/ui/animated-border-beam"
+import { cn } from "@/modules/infrastructure/utils/utils"
 
 export default function LoginPage() {
     const router = useRouter()
@@ -25,12 +27,25 @@ export default function LoginPage() {
     const [error, setError] = useState<string | null>(null)
     const [branding, setBranding] = useState<any>(null)
     const [email, setEmail] = useState("")
+    const [password, setPassword] = useState("")
+    const [rememberMe, setRememberMe] = useState(false)
     const [loginMethod, setLoginMethod] = useState<'password' | 'magic_link'>('password')
     const [successMessage, setSuccessMessage] = useState<string | null>(null)
+    const [showPassword, setShowPassword] = useState(false)
 
-    useEffect(() => setIsHydrated(true), [])
+    useEffect(() => {
+        setIsHydrated(true)
+        try {
+            const saved = localStorage.getItem("pixy_remember_email")
+            if (saved) {
+                setEmail(saved)
+                setRememberMe(true)
+            }
+        } catch {
+            // Ignore if localStorage unavailable
+        }
+    }, [])
 
-    // Fetch branding on mount
     // Fetch branding on mount
     useEffect(() => {
         if (orgSlug) {
@@ -45,6 +60,16 @@ export default function LoginPage() {
         event.preventDefault()
         setIsLoading(true)
         setError(null)
+
+        try {
+            if (rememberMe && email) {
+                localStorage.setItem("pixy_remember_email", email.trim())
+            } else {
+                localStorage.removeItem("pixy_remember_email")
+            }
+        } catch {
+            // Ignore
+        }
 
         const formData = new FormData(event.currentTarget)
 
@@ -66,14 +91,15 @@ export default function LoginPage() {
         }
     }
 
-    // Dynamic Styles
+    // Dynamic Styles & Form Ready State
+    const isFormFilled = email.trim().length > 0 && (loginMethod === 'magic_link' || password.trim().length > 0)
     const bgImage = branding?.portal_login_background_url ? `url('${branding.portal_login_background_url}')` : undefined
     const bgColor = branding?.portal_login_background_color || undefined
     const logoUrl = branding?.portal_logo_url || "/branding/logo light.svg"
     const title = branding ? `Iniciar Sesión en ${branding.name}` : "¡Bienvenido de nuevo!"
 
     return (
-        <div className="relative min-h-screen w-full overflow-hidden flex flex-col items-center justify-center">
+        <div className="relative min-h-screen w-full overflow-hidden flex flex-col items-center justify-center p-4">
             {/* Dynamic Background */}
             {branding ? (
                 <div
@@ -92,7 +118,7 @@ export default function LoginPage() {
             )}
 
             <div className="z-10 flex flex-col items-center gap-6 animate-in fade-in zoom-in duration-500 w-full max-w-sm px-4">
-                <div className="mb-6">
+                <div className="mb-2">
                     <img
                         src={logoUrl}
                         alt="Logo"
@@ -100,19 +126,20 @@ export default function LoginPage() {
                     />
                 </div>
 
-                <Card className="w-full bg-black/10 backdrop-blur-md border-white/10 text-white shadow-2xl ring-1 ring-white/10">
-                    <CardHeader className="space-y-1 text-center pb-8">
+                <Card className="w-full premium-glass-card text-white relative overflow-hidden bg-transparent">
+                    {/* Animated Border Stroke Resplandor Beam */}
+                    <AnimatedBorderBeam className="rounded-[1.5rem]" />
+
+                    <CardHeader className="space-y-1 text-center pb-6 pt-7 relative z-20">
                         <CardTitle className="text-xl font-bold tracking-tight">{title}</CardTitle>
-                        <CardDescription className="text-gray-300">
+                        <CardDescription className="text-gray-300 text-xs">
                             Ingresa tus credenciales para acceder
                         </CardDescription>
                     </CardHeader>
-                    <CardContent className="space-y-4">
-
-
+                    <CardContent className="space-y-4 px-6 pb-7 pt-0 relative z-20">
                         <form method="post" onSubmit={handleSubmit} className="space-y-4">
                             <div className="space-y-2">
-                                <Label htmlFor="email" className="text-gray-200">Email</Label>
+                                <Label htmlFor="email" className="text-zinc-200 text-xs font-medium">Email</Label>
                                 <Input
                                     id="email"
                                     name="email"
@@ -122,7 +149,7 @@ export default function LoginPage() {
                                     placeholder="nombre@empresa.com"
                                     required
                                     style={{ color: 'white' }}
-                                    className="bg-white/10 border-white/10 text-white placeholder:text-gray-400 focus:border-white/30 focus:ring-white/20 transition-all h-11"
+                                    className="bg-white/[0.07] border-white/15 text-white placeholder:text-zinc-400 focus:border-white/35 focus:bg-white/[0.12] focus:ring-1 focus:ring-white/20 transition-all h-11 rounded-xl"
                                 />
                             </div>
 
@@ -130,29 +157,63 @@ export default function LoginPage() {
                             {loginMethod === 'password' && (
                                 <div className="space-y-2 animate-in fade-in slide-in-from-top-1 duration-300">
                                     <div className="flex items-center justify-between">
-                                        <Label htmlFor="password" className="text-gray-200">Contraseña</Label>
+                                        <Label htmlFor="password" className="text-zinc-200 text-xs font-medium">Contraseña</Label>
                                         <Link
-                                            href="/forgot-password"
+                                            href={orgSlug ? `/forgot-password?org=${orgSlug}` : "/forgot-password"}
                                             className="text-xs text-white/70 hover:text-white transition-colors"
                                             tabIndex={-1}
                                         >
                                             ¿Olvidaste tu contraseña?
                                         </Link>
                                     </div>
-                                    <Input
-                                        id="password"
-                                        name="password"
-                                        type="password"
-                                        required
-                                        style={{ color: 'white' }}
-                                        className="bg-white/10 border-white/10 text-white focus:border-white/30 focus:ring-white/20 transition-all h-11"
-                                    />
+                                    <div className="relative">
+                                        <Input
+                                            id="password"
+                                            name="password"
+                                            type={showPassword ? "text" : "password"}
+                                            value={password}
+                                            onChange={(e) => setPassword(e.target.value)}
+                                            required
+                                            style={{ color: 'white' }}
+                                            className="bg-white/[0.07] border-white/15 text-white placeholder:text-zinc-400 focus:border-white/35 focus:bg-white/[0.12] focus:ring-1 focus:ring-white/20 transition-all h-11 pr-11 rounded-xl"
+                                        />
+                                        <AnimatedPasswordToggle
+                                            isVisible={showPassword}
+                                            onToggle={() => setShowPassword(!showPassword)}
+                                            theme="dark"
+                                        />
+                                    </div>
                                 </div>
                             )}
 
+                            {/* Recordarme Checkbox */}
+                            <div className="flex items-center space-x-2 pt-0.5">
+                                <Checkbox
+                                    id="remember"
+                                    name="remember"
+                                    checked={rememberMe}
+                                    onCheckedChange={(checked) => {
+                                        const val = !!checked
+                                        setRememberMe(val)
+                                        if (!val) {
+                                            try {
+                                                localStorage.removeItem("pixy_remember_email")
+                                            } catch {}
+                                        }
+                                    }}
+                                    className="border-white/30 data-[state=checked]:bg-brand-pink data-[state=checked]:border-brand-pink data-[state=checked]:text-white cursor-pointer"
+                                />
+                                <Label
+                                    htmlFor="remember"
+                                    className="text-xs text-zinc-300 font-normal cursor-pointer select-none hover:text-white transition-colors"
+                                >
+                                    Recordarme
+                                </Label>
+                            </div>
+
                             {/* Success State */}
                             {successMessage && (
-                                <div className="p-4 rounded-lg bg-green-500/20 border border-green-500/30 text-green-200 text-center animate-in fade-in zoom-in duration-300">
+                                <div className="p-4 rounded-xl bg-green-500/20 border border-green-500/30 text-green-200 text-center animate-in fade-in zoom-in duration-300">
                                     <div className="flex justify-center mb-2">
                                         <CheckCircle2 className="h-6 w-6 text-green-400" />
                                     </div>
@@ -162,14 +223,26 @@ export default function LoginPage() {
                             )}
 
                             {error && (
-                                <div className="p-3 rounded-lg bg-red-500/20 border border-red-500/30 text-sm text-red-200 font-medium text-center animate-in fade-in slide-in-from-top-2">
+                                <div className="p-3 rounded-xl bg-red-500/20 border border-red-500/30 text-sm text-red-200 font-medium text-center animate-in fade-in slide-in-from-top-2">
                                     {error}
                                 </div>
                             )}
 
                             <Button
                                 type="submit"
-                                className="w-full bg-white text-black hover:bg-gray-200 h-11 font-medium transition-all mt-2"
+                                className={cn(
+                                    "w-full font-semibold h-11 rounded-xl shadow-sm transition-all duration-300 active:scale-[0.99] mt-2 cursor-pointer",
+                                    isFormFilled
+                                        ? "bg-brand-pink hover:bg-brand-pink/90 text-white"
+                                        : "bg-white text-zinc-950 hover:bg-zinc-100"
+                                )}
+                                style={
+                                    isFormFilled && branding?.primary_color
+                                        ? {
+                                              backgroundColor: branding.primary_color,
+                                          }
+                                        : undefined
+                                }
                                 disabled={isLoading || !isHydrated}
                             >
                                 {isLoading ? (
@@ -198,14 +271,13 @@ export default function LoginPage() {
                                 Solicitar Demo
                             </a>
                         </div>
-
                     </CardContent>
                 </Card>
 
-                <p className="text-xs text-white/50 font-medium z-10">
-                    Powered by Pixy
+                <p className="text-xs text-white font-medium z-10 text-center select-none">
+                    <span className="animate-text-shimmer-slow">Powered by Pixy</span>
                 </p>
             </div>
-        </div >
+        </div>
     )
 }
