@@ -270,11 +270,11 @@ export default function LoginPage() {
                             </Button>
                         </form>
 
-                        <div className="flex justify-center pt-4 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                        <div className="flex justify-center animate-in fade-in slide-in-from-bottom-4 duration-500">
                             <BiometricButton iconOnly email={email} />
                         </div>
 
-                        <div className="text-center text-sm pt-2">
+                        <div className="text-center text-sm">
                             <span className="text-zinc-500 dark:text-gray-400">¿No tienes cuenta? </span>
                             <a 
                                 href="https://pixy.com.co/contact.html" 

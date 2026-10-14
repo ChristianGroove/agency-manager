@@ -1,14 +1,47 @@
 "use client"
 
+import React from 'react'
 import { Moon, Sun } from 'lucide-react'
 import { useTheme } from 'next-themes'
+import styles from './admin-access-button.module.css'
+import { cn } from '@/modules/infrastructure/utils/utils'
+import { executeThemeTransition } from '@/modules/infrastructure/utils/theme-transition'
 
 export function SidebarThemeToggle() {
     const { resolvedTheme, setTheme } = useTheme()
-    return <button type="button" aria-label="Usar tema oscuro" aria-pressed={resolvedTheme === 'dark'}
-        onClick={() => setTheme(resolvedTheme === 'dark' ? 'light' : 'dark')}
-        className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-gray-100 bg-white text-gray-500 shadow-sm transition-colors hover:text-primary focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary dark:border-white/10 dark:bg-zinc-900 dark:text-gray-400">
-        <Moon className="h-3.5 w-3.5 dark:hidden" aria-hidden="true" />
-        <Sun className="hidden h-3.5 w-3.5 dark:block" aria-hidden="true" />
-    </button>
+    const [mounted, setMounted] = React.useState(false)
+
+    React.useEffect(() => {
+        setMounted(true)
+    }, [])
+
+    if (!mounted) {
+        return (
+            <div className="w-[25px] h-[25px] rounded-full" />
+        )
+    }
+
+    const isDark = resolvedTheme === 'dark'
+
+    const handleToggle = (event: React.MouseEvent<HTMLButtonElement>) => {
+        const next = isDark ? 'light' : 'dark'
+        executeThemeTransition(event, () => {
+            setTheme(next)
+        })
+    }
+
+    return (
+        <button
+            type="button"
+            onClick={handleToggle}
+            aria-label={isDark ? "Cambiar a modo claro" : "Cambiar a modo oscuro"}
+            className={cn(styles.iconOnlyButton, "group")}
+        >
+            {isDark ? (
+                <Sun className="w-3 h-3 text-amber-400 group-hover:rotate-45 transition-transform duration-300" />
+            ) : (
+                <Moon className="w-3 h-3 text-zinc-600 dark:text-zinc-300 group-hover:-rotate-12 transition-transform duration-300" />
+            )}
+        </button>
+    )
 }

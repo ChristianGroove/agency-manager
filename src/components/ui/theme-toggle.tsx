@@ -6,6 +6,7 @@ import { useTheme } from "next-themes"
 
 import { Button } from "@/components/ui/button"
 import { cn } from "@/modules/infrastructure/utils/utils"
+import { executeThemeTransition } from "@/modules/infrastructure/utils/theme-transition"
 
 import {
     Tooltip,
@@ -27,8 +28,10 @@ export function ThemeToggle() {
         return null
     }
 
-    const toggleTheme = () => {
-        setTheme(theme === "dark" ? "light" : "dark")
+    const toggleTheme = (event: React.MouseEvent<HTMLButtonElement>) => {
+        executeThemeTransition(event, () => {
+            setTheme(theme === "dark" ? "light" : "dark")
+        })
     }
 
     return (

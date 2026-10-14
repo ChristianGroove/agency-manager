@@ -77,7 +77,9 @@ export function SidebarFloatingActions({ isSuperAdmin, user, currentOrgId, organ
                 <ProfileSheet open={isProfileOpen} onOpenChange={setIsProfileOpen} user={user} currentOrgId={currentOrgId} />
             </div>
 
-            <SidebarThemeToggle />
+            <div className="relative">
+                <SidebarThemeToggle />
+            </div>
 
             {/* --- Super Admin Actions --- */}
             {isSuperAdmin && (

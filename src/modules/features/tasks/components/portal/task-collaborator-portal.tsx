@@ -158,6 +158,7 @@ import { TaskMeetingDetailModal } from "../meetings/task-meeting-detail-modal"
 import { TaskMeetingHeroWidget } from "../meetings/task-meeting-hero-widget"
 import { getCollaboratorAvatar } from "../../utils/avatar-presets"
 import { GlobalParticles } from "@/components/layout/global-particles"
+import { executeThemeTransition } from "@/modules/infrastructure/utils/theme-transition"
 import { TaskSubtasksTooltipBadge } from "../shared/task-subtasks-tooltip-badge"
 import { TaskLogWorkModal } from "../shared/task-log-work-modal"
 import { TaskMeetingViewToggle } from "../shared/task-meeting-view-toggle"
@@ -1163,14 +1164,16 @@ export function TaskCollaboratorPortal({
     document.documentElement.classList.remove("dark")
   }, [])
 
-  const togglePortalTheme = () => {
-    const next = portalTheme === "dark" ? "light" : "dark"
-    setPortalTheme(next)
-    if (next === "dark") {
-      document.documentElement.classList.add("dark")
-    } else {
-      document.documentElement.classList.remove("dark")
-    }
+  const togglePortalTheme = (event?: React.MouseEvent<HTMLElement>) => {
+    executeThemeTransition(event, () => {
+      const next = portalTheme === "dark" ? "light" : "dark"
+      setPortalTheme(next)
+      if (next === "dark") {
+        document.documentElement.classList.add("dark")
+      } else {
+        document.documentElement.classList.remove("dark")
+      }
+    })
   }
 
   // PM creation modal

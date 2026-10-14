@@ -17,6 +17,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Badge } from "@/components/ui/badge"
 import { PortalHostingTab } from "./portal-hosting-tab"
 import { GlobalParticles } from "@/components/layout/global-particles"
+import { executeThemeTransition } from "@/modules/infrastructure/utils/theme-transition"
 import {
     Tooltip,
     TooltipContent,
@@ -167,15 +168,17 @@ export function PortalLayout({ token, client, invoices = [], quotes = [], briefi
         }
     }, [])
 
-    const togglePortalTheme = () => {
-        const next = portalTheme === "dark" ? "light" : "dark"
-        setPortalTheme(next)
-        localStorage.setItem("portal_client_theme", next)
-        if (next === "dark") {
-            document.documentElement.classList.add("dark")
-        } else {
-            document.documentElement.classList.remove("dark")
-        }
+    const togglePortalTheme = (event?: React.MouseEvent<HTMLElement>) => {
+        executeThemeTransition(event, () => {
+            const next = portalTheme === "dark" ? "light" : "dark"
+            setPortalTheme(next)
+            localStorage.setItem("portal_client_theme", next)
+            if (next === "dark") {
+                document.documentElement.classList.add("dark")
+            } else {
+                document.documentElement.classList.remove("dark")
+            }
+        })
     }
 
     const [viewQuote, setViewQuote] = useState<Quote | null>(null)

@@ -1,4 +1,5 @@
-.button {
+.button,
+.iconOnlyButton {
     width: 25px;
     height: 25px;
     border-radius: 50%;
@@ -13,13 +14,21 @@
     box-shadow: 0px 2px 4px rgba(0, 0, 0, 0.05);
     /* Softer shadow */
     cursor: pointer;
-    transition-duration: 0.3s;
     overflow: hidden;
     position: relative;
     text-decoration: none;
 }
 
-:global(.dark) .button {
+.button {
+    transition: width 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+                border-radius 0.22s cubic-bezier(0.16, 1, 0.3, 1),
+                background-color 0.2s ease,
+                box-shadow 0.2s ease;
+    will-change: width;
+}
+
+:global(.dark) .button,
+:global(.dark) .iconOnlyButton {
     background-color: rgb(20, 20, 20);
     border: none;
     box-shadow: 0px 0px 0px 2px rgba(180, 160, 255, 0.253);
@@ -28,9 +37,11 @@
 .svgIcon {
     width: 10px;
     height: 10px;
-    transition-duration: 0.3s;
     color: #374151;
     /* gray-700 */
+    flex-shrink: 0;
+    transition: transform 0.18s cubic-bezier(0.16, 1, 0.3, 1),
+                opacity 0.15s ease;
 }
 
 :global(.dark) .svgIcon {
@@ -41,10 +52,8 @@
     width: 100px;
     /* Reduced expanded width */
     border-radius: 50px;
-    transition-duration: 0.3s;
     /* Lighten the hover color significantly for light mode */
     background-color: color-mix(in srgb, var(--hover-color), white 80%);
-    align-items: center;
 }
 
 :global(.dark) .button:hover {
@@ -53,17 +62,26 @@
 }
 
 .button:hover .svgIcon {
-    transition-duration: 0.3s;
-    transform: translateY(-200%);
+    transform: translateY(-160%);
+    opacity: 0;
 }
 
 .button::before {
     position: absolute;
-    bottom: -20px;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
     content: attr(data-text);
     color: #374151;
-    font-size: 0px;
+    font-size: 10px;
+    font-weight: 600;
     white-space: nowrap;
+    opacity: 0;
+    transform: translateY(6px);
+    transition: transform 0.2s cubic-bezier(0.16, 1, 0.3, 1),
+                opacity 0.18s ease;
+    pointer-events: none;
 }
 
 :global(.dark) .button::before {
@@ -71,9 +89,6 @@
 }
 
 .button:hover::before {
-    font-size: 10px;
-    /* Reduced font size */
     opacity: 1;
-    bottom: unset;
-    transition-duration: 0.3s;
+    transform: translateY(0);
 }

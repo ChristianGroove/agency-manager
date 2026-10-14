@@ -10,11 +10,12 @@ interface ActionButtonProps {
     icon: React.ElementType
     text: string
     color: string
-    onClick?: () => void
+    onClick?: (event: React.MouseEvent<HTMLButtonElement>) => void
     children?: ReactNode // For wrapping things if needed (though usually we wrap the button)
+    className?: string
 }
 
-export function ActionButton({ href, icon: Icon, text, color, onClick, children }: ActionButtonProps) {
+export function ActionButton({ href, icon: Icon, text, color, onClick, children, className }: ActionButtonProps) {
     const content = (
         <>
             <Icon className={styles.svgIcon} />
@@ -26,7 +27,7 @@ export function ActionButton({ href, icon: Icon, text, color, onClick, children 
         return (
             <Link
                 href={href}
-                className={styles.button}
+                className={cn(styles.button, className)}
                 data-text={text}
                 style={{ '--hover-color': color } as React.CSSProperties}
             >
@@ -38,7 +39,7 @@ export function ActionButton({ href, icon: Icon, text, color, onClick, children 
     return (
         <button
             onClick={onClick}
-            className={styles.button}
+            className={cn(styles.button, className)}
             data-text={text}
             style={{ '--hover-color': color } as React.CSSProperties}
         >

@@ -68,7 +68,7 @@ interface TaskParallelSupportPortalProps {
   projects: TaskProject[]
   brandColor?: string
   portalTheme: "light" | "dark"
-  togglePortalTheme: () => void
+  togglePortalTheme: (event?: React.MouseEvent<HTMLElement>) => void
   hasPinCode?: boolean
   onLock?: () => void
   onOpenSecurityModal?: (mode: "setup" | "change" | "remove") => void
