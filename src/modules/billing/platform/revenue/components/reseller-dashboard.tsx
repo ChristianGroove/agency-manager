@@ -1,14 +1,13 @@
 "use client"
 
+import { PaginatedDataTable as Table } from "@/components/ui/paginated-data-table"
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Progress } from "@/components/ui/progress"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import {
-    Table, TableBody, TableCell, TableHead, TableHeader, TableRow
-} from "@/components/ui/table"
+import { TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import {
     DollarSign, TrendingUp, Users, Clock, CheckCircle2,
     Building2, ArrowUpRight, Loader2, CreditCard,
@@ -335,7 +334,7 @@ export function ResellerDashboard({ organizationId }: ResellerDashboardProps) {
                                     <p className="text-sm mt-1">Cuando tus clientes generen ingresos, verás tus comisiones aquí.</p>
                                 </div>
                             ) : (
-                                <div className="rounded-lg border overflow-hidden">
+                                <div className="overflow-hidden">
                                     <Table>
                                         <TableHeader>
                                             <TableRow className="bg-muted/30">
@@ -392,7 +391,7 @@ export function ResellerDashboard({ organizationId }: ResellerDashboardProps) {
                                     <p className="text-sm mt-1">Cuando tus clientes paguen por servicios, aparecerán aquí.</p>
                                 </div>
                             ) : (
-                                <div className="rounded-lg border overflow-hidden">
+                                <div className="overflow-hidden">
                                     <Table>
                                         <TableHeader>
                                             <TableRow className="bg-muted/30">
@@ -406,7 +405,7 @@ export function ResellerDashboard({ organizationId }: ResellerDashboardProps) {
                                         <TableBody>
                                             {events.slice(0, 10).map((event) => (
                                                 <TableRow key={event.id}>
-                                                    <TableCell className="text-sm text-muted-foreground">
+                                                    <TableCell className="text-xs text-muted-foreground">
                                                         {format(new Date(event.event_date), 'dd MMM yyyy', { locale: es })}
                                                     </TableCell>
                                                     <TableCell>{getEventTypeBadge(event.event_type)}</TableCell>

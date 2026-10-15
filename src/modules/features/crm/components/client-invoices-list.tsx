@@ -1,5 +1,6 @@
 "use client"
 
+import { PaginatedDataTable as Table } from "@/components/ui/paginated-data-table"
 import { Button } from "@/components/ui/button"
 import {
     FileText,
@@ -10,14 +11,7 @@ import {
 } from "lucide-react"
 import { cn } from "@/modules/infrastructure/utils/utils"
 import { StatusBadge } from "@/components/ui/status-badge"
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from "@/components/ui/table"
+import { TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -41,16 +35,16 @@ export function ClientInvoicesList({ invoices, onMarkPaid, onShare }: ClientInvo
     }
 
     return (
-        <div className="rounded-xl border border-gray-200 dark:border-white/10 overflow-hidden bg-white dark:bg-white/5 shadow-sm">
+        <div className="overflow-hidden">
             <Table>
                 <TableHeader>
                     <TableRow className="dark:border-white/10 hover:bg-transparent">
-                        <TableHead className="w-[100px] dark:text-gray-400 font-bold">N°</TableHead>
-                        <TableHead className="dark:text-gray-400 font-bold">Fecha</TableHead>
-                        <TableHead className="dark:text-gray-400 font-bold">Concepto</TableHead>
-                        <TableHead className="dark:text-gray-400 font-bold">Monto</TableHead>
-                        <TableHead className="dark:text-gray-400 font-bold">Estado</TableHead>
-                        <TableHead className="text-right dark:text-gray-400 font-bold">Acciones</TableHead>
+                        <TableHead className="w-[100px] dark:text-gray-400 font-semibold">N°</TableHead>
+                        <TableHead className="dark:text-gray-400 font-semibold">Fecha</TableHead>
+                        <TableHead className="dark:text-gray-400 font-semibold">Concepto</TableHead>
+                        <TableHead className="dark:text-gray-400 font-semibold">Monto</TableHead>
+                        <TableHead className="dark:text-gray-400 font-semibold">Estado</TableHead>
+                        <TableHead className="text-right dark:text-gray-400 font-semibold">Acciones</TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -65,7 +59,7 @@ export function ClientInvoicesList({ invoices, onMarkPaid, onShare }: ClientInvo
                             <TableCell className="text-xs max-w-[200px] truncate text-gray-600 dark:text-gray-300">
                                 {inv.description || "Sin descripción"}
                             </TableCell>
-                            <TableCell className="font-bold text-gray-900 dark:text-white text-sm">
+                            <TableCell className="font-semibold text-gray-900 dark:text-white text-xs">
                                 ${inv.total.toLocaleString()}
                             </TableCell>
                             <TableCell>

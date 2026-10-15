@@ -1,10 +1,11 @@
 "use client"
 
+import { PaginatedDataTable as Table } from "@/components/ui/paginated-data-table"
 import { useEffect, useState } from "react"
 import { getStaffPayrollSummary, getPayrollStats, DateFilter } from "../../actions/payroll-summary-actions"
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent } from "@/components/ui/card"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { StaffPayrollCard } from "./staff-payroll-card"
 import { Loader2, Calendar, DollarSign } from "lucide-react"
 import { Button } from "@/components/ui/button"
@@ -139,7 +140,7 @@ export function PayrollStaffGrid({ viewMode = 'list' }: PayrollStaffGridProps) {
                     ))}
                 </div>
             ) : (
-                <div className="border rounded-lg">
+                <div className="min-w-0">
                     <Table>
                         <TableHeader>
                             <TableRow>

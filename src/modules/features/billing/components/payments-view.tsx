@@ -1,15 +1,9 @@
 "use client"
 
+import { PaginatedDataTable as Table } from "@/components/ui/paginated-data-table"
 import { useState } from "react"
 import { Invoice } from "@/types"
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow
-} from "@/components/ui/table"
+import { TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -95,7 +89,7 @@ export function PaymentsView({ invoices }: PaymentsViewProps) {
             </div>
 
             {/* Payments Table */}
-            <div className="rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-white/5 backdrop-blur-md shadow-sm overflow-hidden">
+            <div className="overflow-hidden">
                 <Table>
                     <TableHeader>
                         <TableRow>
@@ -119,7 +113,7 @@ export function PaymentsView({ invoices }: PaymentsViewProps) {
                                 <TableRow key={invoice.id} className="hover:bg-slate-50 dark:hover:bg-white/5 border-zinc-100 dark:border-white/10">
                                     <TableCell className="font-medium text-zinc-900 dark:text-white">{invoice.number}</TableCell>
                                     <TableCell className="text-zinc-600 dark:text-zinc-300">{invoice.client?.name}</TableCell>
-                                    <TableCell className="text-zinc-500 dark:text-zinc-400 text-sm">
+                                    <TableCell className="text-zinc-500 dark:text-zinc-400 text-xs">
                                         {invoice.due_date ? new Date(invoice.due_date).toLocaleDateString() : '-'}
                                     </TableCell>
                                     <TableCell className="font-medium dark:text-white">

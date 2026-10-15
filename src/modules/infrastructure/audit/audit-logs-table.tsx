@@ -1,44 +1,32 @@
 'use client'
 
-import { useEffect, useState } from "react"
-import { getSecurityAuditLogs, SecurityAuditLog } from "./actions"
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { DataTable as Table } from "@/components/ui/data-table"
+import { DataTablePagination } from "@/components/ui/data-table-pagination"
+import { useRemoteTablePagination } from "@/components/ui/use-table-pagination"
+import { useCallback, useState } from "react"
+import { getSecurityAuditLogs } from "./actions"
+import { Card } from "@/components/ui/card"
+import { TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { Loader2, RefreshCw, Filter, Search, ShieldAlert, ShieldCheck, Shield } from "lucide-react"
+import { Loader2, RefreshCw, Search, ShieldCheck } from "lucide-react"
 import { formatDistanceToNow } from "date-fns"
 import { es } from "date-fns/locale"
 
 export function AuditLogsTable() {
-    const [logs, setLogs] = useState<SecurityAuditLog[]>([])
-    const [loading, setLoading] = useState(true)
-    const [page, setPage] = useState(1)
-    const [hasMore, setHasMore] = useState(true)
     const [filterResource, setFilterResource] = useState("")
-
-    useEffect(() => {
-        fetchLogs()
-    }, [page])
-
-    const fetchLogs = async () => {
-        setLoading(true)
-        try {
-            const { logs: newLogs, total } = await getSecurityAuditLogs(page, 20, { resource: filterResource })
-            setLogs(newLogs)
-            setHasMore(newLogs.length === 20) // Simple infinite scroll logic or pagination
-        } catch (error) {
-            console.error(error)
-        } finally {
-            setLoading(false)
-        }
-    }
-
-    const handleSearch = (e: React.FormEvent) => {
-        e.preventDefault()
-        setPage(1)
-        fetchLogs()
+    const [appliedResource, setAppliedResource] = useState("")
+    const loadPage = useCallback(async (page: number, pageSize: number) => {
+        const result = await getSecurityAuditLogs(page, pageSize, { resource: appliedResource })
+        return { rows: result.logs, totalCount: result.total }
+    }, [appliedResource])
+    const { rows: logs, loading, error, refresh, pagination } = useRemoteTablePagination(loadPage)
+    const handleSearch = (event: React.FormEvent) => {
+        event.preventDefault()
+        setAppliedResource(filterResource.trim())
+        pagination.onPageChange(1)
+        refresh()
     }
 
     const getActionBadge = (action: string) => {
@@ -51,6 +39,7 @@ export function AuditLogsTable() {
 
     return (
         <Card className="border-0 shadow-none bg-transparent">
+            {error && <p role="alert" className="text-sm text-destructive mb-3">{error}</p>}
             <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mb-6">
                 <div className="flex items-center gap-2 w-full sm:w-auto">
                     <form onSubmit={handleSearch} className="relative flex-1 sm:w-80">
@@ -62,7 +51,7 @@ export function AuditLogsTable() {
                             onChange={(e) => setFilterResource(e.target.value)}
                         />
                     </form>
-                    <Button variant="outline" size="icon" onClick={() => { setPage(1); fetchLogs() }} disabled={loading}>
+                    <Button variant="outline" size="icon" aria-label="Actualizar auditoría" onClick={refresh} disabled={loading}>
                         <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
                     </Button>
                 </div>
@@ -83,7 +72,7 @@ export function AuditLogsTable() {
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {loading && logs.length === 0 ? (
+                        {loading ? (
                             <TableRow>
                                 <TableCell colSpan={5} className="h-24 text-center">
                                     <div className="flex justify-center">
@@ -105,7 +94,7 @@ export function AuditLogsTable() {
                                     </TableCell>
                                     <TableCell>
                                         <div className="flex flex-col">
-                                            <span className="font-medium text-sm">{log.actor?.full_name || 'Desconocido'}</span>
+                                            <span className="font-medium text-xs">{log.actor?.full_name || 'Desconocido'}</span>
                                             <span className="text-xs text-muted-foreground">{log.actor?.email || log.actor_id}</span>
                                         </div>
                                     </TableCell>
@@ -114,7 +103,7 @@ export function AuditLogsTable() {
                                     </TableCell>
                                     <TableCell>
                                         <div className="flex flex-col gap-0.5">
-                                            <span className="text-sm font-medium">{log.resource_entity}</span>
+                                            <span className="text-xs font-medium">{log.resource_entity}</span>
                                             <span className="text-xs font-mono text-muted-foreground truncate max-w-[150px]" title={log.resource_id || ''}>
                                                 {log.resource_id?.substring(0, 8)}...
                                             </span>
@@ -131,27 +120,8 @@ export function AuditLogsTable() {
                     </TableBody>
                 </Table>
 
-            <div className="flex items-center justify-end gap-2 mt-4">
-                <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setPage(p => Math.max(1, p - 1))}
-                    disabled={page === 1 || loading}
-                >
-                    Anterior
-                </Button>
-                <div className="text-sm text-muted-foreground">
-                    Página {page}
-                </div>
-                <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => setPage(p => p + 1)}
-                    disabled={!hasMore || loading}
-                >
-                    Siguiente
-                </Button>
-            </div>
+            <DataTablePagination {...pagination} itemLabel="eventos" className="mt-3" />
+
         </Card>
     )
 }

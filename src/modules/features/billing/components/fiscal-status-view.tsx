@@ -1,14 +1,8 @@
 "use client"
 
+import { PaginatedDataTable as Table } from "@/components/ui/paginated-data-table"
 import { useEffect, useState } from "react"
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow
-} from "@/components/ui/table"
+import { TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { FileCode, Activity, Lock, AlertTriangle, CheckCircle, Search, ExternalLink } from "lucide-react"
@@ -77,7 +71,7 @@ export function FiscalStatusView() {
             </div>
 
             {/* Read-Only Table */}
-            <div className="rounded-xl border border-zinc-200 dark:border-white/10 bg-white dark:bg-white/5 backdrop-blur-md shadow-sm overflow-hidden">
+            <div className="overflow-hidden">
                 <Table>
                     <TableHeader>
                         <TableRow>

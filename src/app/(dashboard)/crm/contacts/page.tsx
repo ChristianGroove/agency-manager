@@ -1,3 +1,5 @@
+import { parseTablePage, parseTablePageSize } from "@/components/ui/table-pagination"
+import { redirect } from "next/navigation"
 import { getClientsAction, getSettingsAction, getCategoriesAction } from "@/modules/features/crm/crm-actions"
 import { getOrgSpaceCategory } from "@/modules/core/organizations/space-helpers"
 import ClientsView from "@/modules/features/crm/components/clients-view"
@@ -15,13 +17,14 @@ export default async function CRMContactsPage({
     searchParams: Promise<{ [key: string]: string | string[] | undefined }>
 }) {
     const params = await searchParams
-    const page = typeof params.page === 'string' ? parseInt(params.page) : 1
+    const page = parseTablePage(params.page)
+    const pageSize = parseTablePageSize(params.pageSize)
     const search = typeof params.search === 'string' ? params.search : ''
     const filter = typeof params.filter === 'string' ? params.filter : 'all'
 
     // Use unified CRM Actions
     const [clientsRes, settingsRes, spaceType, categoriesRes] = await Promise.all([
-        getClientsAction({ page, search, filter }),
+        getClientsAction({ page, pageSize, search, filter }),
         getSettingsAction(),
         getOrgSpaceCategory(),
         getCategoriesAction()
@@ -29,6 +32,17 @@ export default async function CRMContactsPage({
 
     const paginatedData = clientsRes.success ? clientsRes.data : { results: [], count: 0 }
     const settings = settingsRes.success ? settingsRes.data : null
+    const lastPage = Math.max(1, Math.ceil((paginatedData?.totalCount || 0) / pageSize))
+    if (page > lastPage) {
+        const query = new URLSearchParams()
+        for (const [key, value] of Object.entries(params)) {
+            if (typeof value === "string") query.set(key, value)
+            else if (Array.isArray(value)) value.forEach(item => query.append(key, item))
+        }
+        query.set("page", String(lastPage))
+        redirect("/crm/contacts?" + query.toString())
+    }
+
     const allCategories = categoriesRes.success ? (categoriesRes.data || []) : []
 
     return (

@@ -1,4 +1,5 @@
 import * as React from "react"
+import { DataTable } from "./data-table"
 
 import { cn } from "@/modules/infrastructure/utils/utils"
 
@@ -6,13 +7,7 @@ const Table = React.forwardRef<
     HTMLTableElement,
     React.HTMLAttributes<HTMLTableElement>
 >(({ className, ...props }, ref) => (
-    <div className="relative w-full overflow-auto max-h-[600px] rounded-xl border border-zinc-200 dark:border-white/10 bg-card no-scrollbar">
-        <table
-            ref={ref}
-            className={cn("w-full caption-bottom text-sm", className)}
-            {...props}
-        />
-    </div>
+    <DataTable ref={ref} className={className} {...props} />
 ))
 Table.displayName = "Table"
 
@@ -20,7 +15,7 @@ const TableHeader = React.forwardRef<
     HTMLTableSectionElement,
     React.HTMLAttributes<HTMLTableSectionElement>
 >(({ className, ...props }, ref) => (
-    <thead ref={ref} className={cn("sticky top-0 z-20 bg-zinc-50 dark:bg-zinc-900", className)} {...props} />
+    <thead ref={ref} className={cn("sticky top-0 z-[1] bg-zinc-50/80 dark:bg-white/5", className)} {...props} />
 ))
 TableHeader.displayName = "TableHeader"
 

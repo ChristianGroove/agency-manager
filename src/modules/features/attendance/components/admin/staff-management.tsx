@@ -1,11 +1,12 @@
 "use client"
 
+import { PaginatedDataTable as Table } from "@/components/ui/paginated-data-table"
 import React, { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Search, UserPlus, Copy, Check, MoreVertical, Edit, Trash2, Shield, MapPin, ExternalLink } from 'lucide-react'
 import { Staff, createStaff, updateStaff, deleteStaff, uploadStaffPhoto } from '../../actions'
 import { optimizeImage } from '@/modules/infrastructure/utils/image-optimization'
@@ -257,7 +258,7 @@ export function StaffManagement({ staff: initialStaff, locations, registerNewAct
                 </div>
             </div>
 
-            <Card className="glass-card rounded-2xl overflow-hidden relative border-none shadow-xl">
+            <Card className="relative border-0 shadow-none bg-transparent">
                 <CardContent className="p-0">
                     <Table>
                         <TableHeader>
@@ -287,7 +288,7 @@ export function StaffManagement({ staff: initialStaff, locations, registerNewAct
                                             </div>
                                         </TableCell>
                                         <TableCell>
-                                            <div className="flex items-center gap-1.5 text-sm text-slate-600 dark:text-slate-300">
+                                            <div className="flex items-center gap-1.5 text-xs text-slate-600 dark:text-slate-300">
                                                 <MapPin className="w-3.5 h-3.5 text-slate-400 dark:text-slate-500" />
                                                 {person.location?.name || 'No asignada'}
                                             </div>

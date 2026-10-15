@@ -1,4 +1,5 @@
 
+import { DataTable as StandardDataTable } from "@/components/ui/data-table"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog"
 import { Button } from "@/components/ui/button"
 import { Quote } from "@/types"
@@ -70,8 +71,8 @@ export function QuoteDetailModal({ quote, open, onOpenChange, onAccept, onReject
 
                 <div className="p-6 space-y-8">
                     {/* Items Table - Visual Refresh */}
-                    <div className="rounded-xl border border-gray-100 overflow-hidden shadow-sm">
-                        <table className="w-full text-sm">
+                    <div className="overflow-hidden">
+                        <StandardDataTable className="w-full text-sm">
                             <thead className="bg-gray-50/50">
                                 <tr>
                                     <th className="px-4 py-3 text-left font-semibold text-gray-500 text-xs uppercase tracking-wider">Concepto</th>
@@ -99,7 +100,7 @@ export function QuoteDetailModal({ quote, open, onOpenChange, onAccept, onReject
                                     </td>
                                 </tr>
                             </tfoot>
-                        </table>
+                        </StandardDataTable>
                     </div>
 
                     {quote.status === 'accepted' ? (

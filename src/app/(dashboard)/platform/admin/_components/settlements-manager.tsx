@@ -1,13 +1,12 @@
 "use client"
 
+import { PaginatedDataTable as Table } from "@/components/ui/paginated-data-table"
 import { useState, useEffect, useTransition } from "react"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import {
-    Table, TableBody, TableCell, TableHead, TableHeader, TableRow
-} from "@/components/ui/table"
+import { TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import {
     DropdownMenu, DropdownMenuContent, DropdownMenuItem,
     DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger
@@ -239,7 +238,7 @@ export function SettlementsManager() {
                                     <p className="text-sm mt-1">Las liquidaciones se generan automáticamente al finalizar cada período.</p>
                                 </div>
                             ) : (
-                                <div className="rounded-lg border overflow-hidden">
+                                <div className="overflow-hidden">
                                     <Table>
                                         <TableHeader>
                                             <TableRow className="bg-muted/30">
@@ -257,7 +256,7 @@ export function SettlementsManager() {
                                                 <TableRow key={settlement.id} className="group">
                                                     <TableCell>
                                                         <div className="flex items-center gap-3">
-                                                            <div className="h-9 w-9 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-bold text-sm">
+                                                            <div className="h-9 w-9 rounded-lg bg-gradient-to-br from-indigo-500 to-purple-600 flex items-center justify-center text-white font-semibold text-xs">
                                                                 {settlement.reseller?.name?.[0] || 'R'}
                                                             </div>
                                                             <div>
@@ -267,7 +266,7 @@ export function SettlementsManager() {
                                                         </div>
                                                     </TableCell>
                                                     <TableCell>
-                                                        <div className="text-sm">
+                                                        <div className="text-xs">
                                                             <p>{format(new Date(settlement.period_start), 'dd MMM', { locale: es })}</p>
                                                             <p className="text-muted-foreground">a {format(new Date(settlement.period_end), 'dd MMM yyyy', { locale: es })}</p>
                                                         </div>

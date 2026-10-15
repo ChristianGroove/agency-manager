@@ -1,8 +1,10 @@
 "use client"
-import { useState, useEffect } from "react"
+import { DataTable as Table } from "@/components/ui/data-table"
+import { DataTablePagination } from "@/components/ui/data-table-pagination"
+import { useRemoteTablePagination } from "@/components/ui/use-table-pagination"
+import { useCallback } from "react"
 import { supabase } from "@/modules/core/database/supabase"
 import {
-    Table,
     TableBody,
     TableCell,
     TableHead,
@@ -25,36 +27,29 @@ type EmailLog = {
 }
 
 export function EmailLogsTable() {
-    const [logs, setLogs] = useState<EmailLog[]>([])
-    const [loading, setLoading] = useState(true)
-
-    const fetchLogs = async () => {
-        setLoading(true)
-        const { data, error } = await supabase
+    const loadPage = useCallback(async (page: number, pageSize: number) => {
+        const { data, error, count } = await supabase
             .from('email_logs')
-            .select('*')
+            .select('*', { count: 'exact' })
             .order('created_at', { ascending: false })
-            .limit(50)
-
-        if (error) console.error(error)
-        else setLogs(data || [])
-        setLoading(false)
-    }
-
-    useEffect(() => {
-        fetchLogs()
+            .order('id', { ascending: false })
+            .range((page - 1) * pageSize, page * pageSize - 1)
+        if (error) throw error
+        return { rows: (data || []) as EmailLog[], totalCount: count || 0 }
     }, [])
+    const { rows: logs, loading, error, refresh, pagination } = useRemoteTablePagination(loadPage)
 
     return (
         <div className="space-y-4">
             <div className="flex items-center justify-between">
                 <h3 className="text-lg font-medium">Historial de Correos</h3>
-                <Button variant="ghost" size="sm" onClick={fetchLogs} disabled={loading}>
+                <Button variant="ghost" size="sm" onClick={refresh} disabled={loading}>
                     <RefreshCcw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
                     Actualizar
                 </Button>
             </div>
-            <div className="rounded-md border">
+            {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
+            <div>
                 <Table>
                     <TableHeader>
                         <TableRow>
@@ -65,7 +60,7 @@ export function EmailLogsTable() {
                         </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {loading && logs.length === 0 ? (
+                        {loading ? (
                             <TableRow>
                                 <TableCell colSpan={4} className="h-24 text-center">
                                     <Loader2 className="h-6 w-6 animate-spin mx-auto text-gray-400" />
@@ -100,6 +95,7 @@ export function EmailLogsTable() {
                         )}
                     </TableBody>
                 </Table>
+                <DataTablePagination {...pagination} itemLabel="correos" className="mt-3" />
             </div>
         </div>
     )

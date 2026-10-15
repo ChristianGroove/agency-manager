@@ -1,5 +1,7 @@
 'use client'
 
+import { DataTable } from "@/components/ui/data-table"
+import { DataTablePagination } from "@/components/ui/data-table-pagination"
 import { useMarketingApi } from '../marketing-client-api'
 
 import { useRef, useEffect, useState } from 'react'
@@ -18,6 +20,7 @@ export function CampaignImport({ onClose, onImported, channel = 'whatsapp' }: { 
     const [listName, setListName] = useState('')
     const [mode, setMode] = useState<'contacts' | 'consent'>('contacts')
     const [page, setPage] = useState(0)
+    const [pageSize, setPageSize] = useState(25)
     const [importedList, setImportedList] = useState<{ id: string; name: string } | null>(null)
     const [review, setReview] = useState<ImportReview | null>(null)
     const [invalid, setInvalid] = useState<ImportReviewRow[]>([])
@@ -85,11 +88,11 @@ export function CampaignImport({ onClose, onImported, channel = 'whatsapp' }: { 
                     {busy && <p role="status" className="text-xs text-muted-foreground">Procesando…</p>}
                     {rows.length > 0 && <section className="space-y-3">
                         <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="text-sm font-semibold">Revisión del archivo</h3><span className="rounded-full bg-primary/10 px-2.5 py-1 text-xs font-medium text-primary">{selected.length} de {rows.length} seleccionados</span></div>
-                        <div className="max-h-64 overflow-auto rounded-xl border"><table className="w-full text-left text-xs"><caption className="sr-only">Revisión de contactos del archivo</caption>
+                        <div><DataTable className="w-full text-left text-xs"><caption className="sr-only">Revisión de contactos del archivo</caption>
                             <thead className="sticky top-0 z-10 bg-muted"><tr><th className="w-10 p-3"><span className="sr-only">Seleccionar</span></th><th className="py-3 pr-3 font-medium">Fila</th><th className="p-3 font-medium">Contacto</th><th className="p-3 font-medium">Estado</th></tr></thead>
-                            <tbody>{rows.slice(page * 50, (page + 1) * 50).map(row => <tr key={row.row} className="border-t transition-colors hover:bg-muted/30"><td className="p-3"><input type="checkbox" className="h-4 w-4 accent-primary" aria-label={`Importar fila ${row.row}`} disabled={!row.eligible || busy} checked={selected.includes(row.row)} onChange={event => { setConfirmed(false); setSelected(event.target.checked ? [...selected, row.row] : selected.filter(id => id !== row.row)) }} /></td><td className="pr-3 tabular-nums text-muted-foreground">{row.row}</td><td className="p-3"><span className="block font-medium">{row.name}</span><span className="break-all text-muted-foreground">{row.phone}</span></td><td className="p-3"><span className={`inline-flex items-center gap-1.5 ${row.eligible ? 'text-emerald-700 dark:text-emerald-400' : 'text-muted-foreground'}`}>{row.eligible && <Check className="h-3 w-3 shrink-0" />}{importReason[row.reason] || row.reason}</span>{row.evidence && <details className="mt-1 text-muted-foreground"><summary className="cursor-pointer">Ver evidencia · fila {row.row}</summary><p>{row.source} · {row.occurredAt ? new Date(row.occurredAt).toLocaleString() : ''}</p><p className="whitespace-pre-wrap break-all">{row.evidence}</p></details>}</td></tr>)}</tbody>
-                        </table></div>
-                        {rows.length > 50 && <div className="flex items-center justify-between gap-2 text-xs"><Button variant="ghost" size="sm" disabled={page === 0 || busy} onClick={() => setPage(n => n - 1)}>Anterior</Button><span>Página {page + 1} de {Math.ceil(rows.length / 50)}</span><Button variant="ghost" size="sm" disabled={(page + 1) * 50 >= rows.length || busy} onClick={() => setPage(n => n + 1)}>Siguiente</Button></div>}
+                            <tbody>{rows.slice(page * pageSize, (page + 1) * pageSize).map(row => <tr key={row.row} className="border-t transition-colors hover:bg-muted/30"><td className="p-3"><input type="checkbox" className="h-4 w-4 accent-primary" aria-label={`Importar fila ${row.row}`} disabled={!row.eligible || busy} checked={selected.includes(row.row)} onChange={event => { setConfirmed(false); setSelected(event.target.checked ? [...selected, row.row] : selected.filter(id => id !== row.row)) }} /></td><td className="pr-3 tabular-nums text-muted-foreground">{row.row}</td><td className="p-3"><span className="block font-medium">{row.name}</span><span className="break-all text-muted-foreground">{row.phone}</span></td><td className="p-3"><span className={`inline-flex items-center gap-1.5 ${row.eligible ? 'text-emerald-700 dark:text-emerald-400' : 'text-muted-foreground'}`}>{row.eligible && <Check className="h-3 w-3 shrink-0" />}{importReason[row.reason] || row.reason}</span>{row.evidence && <details className="mt-1 text-muted-foreground"><summary className="cursor-pointer">Ver evidencia · fila {row.row}</summary><p>{row.source} · {row.occurredAt ? new Date(row.occurredAt).toLocaleString() : ''}</p><p className="whitespace-pre-wrap break-all">{row.evidence}</p></details>}</td></tr>)}</tbody>
+                        </DataTable></div>
+                        <DataTablePagination totalCount={rows.length} page={page + 1} pageSize={pageSize} onPageChange={(value) => setPage(value - 1)} onPageSizeChange={(size) => { setPageSize(size); setPage(0) }} disabled={busy} itemLabel="filas" />
                         {review && <div className="flex flex-wrap gap-1"><Button size="sm" variant="ghost" className="h-8 text-xs" disabled={busy} onClick={() => { setSelected(review.rows.filter(row => row.eligible).map(row => row.row)); setConfirmed(false) }}>Seleccionar todos los válidos</Button><Button size="sm" variant="ghost" className="h-8 text-xs text-muted-foreground" disabled={busy} onClick={() => { setSelected([]); setConfirmed(false) }}>Limpiar selección</Button></div>}
                     </section>}
                 </>}

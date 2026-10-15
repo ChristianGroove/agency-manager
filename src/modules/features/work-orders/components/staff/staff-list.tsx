@@ -1,10 +1,13 @@
+import { DataTable as Table } from "@/components/ui/data-table"
+import { DataTablePagination } from "@/components/ui/data-table-pagination"
+import { useClientTablePagination } from "@/components/ui/use-table-pagination"
 import { useEffect, useState } from "react"
 import { getCleaningStaff, removeCleaningStaff, getStaffPortalLink, regenerateStaffPortalToken } from "../../actions/staff-actions"
 import { Card, CardContent } from "@/components/ui/card"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { toast } from "sonner"
 import { MapPin, Star, DollarSign, Plus, Pencil, Trash2, Link2, MoreVertical, Users, RefreshCw } from "lucide-react"
 import {
@@ -37,6 +40,8 @@ export function StaffList({ viewMode = 'grid' }: StaffListProps) {
     const [isFormOpen, setIsFormOpen] = useState(false)
     const [staffToEdit, setStaffToEdit] = useState<any>(null)
     const [deleteId, setDeleteId] = useState<string | null>(null)
+
+    const { rows: pageRows, pagination } = useClientTablePagination(staff)
 
     useEffect(() => {
         loadStaff()
@@ -253,7 +258,7 @@ export function StaffList({ viewMode = 'grid' }: StaffListProps) {
                 </div>
             ) : (
                 /* List View - Table */
-                <div className="border rounded-lg">
+                <div className="space-y-3">
                     <Table>
                         <TableHeader>
                             <TableRow>
@@ -266,7 +271,7 @@ export function StaffList({ viewMode = 'grid' }: StaffListProps) {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {staff.map((profile) => (
+                            {pageRows.map((profile) => (
                                 <TableRow key={profile.id}>
                                     <TableCell>
                                         <div className="flex items-center gap-3">
@@ -329,6 +334,7 @@ export function StaffList({ viewMode = 'grid' }: StaffListProps) {
                             ))}
                         </TableBody>
                     </Table>
+                    <DataTablePagination {...pagination} itemLabel="personas" className="mt-3" />
                 </div>
             )}
 

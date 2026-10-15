@@ -1,11 +1,12 @@
 "use client"
 
+import { PaginatedDataTable as Table } from "@/components/ui/paginated-data-table"
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuLabel, DropdownMenuSeparator, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
 import { Loader2, MoreHorizontal, CreditCard, Mail, ExternalLink, ShieldAlert, CheckCircle2, Clock, AlertCircle, RefreshCcw, Gift, Sparkles } from "lucide-react"
 import { toast } from "sonner"
@@ -235,7 +236,7 @@ export function TenantBillingSettings({ orgData, onRefresh }: TenantBillingSetti
                             No hay facturas generadas para esta organización.
                         </div>
                     ) : (
-                        <div className="rounded-md border overflow-hidden">
+                        <div className="overflow-hidden">
                             <Table>
                                 <TableHeader>
                                     <TableRow>
@@ -258,12 +259,12 @@ export function TenantBillingSettings({ orgData, onRefresh }: TenantBillingSetti
                                             <TableCell>
                                                 <div className="flex items-center gap-1.5">
                                                     {getInvoiceStatusIcon(inv.status)}
-                                                    <span className="capitalize text-sm font-medium">{inv.status}</span>
+                                                    <span className="capitalize text-xs font-medium">{inv.status}</span>
                                                 </div>
                                             </TableCell>
                                             <TableCell>
                                                 <div className="flex flex-col">
-                                                    <span className="font-bold">${inv.amount_due}</span>
+                                                    <span className="font-semibold">${inv.amount_due}</span>
                                                     <span className="text-xs text-muted-foreground uppercase">{inv.currency || 'USD'}</span>
                                                 </div>
                                             </TableCell>

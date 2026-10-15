@@ -1,5 +1,7 @@
 'use client'
 
+import { DataTablePaginationFrame } from "@/components/ui/data-table-pagination"
+import { DataTable as Table } from "@/components/ui/data-table"
 import { useMarketingApi } from '../marketing-client-api'
 
 import { memo, useCallback, useEffect, useRef, useState } from 'react'
@@ -193,7 +195,7 @@ export const CampaignsList = memo(function CampaignsList({
     }
 
     return (
-        <section className="space-y-3.5 rounded-2xl border border-border/60 bg-card p-4 shadow-xs transition-all">
+        <section className="space-y-3.5 p-4 transition-all">
             {/* Combobox Search + Direct Filter Bar */}
             <form
                 className="flex flex-wrap items-center gap-2.5"
@@ -287,8 +289,8 @@ export const CampaignsList = memo(function CampaignsList({
             {error && <p role="alert" className="text-sm text-destructive">{error}</p>}
 
             {/* Clean Campaigns Table */}
-            <div aria-busy={loading} className="overflow-x-auto rounded-xl border border-border/60 bg-background shadow-xs">
-                <table className="w-full text-sm">
+            <div aria-busy={loading} className="overflow-x-auto">
+                <Table className="w-full text-xs">
                     <thead className="bg-muted/30 text-left text-[11px] text-muted-foreground">
                         <tr>
                             {['Campaña', 'Estado', 'Emisor / inicio', 'Destinatarios', 'Mensajes', 'Acciones'].map(l => (
@@ -314,14 +316,14 @@ export const CampaignsList = memo(function CampaignsList({
                                         <div className="min-w-0">
                                             {onOpen ? (
                                                 <button
-                                                    className="text-left text-xs font-bold text-foreground hover:text-primary focus-visible:underline transition-colors block truncate max-w-xs"
+                                                    className="text-left text-xs font-semibold text-foreground hover:text-primary focus-visible:underline transition-colors block truncate max-w-xs"
                                                     onClick={() => onOpen(r.id, r.name)}
                                                 >
                                                     {r.name}
                                                 </button>
                                             ) : (
                                                 <Link
-                                                    className="text-xs font-bold text-foreground hover:text-primary transition-colors block truncate max-w-xs"
+                                                    className="text-xs font-semibold text-foreground hover:text-primary transition-colors block truncate max-w-xs"
                                                     href={`/crm/marketing/campaigns/${r.id}`}
                                                 >
                                                     {r.name}
@@ -413,11 +415,11 @@ export const CampaignsList = memo(function CampaignsList({
                             </tr>
                         )}
                     </tbody>
-                </table>
+                </Table>
             </div>
 
             {/* Pagination & Status Footer */}
-            <div className="flex flex-wrap justify-between items-center gap-3 pt-1 text-xs text-muted-foreground">
+            <DataTablePaginationFrame>
                 <p>
                     {changedAt ? `Actualizado: ${changedAt}. ` : ''}
                     La entrega incluye mensajes leídos. Procesado no equivale a entregado.
@@ -450,7 +452,7 @@ export const CampaignsList = memo(function CampaignsList({
                         Siguiente
                     </Button>
                 </div>
-            </div>
+            </DataTablePaginationFrame>
         </section>
     )
 })

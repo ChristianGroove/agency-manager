@@ -886,7 +886,7 @@ export function VariantMatrixManager({
         </div>
       ) : (
         /* VISTA TABLA COMPACTA */
-        <div className="rounded-3xl border border-zinc-200 dark:border-white/10 overflow-x-auto bg-white dark:bg-zinc-950 shadow-xs">
+        <div className="overflow-x-auto">
           <Table>
             <TableHeader className="bg-zinc-50 dark:bg-zinc-900/80">
               <TableRow>

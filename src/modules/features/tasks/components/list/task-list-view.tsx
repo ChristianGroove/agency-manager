@@ -1,22 +1,17 @@
 "use client"
 
+import { DataTable } from "@/components/ui/data-table"
+import { getPaginationRange } from "@/components/ui/table-pagination"
+import { DataTablePagination } from "@/components/ui/data-table-pagination"
 import React, { useState, useMemo, useEffect } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Progress } from "@/components/ui/progress"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select"
-import {
   Clock,
   Layers,
   ChevronRight,
-  ChevronLeft,
   Ban,
   Timer,
   Video,
@@ -162,18 +157,15 @@ export function TaskListView({
   // Reset to page 1 whenever filter or task list size changes
   useEffect(() => {
     setCurrentPage(1)
-  }, [visibleTasks.length])
+  }, [visibleTasks.length, includeMeetings])
 
-  const totalPages = Math.max(1, Math.ceil(visibleTasks.length / pageSize))
-  const safePage = Math.min(currentPage, totalPages)
+  const { safePage } = getPaginationRange(visibleTasks.length, currentPage, pageSize)
 
   const paginatedTasks = useMemo(() => {
     const start = (safePage - 1) * pageSize
     return visibleTasks.slice(start, start + pageSize)
   }, [visibleTasks, safePage, pageSize])
 
-  const startRecord = visibleTasks.length === 0 ? 0 : (safePage - 1) * pageSize + 1
-  const endRecord = Math.min(safePage * pageSize, visibleTasks.length)
   const getStatusLabel = (status: TaskStatus) => {
     switch (status) {
       case "backlog":
@@ -241,9 +233,7 @@ export function TaskListView({
       )}
 
       {/* Tasks Table */}
-      <div className="border border-border/60 rounded-2xl bg-card overflow-hidden shadow-sm">
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[800px] text-left text-xs border-collapse">
+      <DataTable className="w-full min-w-[800px] text-left text-xs border-collapse">
             <thead>
               <tr className="border-b border-border/60 bg-muted/30 text-muted-foreground font-semibold">
                 {onToggleSelectAll && (
@@ -612,66 +602,18 @@ export function TaskListView({
                 })
               )}
             </tbody>
-          </table>
-        </div>
-      </div>
+          </DataTable>
 
       {/* Pagination Footer */}
       {visibleTasks.length > 0 && (
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-4 py-3 bg-card border border-border/60 rounded-2xl text-xs text-muted-foreground shadow-xs">
-          <div className="flex items-center gap-2">
-            <span>
-              Mostrando <strong className="text-foreground font-semibold">{startRecord}</strong> - <strong className="text-foreground font-semibold">{endRecord}</strong> de{" "}
-              <strong className="text-foreground font-semibold">{visibleTasks.length}</strong> {includeMeetings ? (visibleTasks.length === 1 ? "reunión" : "reuniones") : (visibleTasks.length === 1 ? "tarea" : "tareas")}
-            </span>
-          </div>
-
-          <div className="flex items-center gap-3">
-            <div className="flex items-center gap-1.5">
-              <span className="text-[11px] text-muted-foreground">Por pág:</span>
-              <Select
-                value={String(pageSize)}
-                onValueChange={(val) => {
-                  setPageSize(Number(val))
-                  setCurrentPage(1)
-                }}
-              >
-                <SelectTrigger className="h-7 w-[72px] text-xs font-semibold rounded-lg bg-background">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent align="end">
-                  <SelectItem value="25">25</SelectItem>
-                  <SelectItem value="50">50</SelectItem>
-                  <SelectItem value="100">100</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="flex items-center gap-1">
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-7 w-7 p-0 rounded-lg cursor-pointer"
-                disabled={safePage <= 1}
-                onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-              >
-                <ChevronLeft className="w-3.5 h-3.5" />
-              </Button>
-              <span className="px-2 text-[11px] font-mono font-medium text-foreground">
-                {safePage} / {totalPages}
-              </span>
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-7 w-7 p-0 rounded-lg cursor-pointer"
-                disabled={safePage >= totalPages}
-                onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-              >
-                <ChevronRight className="w-3.5 h-3.5" />
-              </Button>
-            </div>
-          </div>
-        </div>
+        <DataTablePagination
+            totalCount={visibleTasks.length}
+            page={safePage}
+            pageSize={pageSize}
+            onPageChange={setCurrentPage}
+            onPageSizeChange={(size) => { setPageSize(size); setCurrentPage(1) }}
+            itemLabel={includeMeetings ? (visibleTasks.length === 1 ? "reunión" : "reuniones") : (visibleTasks.length === 1 ? "tarea" : "tareas")}
+          />
       )}
     </div>
   )

@@ -1,10 +1,14 @@
 "use client"
 
+import { DataTableText } from "@/components/ui/data-table"
+import { DataTable as Table } from "@/components/ui/data-table"
+import { DataTablePagination } from "@/components/ui/data-table-pagination"
+import { useClientTablePagination } from "@/components/ui/use-table-pagination"
 import { useState } from "react"
 import { SearchFilterBar } from "@/modules/core/ui/components/search-filter-bar"
 import { Input } from "@/components/ui/input"
 import { Button } from "@/components/ui/button"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Search, MoreVertical, Edit2, Trash2, Bot, User, BrainCircuit } from "lucide-react"
 import {
@@ -41,6 +45,8 @@ export function KnowledgeList({ data, onDelete, onEdit }: KnowledgeListProps) {
         return matchesSearch && matchesFilter
     })
 
+    const { rows: pageRows, pagination } = useClientTablePagination(filtered, JSON.stringify([filter, activeFilter]))
+
     if (data.length === 0) {
         return (
             <div className="flex flex-col items-center justify-center py-16 px-4 text-center border-2 border-dashed border-gray-100 dark:border-white/10 rounded-2xl bg-gray-50/50 dark:bg-zinc-900/40">
@@ -68,14 +74,14 @@ export function KnowledgeList({ data, onDelete, onEdit }: KnowledgeListProps) {
                 />
             </div>
 
-            <div className="glass-card rounded-2xl overflow-hidden relative">
+            <div className="relative space-y-3">
                 <Table>
                     <TableHeader>
                         <TableRow className="bg-zinc-50/50 dark:bg-white/5 border-b border-gray-100 dark:border-white/5">
-                            <TableHead className="font-bold text-xs">Pregunta / Respuesta</TableHead>
-                            <TableHead className="font-bold text-xs">Categoría</TableHead>
-                            <TableHead className="font-bold text-xs">Fuente</TableHead>
-                            <TableHead className="text-right font-bold text-xs">Acciones</TableHead>
+                            <TableHead className="">Pregunta / Respuesta</TableHead>
+                            <TableHead className="">Categoría</TableHead>
+                            <TableHead className="">Fuente</TableHead>
+                            <TableHead className="text-right">Acciones</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -86,13 +92,13 @@ export function KnowledgeList({ data, onDelete, onEdit }: KnowledgeListProps) {
                                 </TableCell>
                             </TableRow>
                         ) : (
-                            filtered.map((item) => (
+                            pageRows.map((item) => (
                                 <TableRow key={item.id} className="group cursor-pointer hover:bg-zinc-50/60 dark:hover:bg-white/5 border-b border-gray-100 dark:border-white/5" onClick={() => onEdit(item)}>
                                     <TableCell className="max-w-[400px]">
-                                        <div className="font-bold text-sm text-gray-900 dark:text-white line-clamp-1 mb-1">{item.question}</div>
-                                        <div className="text-xs text-slate-500 dark:text-gray-400 line-clamp-2 leading-relaxed">
+                                        <DataTableText as="div" className="text-gray-900 dark:text-white line-clamp-1 mb-1">{item.question}</DataTableText>
+                                        <DataTableText as="div" tone="secondary" className="text-slate-500 dark:text-gray-400 line-clamp-2 leading-relaxed">
                                             {item.answer}
-                                        </div>
+                                        </DataTableText>
                                     </TableCell>
                                     <TableCell>
                                         <Badge variant="outline" className="font-medium text-xs border-transparent bg-gray-100 text-gray-700 dark:bg-white/10 dark:text-zinc-300 rounded-lg">
@@ -115,7 +121,7 @@ export function KnowledgeList({ data, onDelete, onEdit }: KnowledgeListProps) {
                                     <TableCell className="text-right">
                                         <DropdownMenu>
                                             <DropdownMenuTrigger asChild>
-                                                <Button variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <Button aria-label="Acciones de la entrada" variant="ghost" size="icon" className="h-8 w-8 opacity-0 group-hover:opacity-100 transition-opacity">
                                                     <MoreVertical className="h-4 w-4" />
                                                 </Button>
                                             </DropdownMenuTrigger>
@@ -140,9 +146,10 @@ export function KnowledgeList({ data, onDelete, onEdit }: KnowledgeListProps) {
                         )}
                     </TableBody>
                 </Table>
+                <DataTablePagination {...pagination} itemLabel="entradas" className="mt-3" />
             </div>
             <div className="text-xs text-muted-foreground text-center">
-                Mostrando {filtered.length} de {data.length} registros
+                {filtered.length} coincidencias de {data.length} entradas
             </div>
         </div>
     )

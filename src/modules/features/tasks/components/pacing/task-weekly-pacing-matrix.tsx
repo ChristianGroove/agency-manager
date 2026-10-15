@@ -1,5 +1,8 @@
 "use client"
 
+import { DataTable } from "@/components/ui/data-table"
+import { getPaginationRange } from "@/components/ui/table-pagination"
+import { DataTablePagination } from "@/components/ui/data-table-pagination"
 import React, { useState, useMemo, useEffect } from "react"
 import { motion, AnimatePresence } from "framer-motion"
 import {
@@ -264,15 +267,12 @@ export function TaskWeeklyPacingMatrix({
   }, [baseTasks, searchQuery, filterPreset])
 
   // Pagination calculations
-  const totalPages = Math.max(1, Math.ceil(filteredTasks.length / pageSize))
-  const safePage = Math.min(currentPage, totalPages)
+  const { safePage } = getPaginationRange(filteredTasks.length, currentPage, pageSize)
   const paginatedTasks = useMemo(() => {
     const start = (safePage - 1) * pageSize
     return filteredTasks.slice(start, start + pageSize)
   }, [filteredTasks, safePage, pageSize])
 
-  const startRecord = filteredTasks.length > 0 ? (safePage - 1) * pageSize + 1 : 0
-  const endRecord = Math.min(safePage * pageSize, filteredTasks.length)
 
   // Aggregate Metrics for Executive Scoreboard
   const metrics = useMemo(() => {
@@ -821,8 +821,7 @@ export function TaskWeeklyPacingMatrix({
 
       {/* 4. The Pacing Matrix Table */}
       <div className="glass-card rounded-3xl border border-border/80 overflow-hidden shadow-sm bg-card">
-        <div className="overflow-x-auto">
-          <table className="w-full min-w-[960px] text-left text-xs border-collapse table-fixed">
+        <DataTable appearance="embedded" className="w-full min-w-[960px] text-left text-xs border-collapse table-fixed">
             <colgroup>
               <col className="w-[32%]" />
               <col className="w-[16%]" />
@@ -1116,85 +1115,19 @@ export function TaskWeeklyPacingMatrix({
                 })
               )}
             </tbody>
-          </table>
-        </div>
+          </DataTable>
 
         {/* Pagination Footer */}
         {filteredTasks.length > 0 && (
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-5 py-3.5 bg-muted/20 border-t border-border/80 text-xs text-muted-foreground">
-            <div className="flex items-center gap-2">
-              <span>
-                Mostrando <strong className="text-foreground font-semibold">{startRecord}</strong> - <strong className="text-foreground font-semibold">{endRecord}</strong> de{" "}
-                <strong className="text-foreground font-semibold">{filteredTasks.length}</strong> tickets
-              </span>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-1.5">
-                <span className="text-[11px] text-muted-foreground">Por pág:</span>
-                <Select
-                  value={String(pageSize)}
-                  onValueChange={(val) => {
-                    setPageSize(Number(val))
-                    setCurrentPage(1)
-                  }}
-                >
-                  <SelectTrigger className="h-8 w-[72px] text-xs font-semibold rounded-xl bg-background border-border/70">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent align="end" className="rounded-xl">
-                    <SelectItem value="25" className="text-xs">25</SelectItem>
-                    <SelectItem value="50" className="text-xs">50</SelectItem>
-                    <SelectItem value="100" className="text-xs">100</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="flex items-center gap-1">
-                <TooltipProvider delayDuration={150}>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-8 w-8 p-0 rounded-xl cursor-pointer"
-                        disabled={safePage <= 1}
-                        onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                        aria-label="Página anterior"
-                      >
-                        <ChevronLeft className="w-3.5 h-3.5" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent className="rounded-xl text-xs">
-                      Página anterior
-                    </TooltipContent>
-                  </Tooltip>
-
-                  <span className="px-2 text-[11px] font-mono font-medium text-foreground">
-                    {safePage} / {totalPages}
-                  </span>
-
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-8 w-8 p-0 rounded-xl cursor-pointer"
-                        disabled={safePage >= totalPages}
-                        onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                        aria-label="Página siguiente"
-                      >
-                        <ChevronRight className="w-3.5 h-3.5" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent className="rounded-xl text-xs">
-                      Página siguiente
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              </div>
-            </div>
-          </div>
+          <DataTablePagination
+            totalCount={filteredTasks.length}
+            page={safePage}
+            pageSize={pageSize}
+            onPageChange={setCurrentPage}
+            onPageSizeChange={(size) => { setPageSize(size); setCurrentPage(1) }}
+            itemLabel="tickets"
+            appearance="embedded"
+          />
         )}
       </div>
 

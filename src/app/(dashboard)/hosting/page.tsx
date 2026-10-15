@@ -7,6 +7,9 @@
  * Ver: /NOMENCLATURE.md para más info.
  */
 
+import { DataTable as Table } from "@/components/ui/data-table"
+import { DataTablePagination } from "@/components/ui/data-table-pagination"
+import { useClientTablePagination } from "@/components/ui/use-table-pagination"
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Plus, Search, Filter, CreditCard, Server, Megaphone, Monitor, Box, Eye, Trash2, Loader2, RefreshCw, Zap, CalendarClock, MoreHorizontal, Pencil, FileText, PlayCircle, PauseCircle, ListFilter } from "lucide-react"
@@ -14,14 +17,7 @@ import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
 import { BulkActionsFloatingBar } from "@/modules/core/ui/components/bulk-actions-floating-bar"
 import { toast } from "sonner"
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from "@/components/ui/table"
+import { TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -225,6 +221,8 @@ export default function ServicesPage() {
         }
     }
 
+    const { rows: pageRows, pagination } = useClientTablePagination(filteredServices, searchTerm + "|" + statusFilter + "|" + typeFilter)
+
     return (
         <div className="space-y-8">
             {/* Standardized Header */}
@@ -360,7 +358,7 @@ export default function ServicesPage() {
             </div>
 
             {/* Table */}
-            <div className="glass-card rounded-2xl overflow-hidden relative">
+            <div className="relative space-y-3">
                 <BulkActionsFloatingBar
                     selectedCount={selectedIds.size}
                     onDelete={handleBulkDelete}
@@ -401,7 +399,7 @@ export default function ServicesPage() {
                                 </TableCell>
                             </TableRow>
                         ) : (
-                            filteredServices.map((service) => (
+                            pageRows.map((service) => (
                                 <TableRow key={service.id} className="group hover:bg-zinc-50/30 dark:hover:bg-white/5 transition-colors border-zinc-100 dark:border-white/10">
                                     <TableCell>
                                         <Checkbox
@@ -412,7 +410,7 @@ export default function ServicesPage() {
                                     <TableCell>
                                         <div>
                                             <p className="font-medium text-zinc-900 dark:text-white">{service.name}</p>
-                                            <div className="flex items-center gap-1 text-sm text-zinc-500 dark:text-zinc-400">
+                                            <div className="flex items-center gap-1 text-xs text-zinc-500 dark:text-zinc-400">
                                                 <span className="truncate max-w-[200px]">{service.client?.name || 'Sin Cliente'}</span>
                                                 {service.client?.company_name && (
                                                     <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] bg-zinc-100 dark:bg-white/10 text-zinc-600 dark:text-zinc-300">
@@ -435,12 +433,12 @@ export default function ServicesPage() {
                                     </TableCell>
                                     <TableCell>
                                         {service.type === 'recurring' ? (
-                                            <div className="flex items-center gap-1 text-sm text-zinc-600">
+                                            <div className="flex items-center gap-1 text-xs text-zinc-600">
                                                 <CalendarClock className="h-4 w-4 text-zinc-400" />
                                                 {getFrequencyLabel(service.frequency)}
                                             </div>
                                         ) : (
-                                            <span className="text-zinc-400 text-sm">-</span>
+                                            <span className="text-zinc-400 text-xs">-</span>
                                         )}
                                     </TableCell>
                                     <TableCell>
@@ -529,6 +527,7 @@ export default function ServicesPage() {
                         )}
                     </TableBody>
                 </Table>
+                <DataTablePagination {...pagination} />
             </div>
 
             <ServiceDetailModal

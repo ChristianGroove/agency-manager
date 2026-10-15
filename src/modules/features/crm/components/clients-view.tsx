@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useState, useMemo, useCallback } from "react"
+import React, { useState, useMemo, useCallback, useTransition } from "react"
 import { useTranslation } from "@/modules/core/i18n/use-translation"
 import { Users, AlertTriangle, Tag, Plus } from "lucide-react"
 import Link from "next/link"
@@ -18,7 +18,9 @@ import { ClientsTable } from "./list/clients-table"
 import { ClientsGrid } from "./grid/clients-grid"
 import { ClientDialogsManager } from "./management/client-dialogs-manager"
 import { toast } from "sonner"
-import { useRouter } from "next/navigation"
+import { useRouter, usePathname, useSearchParams } from "next/navigation"
+import { DataTablePagination } from "@/components/ui/data-table-pagination"
+import { parseTablePageSize } from "@/components/ui/table-pagination"
 
 export default function ClientsView({ 
     initialData, 
@@ -58,6 +60,16 @@ export default function ClientsView({
 function ClientsContent({ initialData, totalCount, currentPage, spaceType, initialSettings, allCategories = [] }: { initialData: any, totalCount: number, currentPage: number, spaceType: VerticalType, initialSettings: any, allCategories?: any[] }) {
     const { t } = useTranslation()
     const router = useRouter()
+    const pathname = usePathname()
+    const searchParams = useSearchParams()
+    const pageSize = parseTablePageSize(searchParams.get("pageSize"))
+    const [isPaging, startPaging] = useTransition()
+    const navigatePage = (page: number, size = pageSize) => {
+        const params = new URLSearchParams(searchParams.toString())
+        params.set("page", String(page))
+        params.set("pageSize", String(size))
+        startPaging(() => router.push(pathname + "?" + params.toString(), { scroll: false }))
+    }
     const { 
         viewMode, 
         selectedIds, 
@@ -432,7 +444,7 @@ function ClientsContent({ initialData, totalCount, currentPage, spaceType, initi
                     {viewMode === 'list' ? (
                         <ClientsTable 
                             clients={filteredClients} 
-                            loading={false}
+                            loading={isPaging}
                             onManage={(c: any) => { setSelectedClientForManagement(c); setManagementOpen(true); }}
                             onDelete={handleSingleDelete}
                             onCommunication={(c: any) => { setSelectedClientForCom(c); setIsComModalOpen(true); }}
@@ -445,7 +457,7 @@ function ClientsContent({ initialData, totalCount, currentPage, spaceType, initi
                     ) : (
                         <ClientsGrid 
                             clients={filteredClients} 
-                            loading={false}
+                            loading={isPaging}
                             onManage={(c: any) => { setSelectedClientForManagement(c); setManagementOpen(true); }}
                             onDelete={handleSingleDelete}
                             onCommunication={(c: any) => { setSelectedClientForCom(c); setIsComModalOpen(true); }}
@@ -459,6 +471,22 @@ function ClientsContent({ initialData, totalCount, currentPage, spaceType, initi
                     )}
                 </div>
             </div>
+
+            {filteredClients.length !== clients.length && (
+                <p className="text-xs text-muted-foreground mt-2" role="status">
+                    {filteredClients.length} coincidencias en esta página. Los filtros locales se aplican a los clientes cargados.
+                </p>
+            )}
+            <DataTablePagination
+                totalCount={totalCount}
+                page={currentPage}
+                pageSize={pageSize}
+                onPageChange={navigatePage}
+                onPageSizeChange={(size) => navigatePage(1, size)}
+                itemLabel="clientes"
+                disabled={isPaging}
+                className="mt-3 shrink-0"
+            />
 
             <ClientDialogsManager 
                 managementOpen={managementOpen}

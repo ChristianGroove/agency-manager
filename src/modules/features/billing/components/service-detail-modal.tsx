@@ -1,5 +1,6 @@
 "use client"
 
+import { PaginatedDataTable as Table } from "@/components/ui/paginated-data-table"
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -9,7 +10,7 @@ import { Calendar, CreditCard, Clock, FileText, Activity, CheckCircle2, AlertCir
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { supabase } from "@/modules/core/database/supabase"
 import { useState, useEffect } from "react"
 import { StatusBadge } from "@/components/ui/status-badge"
@@ -213,7 +214,7 @@ export function ServiceDetailModal({ isOpen, onOpenChange, service }: ServiceDet
                                 </Badge>
                             </div>
 
-                            <div className="rounded-md border border-zinc-100 overflow-hidden">
+                            <div className="overflow-hidden">
                                 <Table>
                                     <TableHeader>
                                         <TableRow>
@@ -242,7 +243,7 @@ export function ServiceDetailModal({ isOpen, onOpenChange, service }: ServiceDet
                                                     <TableCell>
                                                         <StatusBadge status={cycle.status} type="cycle" entity={cycle} />
                                                     </TableCell>
-                                                    <TableCell className="text-sm">
+                                                    <TableCell className="text-xs">
                                                         <div className="flex flex-col">
                                                             <span>Desde: {format(new Date(cycle.start_date), "dd MMM yyyy", { locale: es })}</span>
                                                             <span className="text-muted-foreground text-xs">Hasta: {format(new Date(cycle.end_date), "dd MMM yyyy", { locale: es })}</span>

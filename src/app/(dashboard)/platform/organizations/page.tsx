@@ -1,3 +1,5 @@
+import { parseTablePage, parseTablePageSize } from "@/components/ui/table-pagination"
+import { redirect } from "next/navigation"
 import { Suspense } from "react"
 import { getOrganizationsPaginated } from "@/modules/core/organizations/organization-actions"
 import { OrganizationsClientView } from "./organizations-client-view"
@@ -8,12 +10,12 @@ export const dynamic = 'force-dynamic'
 export default async function PlatformOrganizationsPage({
     searchParams
 }: {
-    searchParams: Promise<{ page?: string, search?: string, type?: string }>
+    searchParams: Promise<{ page?: string, pageSize?: string, search?: string, type?: string }>
 }) {
     // Parse params
     const params = await searchParams
-    const page = Number(params?.page) || 1
-    const limit = 50
+    const page = parseTablePage(params?.page)
+    const limit = parseTablePageSize(params?.pageSize)
     const search = params?.search || ""
     const type = params?.type || 'all'
 
@@ -24,6 +26,14 @@ export default async function PlatformOrganizationsPage({
         search,
         type
     })
+
+    const lastPage = Math.max(1, Math.ceil((count || 0) / limit))
+    if (!error && page > lastPage) {
+        const query = new URLSearchParams()
+        for (const [key, value] of Object.entries(params)) if (typeof value === "string") query.set(key, value)
+        query.set("page", String(lastPage))
+        redirect("/platform/organizations?" + query.toString())
+    }
 
     if (error) {
         return (

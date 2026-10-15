@@ -1,18 +1,12 @@
 
 "use client"
 
+import { PaginatedDataTable as Table } from "@/components/ui/paginated-data-table"
 import { useState, useTransition } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from "@/components/ui/table"
+import { TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Loader2, Shield, HardDrive, Download, Trash2, RefreshCcw, Lock } from "lucide-react"
 import { createSnapshot, deleteSnapshot, restoreSnapshot, updateVaultConfig } from "../data-vault-actions"
 import { DataSnapshot } from "../types"
@@ -218,7 +212,7 @@ export function VaultSettingsTab({ snapshots: initialSnapshots, initialConfig }:
             {/* Snapshots List (Compact) */}
             <div className="space-y-3">
                 <h3 className="font-medium text-sm text-muted-foreground ml-1">Historial de Puntos de Restauración</h3>
-                <Card className="glass-card rounded-2xl relative overflow-hidden">
+                <Card className="relative border-0 shadow-none bg-transparent">
                     <CardContent className="p-0">
                         <div className="relative overflow-x-auto">
                     <Table>
@@ -233,7 +227,7 @@ export function VaultSettingsTab({ snapshots: initialSnapshots, initialConfig }:
                         <TableBody>
                             {snapshots.length === 0 ? (
                                 <TableRow>
-                                    <TableCell colSpan={4} className="text-center py-12 text-muted-foreground text-sm">
+                                    <TableCell colSpan={4} className="text-center py-12 text-muted-foreground text-xs">
                                         Bóveda vacía. Crea tu primer backup para asegurar tus datos.
                                     </TableCell>
                                 </TableRow>
@@ -242,7 +236,7 @@ export function VaultSettingsTab({ snapshots: initialSnapshots, initialConfig }:
                                     <TableRow key={snap.id} className="group">
                                         <TableCell>
                                             <div className="flex flex-col">
-                                                <div className="font-medium text-sm flex items-center gap-2">
+                                                <div className="font-medium text-xs flex items-center gap-2">
                                                     {snap.name}
                                                     <StatusBadge status={snap.status} compact />
                                                 </div>

@@ -1,10 +1,11 @@
 "use client"
 
+import { PaginatedDataTable as Table } from "@/components/ui/paginated-data-table"
 import React, { useState } from 'react'
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table'
+import { TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Input } from '@/components/ui/input'
 import { Download, Search, CheckCircle2, Clock, DollarSign, Calculator } from 'lucide-react'
 import { format } from 'date-fns'
@@ -84,7 +85,7 @@ export function PayrollDashboard({ shifts }: PayrollDashboardProps) {
                 </Card>
             </div>
 
-            <Card className="glass-card rounded-2xl overflow-hidden relative border-none shadow-xl">
+            <Card className="relative border-0 shadow-none bg-transparent">
                 <CardHeader className="p-6 pb-4">
                     <CardTitle className="text-lg flex items-center gap-2">
                         <Calculator className="w-5 h-5 text-slate-500" /> Detalle de Turnos
@@ -127,7 +128,7 @@ export function PayrollDashboard({ shifts }: PayrollDashboardProps) {
                                         <TableCell className="text-center font-mono text-slate-600">
                                             {formatHours(shift.total_break_minutes)}
                                         </TableCell>
-                                        <TableCell className="text-center font-mono font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50/20 dark:bg-emerald-500/5">
+                                        <TableCell className="text-center font-mono font-semibold text-emerald-700 dark:text-emerald-400 bg-emerald-50/20 dark:bg-emerald-500/5">
                                             {formatHours(shift.ordinary_minutes)}
                                         </TableCell>
                                         <TableCell className="text-center bg-amber-50/20 dark:bg-amber-500/5">

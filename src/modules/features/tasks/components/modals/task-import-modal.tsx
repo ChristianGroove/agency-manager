@@ -1,5 +1,6 @@
 "use client";
 
+import { PaginatedDataTable as StandardDataTable } from "@/components/ui/paginated-data-table"
 import React, { useState, useRef, useTransition } from "react";
 import {
   Dialog,
@@ -507,8 +508,8 @@ export function TaskImportModal({
 
                 {/* Preview: Tasks */}
                 <TabsContent value="tasks" className="pt-3">
-                  <div className="rounded-xl border border-border/60 overflow-hidden max-h-56 overflow-y-auto">
-                    <table className="w-full text-left text-xs">
+                  <div className="min-w-0">
+                    <StandardDataTable className="w-full text-left text-xs">
                       <thead className="bg-muted/50 border-b border-border/60 text-muted-foreground sticky top-0 backdrop-blur-md">
                         <tr>
                           <th className="p-2.5 font-semibold">Título</th>
@@ -520,7 +521,7 @@ export function TaskImportModal({
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-border/40">
-                        {dryRunResult.bundle?.tasks.slice(0, 50).map((t, idx) => (
+                        {dryRunResult.bundle?.tasks.map((t, idx) => (
                           <tr key={idx} className="hover:bg-muted/20">
                             <td className="p-2.5 font-medium text-foreground max-w-[200px] truncate">
                               {t.title}
@@ -547,7 +548,7 @@ export function TaskImportModal({
                           </tr>
                         ))}
                       </tbody>
-                    </table>
+                    </StandardDataTable>
                   </div>
                   {dryRunResult.bundle && dryRunResult.bundle.tasks.length > 50 && (
                     <span className="text-[10px] text-muted-foreground text-center block pt-2">
@@ -558,8 +559,8 @@ export function TaskImportModal({
 
                 {/* Preview: Collaborators */}
                 <TabsContent value="staff" className="pt-3">
-                  <div className="rounded-xl border border-border/60 overflow-hidden max-h-56 overflow-y-auto">
-                    <table className="w-full text-left text-xs">
+                  <div className="min-w-0">
+                    <StandardDataTable className="w-full text-left text-xs">
                       <thead className="bg-muted/50 border-b border-border/60 text-muted-foreground sticky top-0 backdrop-blur-md">
                         <tr>
                           <th className="p-2.5 font-semibold">Correo Electrónico</th>
@@ -594,14 +595,14 @@ export function TaskImportModal({
                           </tr>
                         ))}
                       </tbody>
-                    </table>
+                    </StandardDataTable>
                   </div>
                 </TabsContent>
 
                 {/* Preview: Projects */}
                 <TabsContent value="projects" className="pt-3">
-                  <div className="rounded-xl border border-border/60 overflow-hidden max-h-56 overflow-y-auto">
-                    <table className="w-full text-left text-xs">
+                  <div className="min-w-0">
+                    <StandardDataTable className="w-full text-left text-xs">
                       <thead className="bg-muted/50 border-b border-border/60 text-muted-foreground sticky top-0 backdrop-blur-md">
                         <tr>
                           <th className="p-2.5 font-semibold">Proyecto</th>
@@ -636,7 +637,7 @@ export function TaskImportModal({
                           </tr>
                         ))}
                       </tbody>
-                    </table>
+                    </StandardDataTable>
                   </div>
                 </TabsContent>
               </Tabs>

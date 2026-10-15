@@ -1,5 +1,6 @@
 "use client"
 
+import { PaginatedDataTable as Table } from "@/components/ui/paginated-data-table"
 import { useState, useEffect } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
@@ -10,14 +11,7 @@ import { Input } from "@/components/ui/input"
 import { Checkbox } from "@/components/ui/checkbox"
 import { BulkActionsFloatingBar } from "@/modules/core/ui/components/bulk-actions-floating-bar"
 import { toast } from "sonner"
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from "@/components/ui/table"
+import { TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { StatusBadge } from "@/components/ui/status-badge"
 import { supabase } from "@/modules/core/database/supabase"
 import { cn } from "@/modules/infrastructure/utils/utils"
@@ -248,7 +242,7 @@ export function InvoicesView({ initialInvoices }: InvoicesViewProps) {
             </div>
 
             {/* Table */}
-            <div className="glass-card rounded-2xl overflow-hidden relative">
+            <div className="relative">
                 <BulkActionsFloatingBar
                     selectedCount={selectedIds.size}
                     onDelete={handleBulkDelete}

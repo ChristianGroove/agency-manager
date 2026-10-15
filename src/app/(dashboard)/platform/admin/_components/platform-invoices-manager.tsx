@@ -1,15 +1,9 @@
 "use client"
 
+import { PaginatedDataTable as Table } from "@/components/ui/paginated-data-table"
 import { useState, useEffect } from "react"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { 
-    Table, 
-    TableBody, 
-    TableCell, 
-    TableHead, 
-    TableHeader, 
-    TableRow 
-} from "@/components/ui/table"
+import { TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { 
@@ -198,7 +192,7 @@ export function PlatformInvoicesManager() {
                 </div>
             </CardHeader>
             <CardContent className="px-0">
-                <div className="rounded-xl border bg-white dark:bg-black/20 overflow-hidden">
+                <div className="overflow-hidden">
                     <Table>
                         <TableHeader>
                             <TableRow>
@@ -228,7 +222,7 @@ export function PlatformInvoicesManager() {
                             ) : (
                                 filteredInvoices.map((invoice) => (
                                     <TableRow key={invoice.id} className="hover:bg-muted/50 transition-colors">
-                                        <TableCell className="font-mono text-xs font-bold">
+                                        <TableCell className="font-mono text-xs font-semibold">
                                             {invoice.invoice_number}
                                         </TableCell>
                                         <TableCell>

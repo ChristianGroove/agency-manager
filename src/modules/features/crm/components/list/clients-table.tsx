@@ -1,10 +1,11 @@
 "use client"
 
+import { DataTableText } from "@/components/ui/data-table"
 import React from "react"
+import { DataTable as Table } from "@/components/ui/data-table"
 import { useClients } from "../../context/clients-context"
 import { useTranslation } from "@/modules/core/i18n/use-translation"
 import { 
-    Table, 
     TableBody, 
     TableCell, 
     TableHead, 
@@ -14,8 +15,7 @@ import {
 import { Checkbox } from "@/components/ui/checkbox"
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar"
 import { Button } from "@/components/ui/button"
-import { MoreVertical, Phone, SendHorizontal, FileText, Trash2, Globe, Wifi, Shield, StickyNote } from "lucide-react"
-import { cn } from "@/modules/infrastructure/utils/utils"
+import { MoreVertical, SendHorizontal, FileText, Trash2, Globe, Wifi, Shield, StickyNote } from "lucide-react"
 import { VERTICAL_REGISTRY, VerticalType } from "@/modules/core/organizations/vertical-registry"
 import { 
     DropdownMenu, 
@@ -28,10 +28,8 @@ import {
 import {
     Tooltip,
     TooltipContent,
-    TooltipProvider,
     TooltipTrigger,
 } from "@/components/ui/tooltip"
-import { useRouter } from "next/navigation"
 
 export function ClientsTable({ 
     clients, 
@@ -57,33 +55,36 @@ export function ClientsTable({
     onNotes?: (client: any) => void
 }) {
     const { t } = useTranslation()
-    const router = useRouter()
-    const { selectedIds, toggleSelection, toggleAll, spaceType } = useClients()
+    const { selectedIds, toggleSelection, setSelectedIds, spaceType } = useClients()
+    const allSelected = clients.length > 0 && clients.every(client => selectedIds.has(client.id))
+    const someSelected = clients.some(client => selectedIds.has(client.id))
+    const togglePage = () => {
+        const next = new Set(selectedIds)
+        clients.forEach(client => { if (allSelected) next.delete(client.id); else next.add(client.id) })
+        setSelectedIds(next)
+    }
     const config = VERTICAL_REGISTRY[spaceType as VerticalType]
     const isAgency = (spaceType === 'agency' || spaceType === 'platform') && config?.management?.actions?.showBilling
     const isAgencyOrLegacy = spaceType === 'agency' || spaceType === 'legacy' || spaceType === 'platform'
 
     return (
-        <div className="glass-card rounded-lg overflow-hidden flex flex-col flex-1 h-full relative">
-            <div className="flex-none border-b border-gray-200 dark:border-white/10 bg-gray-50/50 dark:bg-white/5 backdrop-blur-md z-20">
-                <Table className="w-full">
+        <div aria-busy={loading}>
+                <Table className="min-w-[640px]">
                     <TableHeader>
                         <TableRow className="hover:bg-transparent border-none">
                             <TableHead className="w-[50px]">
                                 <Checkbox
-                                    checked={clients.length > 0 && selectedIds.size === clients.length}
-                                    onCheckedChange={() => toggleAll(clients.map(c => c.id))}
+                                    checked={allSelected ? true : someSelected ? "indeterminate" : false}
+                                    onCheckedChange={togglePage}
+                                    aria-label="Seleccionar clientes de esta página"
+                                    disabled={loading}
                                 />
                             </TableHead>
                             <TableHead>{t('clients.table.client')}</TableHead>
                             <TableHead className="text-right w-[100px]">{t('clients.table.actions')}</TableHead>
                         </TableRow>
                     </TableHeader>
-                </Table>
-            </div>
 
-            <div className="flex-1 overflow-y-auto scrollbar-modern relative">
-                <Table className="w-full">
                     <TableBody>
                         {loading ? (
                             <TableRow><TableCell colSpan={3} className="h-24 text-center">Cargando...</TableCell></TableRow>
@@ -94,6 +95,7 @@ export function ClientsTable({
                                 <TableRow key={client.id || `client-${index}`} className="group hover:bg-gray-50/50 dark:hover:bg-white/5 border-gray-100 dark:border-white/10">
                                     <TableCell className="w-[50px]">
                                         <Checkbox
+                                            aria-label={"Seleccionar " + client.name}
                                             checked={selectedIds.has(client.id)}
                                             onCheckedChange={() => toggleSelection(client.id)}
                                         />
@@ -102,13 +104,13 @@ export function ClientsTable({
                                         <div className="flex items-center gap-3">
                                             <Avatar className="h-10 w-10">
                                                 <AvatarImage src={client.logo_url} />
-                                                <AvatarFallback className="bg-primary/10 text-primary font-bold">
+                                                <AvatarFallback className="bg-primary/10 text-primary font-semibold">
                                                     {client.name.substring(0, 2).toUpperCase()}
                                                 </AvatarFallback>
                                             </Avatar>
                                             <div>
-                                                <p className="font-medium dark:text-white">{client.name}</p>
-                                                <p className="text-xs text-gray-500 dark:text-gray-400">{client.company_name}</p>
+                                                <DataTableText as="p" className="dark:text-white">{client.name}</DataTableText>
+                                                <DataTableText as="p" tone="secondary" className="text-gray-500 dark:text-gray-400">{client.company_name}</DataTableText>
                                             </div>
                                         </div>
                                     </TableCell>
@@ -162,7 +164,7 @@ export function ClientsTable({
                                             </Tooltip>
                                             <DropdownMenu>
                                                 <DropdownMenuTrigger asChild>
-                                                     <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full text-slate-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-white/10 transition-colors">
+                                                     <Button variant="ghost" size="icon" aria-label="Acciones del cliente" className="h-8 w-8 rounded-full text-slate-400 dark:text-gray-500 hover:bg-gray-100 dark:hover:bg-white/10 transition-colors">
                                                         <MoreVertical className="h-4 w-4" />
                                                      </Button>
                                                 </DropdownMenuTrigger>
@@ -195,7 +197,6 @@ export function ClientsTable({
                         )}
                     </TableBody>
                 </Table>
-            </div>
         </div>
     )
 }

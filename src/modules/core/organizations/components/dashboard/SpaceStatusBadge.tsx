@@ -1,5 +1,6 @@
 "use client"
 
+import { PaginatedDataTable as Table } from "@/components/ui/paginated-data-table"
 import { useState, useEffect } from "react"
 import {
     Dialog,
@@ -13,14 +14,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow
-} from "@/components/ui/table"
+import { TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { CheckCircle2, Clock, Crown, Package, AlertCircle, FileText, Download, Receipt, History } from "lucide-react"
 import { cn } from "@/modules/infrastructure/utils/utils"
 import { format, differenceInDays, parseISO } from "date-fns"
@@ -237,15 +231,15 @@ export function SpaceStatusBadge({ app, subscription, orgName, brandColor }: Spa
                                         </Button>
                                     </div>
 
-                                    <div className="rounded-2xl border border-gray-100 dark:border-white/10 overflow-hidden bg-white/40 dark:bg-white/5 backdrop-blur-xl">
+                                    <div className="overflow-hidden">
                                         <Table>
                                             <TableHeader>
                                                 <TableRow className="border-b border-gray-100 dark:border-white/5 hover:bg-transparent">
-                                                    <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-gray-400">Fecha</TableHead>
-                                                    <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-gray-400">Concepto</TableHead>
-                                                    <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-gray-400">Monto</TableHead>
-                                                    <TableHead className="text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-gray-400">Estado</TableHead>
-                                                    <TableHead className="text-right text-xs font-bold uppercase tracking-wider text-slate-400 dark:text-gray-400">Recibo</TableHead>
+                                                    <TableHead className="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-gray-400">Fecha</TableHead>
+                                                    <TableHead className="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-gray-400">Concepto</TableHead>
+                                                    <TableHead className="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-gray-400">Monto</TableHead>
+                                                    <TableHead className="text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-gray-400">Estado</TableHead>
+                                                    <TableHead className="text-right text-xs font-semibold uppercase tracking-wider text-slate-400 dark:text-gray-400">Recibo</TableHead>
                                                 </TableRow>
                                             </TableHeader>
                                             <TableBody className="text-xs">
@@ -262,10 +256,10 @@ export function SpaceStatusBadge({ app, subscription, orgName, brandColor }: Spa
                                                         <TableCell className="font-medium text-slate-500 dark:text-gray-400">
                                                             {format(parseISO(row.created_at), 'dd MMM, yyyy', { locale: es })}
                                                         </TableCell>
-                                                        <TableCell className="font-bold text-slate-900 dark:text-white">
+                                                        <TableCell className="font-semibold text-slate-900 dark:text-white">
                                                             {row.metadata?.concept || 'Suscripción'}
                                                         </TableCell>
-                                                        <TableCell className="font-bold text-slate-900 dark:text-white">
+                                                        <TableCell className="font-semibold text-slate-900 dark:text-white">
                                                             {(row.amount_in_cents / 100).toLocaleString('es-CO', { style: 'currency', currency: 'USD' })}
                                                         </TableCell>
                                                         <TableCell>

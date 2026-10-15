@@ -1,5 +1,6 @@
 "use client"
 
+import { PaginatedDataTable as Table } from "@/components/ui/paginated-data-table"
 import { useEffect, useState } from "react"
 import { supabase } from "@/modules/core/database/supabase"
 import { Badge } from "@/components/ui/badge"
@@ -7,14 +8,7 @@ import { Button } from "@/components/ui/button"
 import { Loader2, Eye, Search, ListFilter, CreditCard } from "lucide-react"
 import { SectionHeader } from "@/components/layout/section-header"
 import { Input } from "@/components/ui/input"
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from "@/components/ui/table"
+import { TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { cn } from "@/modules/infrastructure/utils/utils"
 import { SplitText } from "@/components/ui/split-text"
 import { SearchFilterBar, FilterOption } from "@/modules/core/ui/components/search-filter-bar"
@@ -126,7 +120,7 @@ export default function PaymentsPage() {
                 filters={filterOptions}
             />
 
-            <div className="glass-card rounded-2xl overflow-hidden relative">
+            <div className="relative">
                 <Table>
                     <TableHeader>
                         <TableRow>

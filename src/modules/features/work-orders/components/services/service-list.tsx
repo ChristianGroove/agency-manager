@@ -1,5 +1,8 @@
 "use client"
 
+import { DataTable as Table } from "@/components/ui/data-table"
+import { DataTablePagination } from "@/components/ui/data-table-pagination"
+import { useClientTablePagination } from "@/components/ui/use-table-pagination"
 import { useEffect, useState } from "react"
 import { getCleaningServices, deleteCleaningService } from "../../actions/service-actions"
 import { Button } from "@/components/ui/button"
@@ -7,7 +10,7 @@ import { Plus, Pencil, Trash2, Clock, DollarSign, MoreVertical, Sparkles } from 
 import { ServiceForm } from "./service-form"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { toast } from "sonner"
 import { EmptyState } from "@/components/ui/empty-state"
 import {
@@ -38,6 +41,8 @@ export function ServiceList({ viewMode = 'grid' }: ServiceListProps) {
     const [isFormOpen, setIsFormOpen] = useState(false)
     const [serviceToEdit, setServiceToEdit] = useState<any>(null)
     const [deleteItem, setDeleteItem] = useState<any>(null)
+
+    const { rows: pageRows, pagination } = useClientTablePagination(services)
 
     const loadServices = async () => {
         setIsLoading(true)
@@ -198,7 +203,7 @@ export function ServiceList({ viewMode = 'grid' }: ServiceListProps) {
                     ))}
                 </div>
             ) : (
-                <div className="border rounded-lg">
+                <div className="space-y-3">
                     <Table>
                         <TableHeader>
                             <TableRow>
@@ -211,11 +216,11 @@ export function ServiceList({ viewMode = 'grid' }: ServiceListProps) {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {services.map((service) => (
+                            {pageRows.map((service) => (
                                 <TableRow key={service.id}>
-                                    <TableCell className="font-medium">{service.name}</TableCell>
+                                    <TableCell className="text-xs font-semibold">{service.name}</TableCell>
                                     <TableCell className="max-w-xs">
-                                        <p className="text-sm text-muted-foreground truncate">
+                                        <p className="text-xs text-muted-foreground truncate">
                                             {service.description || '-'}
                                         </p>
                                     </TableCell>
@@ -223,7 +228,7 @@ export function ServiceList({ viewMode = 'grid' }: ServiceListProps) {
                                         ${service.base_price?.toLocaleString()}
                                     </TableCell>
                                     <TableCell>
-                                        <div className="flex items-center gap-1 text-sm">
+                                        <div className="flex items-center gap-1 text-xs">
                                             <Clock className="h-3.5 w-3.5 text-muted-foreground" />
                                             {service.estimated_duration}min
                                         </div>
@@ -256,6 +261,7 @@ export function ServiceList({ viewMode = 'grid' }: ServiceListProps) {
                             ))}
                         </TableBody>
                     </Table>
+                    <DataTablePagination {...pagination} itemLabel="servicios" className="mt-3" />
                 </div>
             )}
 

@@ -1,5 +1,7 @@
 'use client'
 
+import { DataTablePaginationFrame } from "@/components/ui/data-table-pagination"
+import { DataTable as Table } from "@/components/ui/data-table"
 import { useMarketingApi } from '../marketing-client-api'
 
 import { useEffect, useState } from 'react'
@@ -83,7 +85,7 @@ export function CampaignHistory({ campaignId, email = false, initialDelivery = '
             {loading ? <p className="text-sm">Consultando historial…</p> : error ? <p role="alert" className="text-sm text-destructive">{error}</p>
                 : page && <><p className="text-sm text-muted-foreground">{total == null ? 'Total pendiente de consulta' : `${total} destinatarios con los filtros aplicados`}. Página {previous.length + 1} · Consultado: {formatDate(page.queriedAt)}.</p>
                     {!page.items.length ? <p className="py-4 text-sm">No hay destinatarios inscritos que coincidan. Una campaña en borrador puede no tener inscripciones todavía.</p>
-                        : <div className="overflow-x-auto"><table className="w-full text-sm">
+                        : <div className="overflow-x-auto"><Table className="w-full text-xs">
                             <caption className="sr-only">Destinatarios inscritos y sus resultados registrados</caption>
                             <thead><tr className="border-b text-left"><th className="p-2">Destinatario</th><th className="p-2">Procesamiento</th><th className="p-2">Mensajes registrados</th><th className="p-2">Último avance</th><th className="p-2">Detalle</th></tr></thead>
                             <tbody>{page.items.map(row => <tr key={row.id} className="border-b align-top">
@@ -94,12 +96,12 @@ export function CampaignHistory({ campaignId, email = false, initialDelivery = '
                                     {!!row.counts.unknown && <p className="text-xs text-amber-700">{row.counts.unknown} sin resultado confirmado</p>}</td>
                                 <td className="p-2">{formatDate(row.last_run_at)}</td>
                                 <td className="p-2"><Button variant="outline" size="sm" onClick={() => setSelected(row)} aria-label={`Ver pasos de ${row.name}`}>Ver pasos</Button></td>
-                            </tr>)}</tbody></table></div>}
-                    <div className="flex gap-2 items-center pt-3">
+                            </tr>)}</tbody></Table></div>}
+                    <DataTablePaginationFrame>
                         <Button variant="outline" disabled={!previous.length} onClick={() => { setCursor(previous.at(-1) || null); setPrevious(value => value.slice(0, -1)) }}>Anterior</Button>
                         <Button variant="outline" disabled={!page.hasMore || !page.nextCursor} onClick={() => { setPrevious(value => [...value, cursor]); setCursor(page.nextCursor) }}>Siguiente</Button>
                         <span className="text-xs text-muted-foreground">Hasta 25 destinatarios por página.</span>
-                    </div>
+                    </DataTablePaginationFrame>
                 </>}
         </div>
         <Dialog open={!!selected} onOpenChange={open => { if (!open) setSelected(null) }}><DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
@@ -139,8 +141,8 @@ function RecipientSteps({ campaignId, enrollmentId, email = false }: { campaignI
                     {row.queued_at && <p className="text-xs text-muted-foreground">En cola: {formatDate(row.queued_at)} · Actualización: {formatDate(row.updated_at)}</p>}
                     {row.receipt_at && <p className="text-xs text-muted-foreground">Último evento de recibo: {formatDate(row.receipt_at)}</p>}
                 </div>)}
-                <div className="flex gap-2"><Button variant="outline" disabled={!previous.length} onClick={() => { setCursor(previous.at(-1) || null); setPrevious(value => value.slice(0, -1)) }}>Anterior</Button>
-                    <Button variant="outline" disabled={!page.hasMore || !page.nextCursor} onClick={() => { setPrevious(value => [...value, cursor]); setCursor(page.nextCursor) }}>Siguiente</Button></div>
+                <DataTablePaginationFrame><Button variant="outline" disabled={!previous.length} onClick={() => { setCursor(previous.at(-1) || null); setPrevious(value => value.slice(0, -1)) }}>Anterior</Button>
+                    <Button variant="outline" disabled={!page.hasMore || !page.nextCursor} onClick={() => { setPrevious(value => [...value, cursor]); setCursor(page.nextCursor) }}>Siguiente</Button></DataTablePaginationFrame>
             </>}
     </div>
 }

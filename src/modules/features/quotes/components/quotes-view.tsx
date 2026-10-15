@@ -1,5 +1,8 @@
 "use client"
 
+import { DataTable as Table } from "@/components/ui/data-table"
+import { DataTablePagination } from "@/components/ui/data-table-pagination"
+import { useClientTablePagination } from "@/components/ui/use-table-pagination"
 import { useState } from "react"
 import { useRouter } from "next/navigation"
 import { CreateQuoteSheet } from "./create-quote-sheet"
@@ -11,14 +14,7 @@ import { Download, Eye, Loader2, Trash, MoreVertical, Search, ListFilter, Copy, 
 import { Checkbox } from "@/components/ui/checkbox"
 import { BulkActionsFloatingBar } from "@/modules/core/ui/components/bulk-actions-floating-bar"
 import { cn } from "@/modules/infrastructure/utils/utils"
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from "@/components/ui/table"
+import { TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import {
     DropdownMenu,
     DropdownMenuContent,
@@ -210,6 +206,8 @@ export function QuotesView({ initialQuotes, initialEmitters }: QuotesViewProps) 
         return matchesSearch && matchesStatus
     })
 
+    const { rows: pageRows, pagination } = useClientTablePagination(filteredQuotes, searchTerm + "|" + statusFilter)
+
     const statusConfig = {
         draft: { label: t('quotes.status.draft'), color: 'bg-zinc-100 text-zinc-700 hover:bg-zinc-200' },
         sent: { label: t('quotes.status.sent'), color: 'bg-blue-50 text-blue-700 hover:bg-blue-100' },
@@ -292,7 +290,7 @@ export function QuotesView({ initialQuotes, initialEmitters }: QuotesViewProps) 
                 </div>
             </div>
 
-            <div className="glass-card rounded-2xl overflow-hidden relative">
+            <div className="relative space-y-3">
                 <BulkActionsFloatingBar
                     selectedCount={selectedIds.size}
                     onDelete={handleBulkDelete}
@@ -333,7 +331,7 @@ export function QuotesView({ initialQuotes, initialEmitters }: QuotesViewProps) 
                                 </TableCell>
                             </TableRow>
                         ) : (
-                            filteredQuotes.map((quote) => {
+                            pageRows.map((quote) => {
                                 const entityName = quote.client?.name || quote.lead?.name || "Desconocido"
                                 const entityCompany = quote.client?.company_name || quote.lead?.company_name
                                 const status = statusConfig[quote.status as keyof typeof statusConfig] || statusConfig.draft
@@ -357,10 +355,10 @@ export function QuotesView({ initialQuotes, initialEmitters }: QuotesViewProps) 
                                                 {quote.lead_id && <span className="text-[10px] text-amber-600 bg-amber-50 px-1.5 py-0.5 rounded-full w-fit mt-1 font-medium">Prospecto</span>}
                                             </div>
                                         </TableCell>
-                                        <TableCell className="text-zinc-500 text-sm">{new Date(quote.date).toLocaleDateString(locale === 'en' ? 'en-US' : 'es-MX')}</TableCell>
+                                        <TableCell className="text-zinc-500 text-xs">{new Date(quote.date).toLocaleDateString(locale === 'en' ? 'en-US' : 'es-MX')}</TableCell>
                                         <TableCell>
                                             <div className="flex items-center gap-2">
-                                                <span className="font-bold text-zinc-900 dark:text-white">${quote.total.toLocaleString(locale === 'en' ? 'en-US' : 'es-MX', { minimumFractionDigits: 2 })}</span>
+                                                <span className="font-semibold text-zinc-900 dark:text-white">${quote.total.toLocaleString(locale === 'en' ? 'en-US' : 'es-MX', { minimumFractionDigits: 2 })}</span>
                                                 {hasRecurring && (
                                                     <span className="bg-indigo-50 text-indigo-600 p-1 rounded-md" title="Incluye items recurrentes (Suscripción)">
                                                         <RefreshCcw className="h-3 w-3" />
@@ -457,6 +455,7 @@ export function QuotesView({ initialQuotes, initialEmitters }: QuotesViewProps) 
                         )}
                     </TableBody>
                 </Table>
+                <DataTablePagination {...pagination} />
             </div>
 
             <QuoteShareSheet

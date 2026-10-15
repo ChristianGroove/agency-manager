@@ -1,16 +1,12 @@
 "use client"
 
+import { DataTable as Table } from "@/components/ui/data-table"
+import { DataTablePagination } from "@/components/ui/data-table-pagination"
+import { useClientTablePagination } from "@/components/ui/use-table-pagination"
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Plus, Server, ExternalLink, MoreHorizontal, Pencil, Trash2 } from "lucide-react"
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from "@/components/ui/table"
+import { TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import {
     Sheet,
     SheetContent,
@@ -100,6 +96,8 @@ export default function HostingPage() {
         { id: 'cancelled', label: 'Cancelados', count: counts.cancelled, color: 'red' },
     ]
 
+    const { rows: pageRows, pagination } = useClientTablePagination(filtered, searchTerm + "|" + activeFilter)
+
     return (
         <div className="space-y-6">
             {/* Standardized Header */}
@@ -124,7 +122,7 @@ export default function HostingPage() {
                 filters={filterOptions}
             />
 
-            <div className="glass-card rounded-2xl overflow-hidden relative">
+            <div className="relative space-y-3">
                 <Table>
                     <TableHeader>
                         <TableRow className="bg-zinc-50/50 dark:bg-white/5">
@@ -146,7 +144,7 @@ export default function HostingPage() {
                                 <TableCell colSpan={6} className="text-center h-24 text-muted-foreground">No hay cuentas de hosting registradas.</TableCell>
                             </TableRow>
                         ) : (
-                            filtered.map((acc) => (
+                            pageRows.map((acc) => (
                                 <TableRow key={acc.id} className="hover:bg-zinc-50/50 dark:hover:bg-white/5 border-zinc-100 dark:border-white/5">
                                     <TableCell>
                                         <div className="flex flex-col">
@@ -158,13 +156,13 @@ export default function HostingPage() {
                                         </div>
                                     </TableCell>
                                     <TableCell>
-                                        <div className="text-sm">
+                                        <div className="text-xs">
                                             <div className="font-medium text-zinc-900 dark:text-white">{acc.provider_name || 'N/A'}</div>
                                             <div className="text-xs text-zinc-500">{acc.plan_name}</div>
                                         </div>
                                     </TableCell>
                                     <TableCell>
-                                        <div className="flex items-center gap-1 text-sm text-zinc-600 dark:text-zinc-300 font-mono bg-zinc-100 dark:bg-white/10 px-2 py-1 rounded w-fit">
+                                        <div className="flex items-center gap-1 text-xs text-zinc-600 dark:text-zinc-300 font-mono bg-zinc-100 dark:bg-white/10 px-2 py-1 rounded w-fit">
                                             <Server className="h-3 w-3" />
                                             {acc.server_ip || '---'}
                                         </div>
@@ -175,7 +173,7 @@ export default function HostingPage() {
                                         </Badge>
                                     </TableCell>
                                     <TableCell>
-                                        <div className="text-sm text-zinc-600">
+                                        <div className="text-xs text-zinc-600">
                                             {acc.renewal_date ? format(new Date(acc.renewal_date), "dd MMM yyyy") : '-'}
                                         </div>
                                     </TableCell>
@@ -201,6 +199,7 @@ export default function HostingPage() {
                         )}
                     </TableBody>
                 </Table>
+                <DataTablePagination {...pagination} />
             </div>
 
             <CreateHostingSheet

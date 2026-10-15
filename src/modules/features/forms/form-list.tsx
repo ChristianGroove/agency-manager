@@ -1,8 +1,10 @@
 "use client"
 
+import { DataTable as Table } from "@/components/ui/data-table"
+import { DataTablePagination } from "@/components/ui/data-table-pagination"
+import { useClientTablePagination } from "@/components/ui/use-table-pagination"
 import { FormSubmission } from "@/modules/features/forms/actions"
 import {
-    Table,
     TableBody,
     TableCell,
     TableHead,
@@ -60,11 +62,10 @@ export function FormList({ submissions }: FormListProps) {
     }
 
     const toggleAll = () => {
-        if (selectedIds.size === filteredSubmissions.length) {
-            setSelectedIds(new Set())
-        } else {
-            setSelectedIds(new Set(filteredSubmissions.map(b => b.id)))
-        }
+        const allSelected = pageRows.length > 0 && pageRows.every(row => selectedIds.has(row.id))
+        const next = new Set(selectedIds)
+        pageRows.forEach(row => { if (allSelected) next.delete(row.id); else next.add(row.id) })
+        setSelectedIds(next)
     }
 
     const handleBulkDelete = async () => {
@@ -128,6 +129,8 @@ export function FormList({ submissions }: FormListProps) {
 
         return matchesSearch && matchesStatus
     })
+
+    const { rows: pageRows, pagination } = useClientTablePagination(filteredSubmissions, JSON.stringify([searchTerm, statusFilter]))
 
     return (
         <div className="space-y-8">
@@ -201,7 +204,7 @@ export function FormList({ submissions }: FormListProps) {
                 </div>
             </div>
 
-            <div className="glass-card rounded-2xl overflow-hidden relative">
+            <div className="relative space-y-3">
                 <BulkActionsFloatingBar
                     selectedCount={selectedIds.size}
                     onDelete={handleBulkDelete}
@@ -213,7 +216,8 @@ export function FormList({ submissions }: FormListProps) {
                         <TableRow>
                             <TableHead className="w-[50px]">
                                 <Checkbox
-                                    checked={filteredSubmissions.length > 0 && selectedIds.size === filteredSubmissions.length}
+                                    checked={pageRows.length > 0 && pageRows.every(row => selectedIds.has(row.id)) ? true : pageRows.some(row => selectedIds.has(row.id)) ? "indeterminate" : false}
+                                    aria-label="Seleccionar envíos de esta página"
                                     onCheckedChange={toggleAll}
                                 />
                             </TableHead>
@@ -232,7 +236,7 @@ export function FormList({ submissions }: FormListProps) {
                                 </TableCell>
                             </TableRow>
                         ) : (
-                            filteredSubmissions.map((sub) => (
+                            pageRows.map((sub) => (
                                 <TableRow key={sub.id} className="hover:bg-zinc-50/50 dark:hover:bg-white/5 border-zinc-100 dark:border-white/10">
                                     <TableCell>
                                         <Checkbox
@@ -240,7 +244,7 @@ export function FormList({ submissions }: FormListProps) {
                                             onCheckedChange={() => toggleSelection(sub.id)}
                                         />
                                     </TableCell>
-                                    <TableCell className="font-medium text-zinc-900 dark:text-white">
+                                    <TableCell className="text-xs font-semibold text-foreground">
                                         {sub.client?.name || 'Sin Cliente (Lead)'}
                                     </TableCell>
                                     <TableCell className="text-zinc-700 dark:text-zinc-300">{sub.template?.name}</TableCell>
@@ -288,6 +292,7 @@ export function FormList({ submissions }: FormListProps) {
                         )}
                     </TableBody>
                 </Table>
+                <DataTablePagination {...pagination} itemLabel="envíos" className="mt-3" />
             </div>
         </div>
     )

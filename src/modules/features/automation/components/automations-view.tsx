@@ -1,19 +1,13 @@
 'use client';
 
+import { PaginatedDataTable as Table } from "@/components/ui/paginated-data-table"
 import React, { useState, useMemo } from 'react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow,
-} from "@/components/ui/table"
+import { TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Switch } from '@/components/ui/switch';
 import {
     Tooltip,
@@ -335,7 +329,7 @@ export function AutomationsView({
                             </div>
                         ) : (
                             viewMode === 'list' ? (
-                                <div className="glass-card rounded-xl border-none shadow-xl overflow-hidden">
+                                <div className="overflow-hidden">
                                     <Table className="w-full">
                                         <TableHeader>
                                             <TableRow className="hover:bg-transparent border-zinc-100 dark:border-white/10 bg-zinc-50/50 dark:bg-white/5">

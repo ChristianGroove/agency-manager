@@ -1,5 +1,6 @@
 "use client"
 
+import { DataTablePagination } from "@/components/ui/data-table-pagination"
 import { useState, useTransition } from "react"
 import { useRouter, usePathname, useSearchParams } from "next/navigation"
 import { Organization } from "@/types/organization"
@@ -11,7 +12,7 @@ import { CreateOrganizationSheet } from "@/modules/core/organizations/components
 import { OrganizationCard } from "@/modules/core/organizations/components/organization-card"
 import { TenantConfigurationSheet } from "@/modules/core/organizations/components/tenant-configuration-sheet"
 import { EditLimitsModal } from "@/modules/core/organizations/components/edit-limits-modal"
-import { Plus, Building2, Settings2, BarChart3, Shield, Trash, ChevronLeft, ChevronRight, CornerDownRight, Mail } from "lucide-react"
+import { Plus, Building2, Settings2, BarChart3, Shield, Trash, CornerDownRight, Mail } from "lucide-react"
 import { HierarchyAnalytics } from "@/modules/core/organizations/components/hierarchy-analytics"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
@@ -86,9 +87,10 @@ export function OrganizationsClientView({ data, count, page, limit, searchParams
         })
     }
 
-    const onPageChange = (newPage: number) => {
+    const onPageChange = (newPage: number, size = limit) => {
         const params = new URLSearchParams(window.location.search)
         params.set('page', newPage.toString())
+        params.set('pageSize', String(size))
         startTransition(() => {
             router.replace(`${pathname}?${params.toString()}`)
         })
@@ -119,11 +121,10 @@ export function OrganizationsClientView({ data, count, page, limit, searchParams
     }
 
     const toggleAll = () => {
-        if (selectedIds.size === data.length) {
-            setSelectedIds(new Set())
-        } else {
-            setSelectedIds(new Set(data.map(o => o.id)))
-        }
+        const all = data.length > 0 && data.every(org => selectedIds.has(org.id))
+        const next = new Set(selectedIds)
+        data.forEach(org => { if (all) next.delete(org.id); else next.add(org.id) })
+        setSelectedIds(next)
     }
 
     const handleBulkDelete = async () => {
@@ -156,7 +157,6 @@ export function OrganizationsClientView({ data, count, page, limit, searchParams
         { id: 'platform', label: 'Plataforma', color: 'purple' },
     ]
 
-    const totalPages = Math.ceil(count / limit)
 
     return (
         <div className="space-y-6 bg-gray-50/50 dark:bg-transparent min-h-screen">
@@ -205,14 +205,15 @@ export function OrganizationsClientView({ data, count, page, limit, searchParams
                 isDeleting={isDeleting}
             />
 
-            <Card className="border-gray-200 dark:border-white/10 shadow-sm bg-white dark:bg-white/5 backdrop-blur-md">
+            <Card className="border-0 shadow-none bg-transparent">
                 <CardContent className="p-0">
                     <Table>
                         <TableHeader>
                             <TableRow>
                                 <TableHead className="w-[50px]">
                                     <Checkbox
-                                        checked={data.length > 0 && selectedIds.size === data.length}
+                                        checked={data.length > 0 && data.every(org => selectedIds.has(org.id)) ? true : data.some(org => selectedIds.has(org.id)) ? "indeterminate" : false}
+                                        aria-label="Seleccionar organizaciones de esta página"
                                         onCheckedChange={toggleAll}
                                     />
                                 </TableHead>
@@ -363,32 +364,9 @@ export function OrganizationsClientView({ data, count, page, limit, searchParams
                 </CardContent>
             </Card>
 
-            {/* Pagination Controls */}
-            {totalPages > 1 && (
-                <div className="flex items-center justify-between">
-                    <div className="text-sm text-gray-500">
-                        Mostrando {(page - 1) * limit + 1} - {Math.min(page * limit, count)} de {count}
-                    </div>
-                    <div className="flex gap-2">
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => onPageChange(Math.max(1, page - 1))}
-                            disabled={page === 1 || isPending}
-                        >
-                            <ChevronLeft className="h-4 w-4 mr-1" /> Anterior
-                        </Button>
-                        <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => onPageChange(Math.min(totalPages, page + 1))}
-                            disabled={page === totalPages || isPending}
-                        >
-                            Siguiente <ChevronRight className="h-4 w-4 ml-1" />
-                        </Button>
-                    </div>
-                </div>
-            )}
+            <DataTablePagination totalCount={count} page={page} pageSize={limit}
+                onPageChange={onPageChange} onPageSizeChange={(size) => onPageChange(1, size)}
+                disabled={isPending} itemLabel="organizaciones" />
 
             <CreateOrganizationSheet
                 open={isCreateOpen}

@@ -1,3 +1,4 @@
+import { PaginatedDataTable as Table } from "@/components/ui/paginated-data-table"
 import React, { useState } from "react"
 import { NormalizedAdsMetrics } from "@/modules/infrastructure/meta/services/types"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
@@ -163,7 +164,7 @@ export function AdsDashboard({ data, loading, title }: AdsDashboardProps) {
 
             {/* Main Content Area */}
             <div className="grid grid-cols-1 gap-8">
-                <Card className="rounded-2xl border border-white/50 dark:border-white/10 shadow-[0_8px_30px_rgb(0,0,0,0.04)] dark:shadow-[0_8px_30px_rgb(0,0,0,0.2)] bg-white/70 dark:bg-zinc-900/40 backdrop-blur-xl overflow-hidden">
+                <Card className="overflow-hidden border-0 shadow-none bg-transparent">
                     <CardHeader className="p-8 pb-6 border-b border-slate-100/50 dark:border-white/5">
                         <div className="flex items-center justify-between">
                             <CardTitle className="text-lg font-bold tracking-tight flex items-center gap-3">
@@ -176,8 +177,8 @@ export function AdsDashboard({ data, loading, title }: AdsDashboardProps) {
                     </CardHeader>
                     <CardContent className="p-0">
                         <div className="overflow-x-auto">
-                            <table className="w-full text-left border-collapse">
-                                <thead className="bg-slate-50/50 dark:bg-white/[0.02] text-[10px] font-black uppercase tracking-widest text-slate-400 dark:text-slate-500">
+                            <Table className="w-full text-left border-collapse">
+                                <thead className="bg-slate-50/50 dark:bg-white/[0.02] text-[10px] font-semibold uppercase tracking-widest text-slate-400 dark:text-slate-500">
                                     <tr>
                                         <th className="px-8 py-5">{t("meta_ads_monitor.dashboard.col_campaign")}</th>
                                         <th className="px-6 py-5 text-right">{t("meta_ads_monitor.dashboard.col_budget")}</th>
@@ -208,23 +209,23 @@ export function AdsDashboard({ data, loading, title }: AdsDashboardProps) {
                                                                 campaign.status === 'ACTIVE' ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" : "bg-slate-300"
                                                             )} />
                                                             <div>
-                                                                <p className="font-bold text-slate-900 dark:text-white leading-tight group-hover:text-indigo-600 transition-colors uppercase text-sm tracking-tight">{campaign.name}</p>
-                                                                <p className="text-[10px] text-zinc-500 font-bold mt-1 opacity-70">ID: {campaign.id}</p>
+                                                                <p className="font-semibold text-slate-900 dark:text-white leading-tight group-hover:text-indigo-600 transition-colors uppercase text-xs tracking-tight">{campaign.name}</p>
+                                                                <p className="text-[10px] text-zinc-500 font-semibold mt-1 opacity-70">ID: {campaign.id}</p>
                                                             </div>
                                                         </div>
                                                     </td>
                                                     <td className="px-6 py-6 text-right">
-                                                        <p className="font-bold text-slate-700 dark:text-slate-300 text-sm">{formatCurrency(budget)}</p>
+                                                        <p className="font-semibold text-slate-700 dark:text-slate-300 text-xs">{formatCurrency(budget)}</p>
                                                         <p className="text-[10px] text-zinc-400 font-medium">{campaign.daily_budget ? t("meta_ads_monitor.dashboard.daily") : t("meta_ads_monitor.dashboard.total")}</p>
                                                     </td>
                                                     <td className="px-6 py-6 text-right">
                                                         <div className="flex flex-col items-end gap-1.5">
-                                                            <p className="font-black text-indigo-600 dark:text-indigo-400 text-sm">{formatCurrency(campaign.spend)}</p>
+                                                            <p className="font-semibold text-indigo-600 dark:text-indigo-400 text-xs">{formatCurrency(campaign.spend)}</p>
                                                             <Progress value={progress} className="h-1 w-20 bg-slate-100 dark:bg-zinc-800" />
                                                         </div>
                                                     </td>
                                                     <td className="px-6 py-6 text-right">
-                                                        <p className="font-black text-slate-900 dark:text-white text-sm">{campaign.conversions || '-'}</p>
+                                                        <p className="font-semibold text-slate-900 dark:text-white text-xs">{campaign.conversions || '-'}</p>
                                                         <p className="text-[10px] text-zinc-400 font-medium">LTC: {formatCurrency(campaign.cost_per_conversion)}</p>
                                                     </td>
                                                     <td className="px-8 py-6 text-right">
@@ -232,7 +233,7 @@ export function AdsDashboard({ data, loading, title }: AdsDashboardProps) {
                                                             <Badge className="bg-slate-900 text-white dark:bg-white dark:text-slate-900 text-[10px] font-black border-none px-2 mb-1">
                                                                 {campaign.ctr.toFixed(2)}% CTR
                                                             </Badge>
-                                                            <p className="text-[10px] font-bold text-indigo-500">ROAS: {campaign.roas > 0 ? campaign.roas.toFixed(2) : '--'}x</p>
+                                                            <p className="text-[10px] font-semibold text-indigo-500">ROAS: {campaign.roas > 0 ? campaign.roas.toFixed(2) : '--'}x</p>
                                                         </div>
                                                     </td>
                                                 </tr>
@@ -249,7 +250,7 @@ export function AdsDashboard({ data, loading, title }: AdsDashboardProps) {
                                                                                 ) : <ImageIcon className="w-full h-full p-3 text-slate-300" />}
                                                                             </div>
                                                                             <div>
-                                                                                <p className="text-xs font-black text-slate-800 dark:text-slate-200">{ad.name}</p>
+                                                                                <p className="text-xs font-semibold text-slate-800 dark:text-slate-200">{ad.name}</p>
                                                                                 <Badge variant="outline" className="text-[9px] py-0 px-1.5 mt-1 border-slate-200 text-slate-500">
                                                                                     {ad.status}
                                                                                 </Badge>
@@ -257,12 +258,12 @@ export function AdsDashboard({ data, loading, title }: AdsDashboardProps) {
                                                                         </div>
                                                                         <div className="flex items-center gap-10 pr-4">
                                                                             <div className="text-right">
-                                                                                <p className="text-xs font-bold text-slate-400 uppercase tracking-tighter mb-0.5">{t("meta_ads_monitor.dashboard.col_spend")}</p>
-                                                                                <p className="text-sm font-black text-indigo-600">{formatCurrency(ad.spend)}</p>
+                                                                                <p className="text-xs font-semibold text-slate-400 uppercase tracking-tighter mb-0.5">{t("meta_ads_monitor.dashboard.col_spend")}</p>
+                                                                                <p className="text-xs font-semibold text-indigo-600">{formatCurrency(ad.spend)}</p>
                                                                             </div>
                                                                             <div className="text-right">
-                                                                                <p className="text-xs font-bold text-slate-400 uppercase tracking-tighter mb-0.5">{t("meta_ads_monitor.dashboard.col_conv")}</p>
-                                                                                <p className="text-sm font-black text-slate-800 dark:text-slate-200">{ad.conversions}</p>
+                                                                                <p className="text-xs font-semibold text-slate-400 uppercase tracking-tighter mb-0.5">{t("meta_ads_monitor.dashboard.col_conv")}</p>
+                                                                                <p className="text-xs font-semibold text-slate-800 dark:text-slate-200">{ad.conversions}</p>
                                                                             </div>
                                                                         </div>
                                                                     </div>
@@ -275,7 +276,7 @@ export function AdsDashboard({ data, loading, title }: AdsDashboardProps) {
                                         )
                                     })}
                                 </tbody>
-                            </table>
+                            </Table>
                         </div>
                     </CardContent>
                 </Card>

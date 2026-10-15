@@ -1,5 +1,6 @@
 "use client"
 
+import { PaginatedDataTable as Table } from "@/components/ui/paginated-data-table"
 import React, { useState, useEffect, useRef } from "react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -706,9 +707,9 @@ export function TaskCollaboratorsManager({
       </div>
 
       {/* Collaborators Table */}
-      <div className="border border-border/60 rounded-2xl bg-card overflow-hidden shadow-sm">
+      <div className="overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="w-full text-left text-xs border-collapse">
+          <Table className="w-full text-left text-xs border-collapse">
             <thead>
               <tr className="border-b border-border/60 bg-muted/30 text-muted-foreground font-semibold">
                 <th className="p-3.5 pl-4">Colaborador</th>
@@ -738,7 +739,7 @@ export function TaskCollaboratorsManager({
                       <div className="flex items-center gap-3">
                         <Avatar className="w-9 h-9 border border-border/60 shrink-0 shadow-sm bg-transparent">
                           <AvatarImage src={getCollaboratorAvatar(collab.photo_url, collab.first_name)} className="object-cover" />
-                          <AvatarFallback className="text-xs bg-muted text-muted-foreground font-bold">
+                          <AvatarFallback className="text-xs bg-muted text-muted-foreground font-semibold">
                             {collab.first_name[0]}
                             {collab.last_name[0]}
                           </AvatarFallback>
@@ -859,7 +860,7 @@ export function TaskCollaboratorsManager({
                     </td>
 
                     {/* Tareas Asignadas */}
-                    <td className="p-3.5 text-center font-mono font-bold text-foreground">
+                    <td className="p-3.5 text-center font-mono font-semibold text-foreground">
                       <span className="inline-flex items-center gap-1">
                         <Clock className="w-3 h-3 text-muted-foreground" />
                         {collab.assigned_tasks_count || 0}
@@ -867,7 +868,7 @@ export function TaskCollaboratorsManager({
                     </td>
 
                     {/* Completadas */}
-                    <td className="p-3.5 text-center font-mono font-bold text-emerald-600 dark:text-emerald-400">
+                    <td className="p-3.5 text-center font-mono font-semibold text-emerald-600 dark:text-emerald-400">
                       <span className="inline-flex items-center gap-1">
                         <CheckCircle2 className="w-3 h-3" />
                         {collab.completed_tasks_count || 0}
@@ -991,7 +992,7 @@ export function TaskCollaboratorsManager({
                 ))
               )}
             </tbody>
-          </table>
+          </Table>
         </div>
       </div>
 

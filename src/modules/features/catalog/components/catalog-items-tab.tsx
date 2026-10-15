@@ -1,5 +1,6 @@
 "use client"
 
+import { PaginatedDataTable as Table } from "@/components/ui/paginated-data-table"
 import React, { useState, useMemo } from "react"
 import {
   UniversalCatalogItem,
@@ -23,14 +24,7 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Badge } from "@/components/ui/badge"
 import { Switch } from "@/components/ui/switch"
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table"
+import { TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -763,7 +757,7 @@ export function CatalogItemsTab({
         </div>
       ) : (
         /* TABLE VIEW */
-        <div className="rounded-3xl border border-zinc-200/80 dark:border-white/10 bg-white dark:bg-zinc-950 overflow-hidden shadow-xs">
+        <div className="overflow-hidden">
           <Table>
             <TableHeader className="bg-zinc-50 dark:bg-zinc-900/80">
               <TableRow>
@@ -806,7 +800,7 @@ export function CatalogItemsTab({
                     <TableCell>
                       <div className="flex flex-col">
                         <div className="flex items-center gap-1.5 flex-wrap">
-                          <span className="font-bold text-xs text-zinc-900 dark:text-white">{item.name}</span>
+                          <span className="font-semibold text-xs text-zinc-900 dark:text-white">{item.name}</span>
                           {(item.classification === "real_estate" || isRealEstate || Boolean(item.real_estate_details || item.classification_metadata?.real_estate)) && (() => {
                             const re = item.real_estate_details || item.classification_metadata?.real_estate
                             const op = re?.operation_type || "sale"
@@ -832,7 +826,7 @@ export function CatalogItemsTab({
                     </TableCell>
 
                     <TableCell>
-                      <span className="font-extrabold text-xs text-zinc-900 dark:text-white">
+                      <span className="font-semibold text-xs text-zinc-900 dark:text-white">
                         ${item.base_price?.toLocaleString()} COP
                       </span>
                     </TableCell>

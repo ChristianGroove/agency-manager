@@ -1,5 +1,6 @@
 "use client"
 
+import { PaginatedDataTable as Table } from "@/components/ui/paginated-data-table"
 import { useEffect, useState } from "react"
 import { getWorkOrders, updateWorkOrder } from "../../actions/work-order-actions"
 import { WorkOrder } from "@/types"
@@ -18,7 +19,7 @@ import {
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Button } from "@/components/ui/button"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { EmptyState } from "@/components/ui/empty-state"
 import { Input } from "@/components/ui/input"
 import { toast } from "sonner"
@@ -191,7 +192,7 @@ export function WorkOrdersList({ viewMode = 'list' }: WorkOrdersListProps) {
                     ))}
                 </div>
             ) : (
-                <div className="border rounded-lg bg-white">
+                <div className="min-w-0">
                     <Table>
                         <TableHeader>
                             <TableRow>
@@ -223,7 +224,7 @@ export function WorkOrdersList({ viewMode = 'list' }: WorkOrdersListProps) {
                                         )}
                                     </TableCell>
                                     <TableCell>
-                                        <div className="text-sm">
+                                        <div className="text-xs">
                                             {order.start_time && (
                                                 <>
                                                     <div>{format(new Date(order.start_time), "d MMM yyyy", { locale: es })}</div>
@@ -237,10 +238,10 @@ export function WorkOrdersList({ viewMode = 'list' }: WorkOrdersListProps) {
                                     <TableCell>
                                         {order.assignee ? (
                                             <div className="flex items-center gap-2">
-                                                <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-[10px]">
+                                                <div className="h-6 w-6 rounded-full bg-primary/10 flex items-center justify-center text-primary font-semibold text-[10px]">
                                                     {(order.assignee.first_name || 'S').substring(0, 2).toUpperCase()}
                                                 </div>
-                                                <span className="text-sm">{order.assignee.first_name}</span>
+                                                <span className="text-xs">{order.assignee.first_name}</span>
                                             </div>
                                         ) : (
                                             <span className="text-xs text-muted-foreground italic">Sin asignar</span>

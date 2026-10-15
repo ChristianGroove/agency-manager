@@ -1,5 +1,6 @@
 "use client";
 
+import { PaginatedDataTable as Table } from "@/components/ui/paginated-data-table"
 import React, { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -488,9 +489,9 @@ export function LeasesTab({
 
       {/* TABLE VIEW */}
       {viewMode === "table" && filteredLeases.length > 0 && (
-        <div className="rounded-3xl border border-zinc-200/80 dark:border-white/10 overflow-hidden bg-white/80 dark:bg-zinc-900/80 backdrop-blur-md shadow-sm">
+        <div className="overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs border-collapse">
+            <Table className="w-full text-left text-xs border-collapse">
               <thead>
                 <tr className="border-b border-zinc-200 dark:border-white/10 bg-zinc-50/80 dark:bg-zinc-800/60 text-zinc-500 dark:text-zinc-400 font-semibold uppercase tracking-wider text-[10px]">
                   <th className="py-3.5 px-4">Inmueble</th>
@@ -509,7 +510,7 @@ export function LeasesTab({
                     key={lease.id}
                     className="hover:bg-zinc-50/60 dark:hover:bg-white/5 transition-colors"
                   >
-                    <td className="py-3 px-4 font-bold text-zinc-900 dark:text-white">
+                    <td className="py-3 px-4 font-semibold text-zinc-900 dark:text-white">
                       <div>{lease.property?.name || "Inmueble"}</div>
                       <div className="text-[10px] font-normal text-zinc-400">
                         {lease.property?.real_estate_details?.neighborhood || "Ibagué"}
@@ -534,7 +535,7 @@ export function LeasesTab({
                         {lease.bank_payout_details?.bank || ""}
                       </div>
                     </td>
-                    <td className="py-3 px-4 font-mono font-bold text-zinc-900 dark:text-white">
+                    <td className="py-3 px-4 font-mono font-semibold text-zinc-900 dark:text-white">
                       {formatCOP(Number(lease.monthly_rent) || 0)}
                       {lease.admin_fee > 0 && (
                         <div className="text-[10px] text-zinc-400 font-normal">
@@ -585,7 +586,7 @@ export function LeasesTab({
                   </tr>
                 ))}
               </tbody>
-            </table>
+            </Table>
           </div>
         </div>
       )}

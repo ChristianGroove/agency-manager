@@ -1,5 +1,9 @@
 "use client"
 
+import { DataTableText } from "@/components/ui/data-table"
+import { DataTable as Table } from "@/components/ui/data-table"
+import { DataTablePagination } from "@/components/ui/data-table-pagination"
+import { useClientTablePagination } from "@/components/ui/use-table-pagination"
 import { type AdminOrganization, updateOrganizationStatus, deleteOrganization } from '@/modules/core/admin/actions'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -9,7 +13,6 @@ import { OrgDetailsSheet } from "@/modules/core/admin/components/org-details-she
 import { useState } from 'react'
 
 import {
-    Table,
     TableBody,
     TableCell,
     TableHead,
@@ -30,6 +33,8 @@ export function OrganizationsTable({ organizations, onSelect }: OrganizationsTab
     const [editOrg, setEditOrg] = useState<AdminOrganization | null>(null)
     const [isEditOpen, setIsEditOpen] = useState(false)
     const [activeSheetOrgId, setActiveSheetOrgId] = useState<string | null>(null)
+
+    const { rows: pageRows, pagination } = useClientTablePagination(organizations)
 
     const handleDelete = async (orgId: string) => {
         if (!confirm("CRITICAL WARNING: This will permanently DELETE the organization and ALL its data (clients, invoices, etc).\n\nAre you absolutely sure?")) return;
@@ -58,7 +63,7 @@ export function OrganizationsTable({ organizations, onSelect }: OrganizationsTab
     }
 
     return (
-        <div className="rounded-md border bg-white shadow-sm overflow-hidden">
+        <div className="space-y-3">
             <EditOrganizationDialog
                 open={isEditOpen}
                 onOpenChange={setIsEditOpen}
@@ -75,12 +80,12 @@ export function OrganizationsTable({ organizations, onSelect }: OrganizationsTab
             <Table>
                 <TableHeader className="border-b">
                     <TableRow className="hover:bg-transparent">
-                        <TableHead className="font-semibold text-slate-700 h-11 w-[250px]">Organización</TableHead>
-                        <TableHead className="font-semibold text-slate-700 h-11">Identificador</TableHead>
-                        <TableHead className="font-semibold text-slate-700 h-11">Estado</TableHead>
-                        <TableHead className="font-semibold text-slate-700 h-11">App Base (Template)</TableHead>
-                        <TableHead className="font-semibold text-slate-700 h-11">Fecha Registro</TableHead>
-                        <TableHead className="text-right font-semibold text-slate-700 h-11 pr-6">Acciones Rápidas</TableHead>
+                        <TableHead className="text-slate-700 h-11 w-[250px]">Organización</TableHead>
+                        <TableHead className="text-slate-700 h-11">Identificador</TableHead>
+                        <TableHead className="text-slate-700 h-11">Estado</TableHead>
+                        <TableHead className="text-slate-700 h-11">App Base (Template)</TableHead>
+                        <TableHead className="text-slate-700 h-11">Fecha Registro</TableHead>
+                        <TableHead className="text-right text-slate-700 h-11 pr-6">Acciones Rápidas</TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -94,15 +99,15 @@ export function OrganizationsTable({ organizations, onSelect }: OrganizationsTab
                             </TableCell>
                         </TableRow>
                     ) : (
-                        organizations.map((org) => (
+                        pageRows.map((org) => (
                             <TableRow key={org.id} className="group hover:bg-slate-50/80 transition-colors duration-200">
                                 <TableCell className="font-medium p-4">
                                     <div className="flex items-center gap-2">
-                                        <div className="w-8 h-8 rounded-md bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-700 font-bold shrink-0">
+                                        <div className="w-8 h-8 rounded-md bg-indigo-50 border border-indigo-100 flex items-center justify-center text-indigo-700 font-semibold shrink-0">
                                             {org.name.charAt(0).toUpperCase()}
                                         </div>
                                         <div className="flex flex-col">
-                                            <span className="text-slate-900 font-semibold">{org.name}</span>
+                                            <DataTableText as="span" className="text-slate-900">{org.name}</DataTableText>
                                             {PROTECTED_ORG_SLUGS.includes(org.slug) && (
                                                 <Badge variant="secondary" className="text-[10px] w-fit h-4 px-1 py-0 mt-0.5 bg-amber-100 text-amber-800 border-amber-200">
                                                     Sistema (Protegido)
@@ -123,10 +128,10 @@ export function OrganizationsTable({ organizations, onSelect }: OrganizationsTab
                                             {org.base_app_slug}
                                         </Badge>
                                     ) : (
-                                        <span className="text-muted-foreground/50 text-sm italic">Sin asginar</span>
+                                        <span className="text-muted-foreground/50 text-xs italic">Sin asginar</span>
                                     )}
                                 </TableCell>
-                                <TableCell className="text-sm text-slate-500 p-4">
+                                <TableCell className="text-xs text-slate-500 p-4">
                                     {format(new Date(org.created_at), 'dd MMM yyyy')}
                                 </TableCell>
                                 <TableCell className="text-right p-4 pr-6">
@@ -219,6 +224,7 @@ export function OrganizationsTable({ organizations, onSelect }: OrganizationsTab
                     )}
                 </TableBody>
             </Table>
+                <DataTablePagination {...pagination} itemLabel="organizaciones" className="mt-3" />
         </div>
     )
 }

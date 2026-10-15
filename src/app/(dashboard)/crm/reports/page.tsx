@@ -1,5 +1,6 @@
 'use client'
 
+import { PaginatedDataTable as Table } from "@/components/ui/paginated-data-table"
 import { useState, useEffect, useRef } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -388,7 +389,7 @@ export default function ReportsPage() {
             </div>
 
             {/* Team Performance Table */}
-            <Card className="glass-card overflow-hidden">
+            <Card className="overflow-hidden border-0 shadow-none bg-transparent">
                 <div className="p-6 border-b border-white/5">
                     <h3 className="font-bold text-lg flex items-center gap-2">
                         <ShieldCheck className="w-5 h-5 text-green-500" />
@@ -397,8 +398,8 @@ export default function ReportsPage() {
                     <p className="text-sm text-muted-foreground">{t("crm_reports.team_performance_desc") || "Efectividad quirúrgica y tiempos de labor"}</p>
                 </div>
                 <div className="overflow-x-auto">
-                    <table className="w-full text-sm text-left">
-                        <thead className="text-xs uppercase bg-gray-50 dark:bg-white/5 font-bold text-muted-foreground">
+                    <Table className="w-full text-xs text-left">
+                        <thead className="text-xs uppercase bg-gray-50 dark:bg-white/5 font-semibold text-muted-foreground">
                             <tr>
                                 <th className="px-6 py-4">{t("crm_reports.agent") || "Agente"}</th>
                                 <th className="px-6 py-4 text-center">{t("crm_reports.assigned_leads") || "Leads Asignados"}</th>
@@ -415,14 +416,14 @@ export default function ReportsPage() {
                                 <tr key={agent.agent_id} className="hover:bg-gray-50 dark:hover:bg-white/5 transition-colors">
                                     <td className="px-6 py-4">
                                         <div className="flex items-center gap-3">
-                                            <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center font-bold text-white text-[10px]">
+                                            <div className="w-8 h-8 rounded-full bg-blue-500 flex items-center justify-center font-semibold text-white text-[10px]">
                                                 {agent.agent_name.slice(0, 2).toUpperCase()}
                                             </div>
-                                            <span className="font-bold">{agent.agent_name}</span>
+                                            <span className="font-semibold">{agent.agent_name}</span>
                                         </div>
                                     </td>
                                     <td className="px-6 py-4 text-center">{agent.leads_assigned}</td>
-                                    <td className="px-6 py-4 text-center text-green-600 font-bold">{agent.deals_won}</td>
+                                    <td className="px-6 py-4 text-center text-green-600 font-semibold">{agent.deals_won}</td>
                                     <td className="px-6 py-4 text-center">
                                         <Badge variant="outline">
                                             {agent.leads_assigned > 0 ? Math.round((agent.deals_won / agent.leads_assigned) * 100) : 0}%
@@ -473,7 +474,7 @@ export default function ReportsPage() {
                                 </tr>
                             )}
                         </tbody>
-                    </table>
+                    </Table>
                 </div>
             </Card>
 

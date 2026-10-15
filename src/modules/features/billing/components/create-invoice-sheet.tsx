@@ -1,5 +1,6 @@
 "use client"
 
+import { DataTable as StandardDataTable } from "@/components/ui/data-table"
 import { useState, useEffect } from "react"
 import { useTranslation } from "@/modules/core/i18n/use-translation"
 import { useRouter } from "next/navigation"
@@ -573,7 +574,7 @@ export function CreateInvoiceSheet({
                                             </div>
 
                                             <div className="space-y-4">
-                                                <table className="w-full text-left">
+                                                <StandardDataTable className="w-full text-left" appearance="embedded">
                                                     <thead>
                                                         <tr className="border-b border-slate-100 dark:border-zinc-800 text-zinc-400">
                                                             <th className="pb-2 font-medium">Concepto</th>
@@ -593,7 +594,7 @@ export function CreateInvoiceSheet({
                                                             </tr>
                                                         ))}
                                                     </tbody>
-                                                </table>
+                                                </StandardDataTable>
                                             </div>
                                         </div>
 

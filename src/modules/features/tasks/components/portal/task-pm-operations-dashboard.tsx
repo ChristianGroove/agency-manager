@@ -1,5 +1,6 @@
 "use client"
 
+import { PaginatedDataTable as Table } from "@/components/ui/paginated-data-table"
 import React, { useState, useMemo, useEffect } from "react"
 import {
   Card,
@@ -1431,9 +1432,9 @@ export function TaskPmOperationsDashboard({
               </div>
             ) : (
               <div className="overflow-x-auto">
-                <table className="w-full text-left text-xs border-collapse min-w-[580px]">
+                <Table className="w-full text-left text-xs border-collapse min-w-[580px]">
                   <thead>
-                    <tr className="border-b border-border/60 text-[10px] uppercase font-bold text-muted-foreground tracking-wider">
+                    <tr className="border-b border-border/60 text-[10px] uppercase font-semibold text-muted-foreground tracking-wider">
                       <th className="pb-2.5 pl-1">Especialista</th>
                       <th className="pb-2.5 text-center">Tickets</th>
                       <th className="pb-2.5 text-right">Horas Est.</th>
@@ -1463,15 +1464,15 @@ export function TaskPmOperationsDashboard({
                             </div>
                           </td>
                           <td className="py-2.5 px-2 text-center font-mono text-[11px] text-muted-foreground whitespace-nowrap">
-                            <span className="text-blue-500 font-bold">{m.activas}</span> / <span className="text-emerald-500 font-bold">{m.completadas}</span>
+                            <span className="text-blue-500 font-semibold">{m.activas}</span> / <span className="text-emerald-500 font-semibold">{m.completadas}</span>
                           </td>
                           <td className="py-2.5 px-2 text-right font-mono text-[11px] text-muted-foreground whitespace-nowrap">
                             {m.estimadas}h
                           </td>
-                          <td className="py-2.5 px-2 text-right font-mono text-[11px] font-bold text-foreground whitespace-nowrap">
+                          <td className="py-2.5 px-2 text-right font-mono text-[11px] font-semibold text-foreground whitespace-nowrap">
                             {m.reales}h
                           </td>
-                          <td className="py-2.5 px-2 text-right font-mono text-[11px] font-bold whitespace-nowrap">
+                          <td className="py-2.5 px-2 text-right font-mono text-[11px] font-semibold whitespace-nowrap">
                             <span className={isFavorable ? "text-emerald-600 dark:text-emerald-400" : "text-rose-500"}>
                               {m.delta >= 0 ? `+${m.delta}h` : `${m.delta}h`}
                             </span>
@@ -1490,14 +1491,14 @@ export function TaskPmOperationsDashboard({
                               {m.burnRate}%
                             </span>
                           </td>
-                          <td className="py-2.5 pl-2 pr-1 text-right font-mono text-[11px] font-bold text-foreground whitespace-nowrap">
+                          <td className="py-2.5 pl-2 pr-1 text-right font-mono text-[11px] font-semibold text-foreground whitespace-nowrap">
                             {m.progreso}%
                           </td>
                         </tr>
                       )
                     })}
                   </tbody>
-                </table>
+                </Table>
               </div>
             )}
           </div>

@@ -35,6 +35,7 @@ export async function getSecurityAuditLogs(
         .select('*, actor:actor_id(email, input_data)', { count: 'exact' })
         .eq('organization_id', orgId)
         .order('created_at', { ascending: false })
+        .order('id', { ascending: false })
         .range((page - 1) * pageSize, page * pageSize - 1)
 
     if (filters?.action) {
@@ -49,7 +50,7 @@ export async function getSecurityAuditLogs(
 
     if (error) {
         console.error('Error fetching audit logs:', error)
-        return { logs: [], total: 0 }
+        throw new Error('No se pudo consultar la auditoría')
     }
 
     // Map and transform actor data if needed (profiles are in auth.users or public.profiles?)
@@ -61,7 +62,7 @@ export async function getSecurityAuditLogs(
     // Actually, `security_audit_logs` might not maintain FK to users if users are deleted.
     // Let's retry with a cleaner select.
 
-    const logs = data.map((log: any) => ({
+    const logs = (data || []).map((log: any) => ({
         ...log,
         actor: log.actor ? {
             email: log.actor.email,

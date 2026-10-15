@@ -1,7 +1,9 @@
 'use client'
 
+import { DataTable as Table } from "@/components/ui/data-table"
+import { DataTablePagination } from "@/components/ui/data-table-pagination"
+import { useClientTablePagination } from "@/components/ui/use-table-pagination"
 import {
-    Table,
     TableBody,
     TableCell,
     TableHead,
@@ -17,6 +19,8 @@ interface RecentExecutionsTableProps {
 }
 
 export function RecentExecutionsTable({ executions }: RecentExecutionsTableProps) {
+    const { rows: pageRows, pagination } = useClientTablePagination(executions)
+
     if (executions.length === 0) {
         return (
             <div className="glass-card text-center py-8 text-muted-foreground border-dashed">
@@ -26,7 +30,7 @@ export function RecentExecutionsTable({ executions }: RecentExecutionsTableProps
     }
 
     return (
-        <div className="rounded-xl border border-gray-100 dark:border-white/10 overflow-hidden">
+        <div className="space-y-3">
             <Table>
                 <TableHeader>
                     <TableRow>
@@ -37,7 +41,7 @@ export function RecentExecutionsTable({ executions }: RecentExecutionsTableProps
                     </TableRow>
                 </TableHeader>
                 <TableBody>
-                    {executions.map((exec) => {
+                    {pageRows.map((exec) => {
                         const duration = exec.completed_at && exec.started_at
                             ? ((new Date(exec.completed_at).getTime() - new Date(exec.started_at).getTime()) / 1000).toFixed(2) + 's'
                             : '-'
@@ -64,6 +68,7 @@ export function RecentExecutionsTable({ executions }: RecentExecutionsTableProps
                     })}
                 </TableBody>
             </Table>
+                <DataTablePagination {...pagination} itemLabel="ejecuciones" className="mt-3" />
         </div>
     )
 }

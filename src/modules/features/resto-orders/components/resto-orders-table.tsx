@@ -1,5 +1,6 @@
 "use client"
 
+import { PaginatedDataTable as Table } from "@/components/ui/paginated-data-table"
 import React, { useState } from "react"
 import { format } from "date-fns"
 import { es } from "date-fns/locale"
@@ -164,9 +165,9 @@ export function RestoOrdersTable({
 
     return (
         <>
-            <div className="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-white/10 rounded-2xl overflow-hidden shadow-sm">
+            <div className="overflow-hidden">
                 <div className="overflow-x-auto">
-                    <table className="w-full text-left text-sm whitespace-nowrap">
+                    <Table className="w-full text-left text-xs whitespace-nowrap">
                         <thead className="bg-gray-50 dark:bg-black/20 text-gray-500 dark:text-zinc-400 font-semibold border-b border-gray-200 dark:border-white/10">
                             <tr>
                                 <th className="px-5 py-4">Fecha</th>
@@ -196,7 +197,7 @@ export function RestoOrdersTable({
                                         <tr key={row.id} className={`hover:bg-gray-50 dark:hover:bg-white/5 transition-colors group ${isBillRequested ? 'bg-amber-500/5' : ''}`}>
                                             {/* Fecha */}
                                             <td className="px-5 py-4 text-gray-600 dark:text-zinc-400">
-                                                <div className="text-sm">
+                                                <div className="text-xs">
                                                     {format(new Date(row.createdAt), "MMM d, h:mm a", { locale: es })}
                                                 </div>
                                             </td>
@@ -250,7 +251,7 @@ export function RestoOrdersTable({
                                             </td>
 
                                             {/* Total */}
-                                            <td className="px-5 py-4 font-bold text-gray-900 dark:text-white">
+                                            <td className="px-5 py-4 font-semibold text-gray-900 dark:text-white">
                                                 ${row.total?.toLocaleString('es-CO')}
                                             </td>
 
@@ -285,7 +286,7 @@ export function RestoOrdersTable({
                                                     )}
                                                     <button
                                                         onClick={() => handleViewDetail(row)}
-                                                        className="text-brand-pink hover:underline font-semibold text-sm"
+                                                        className="text-brand-pink hover:underline font-semibold text-xs"
                                                     >
                                                         Ver Detalle
                                                     </button>
@@ -296,7 +297,7 @@ export function RestoOrdersTable({
                                 })
                             )}
                         </tbody>
-                    </table>
+                    </Table>
                 </div>
             </div>
 

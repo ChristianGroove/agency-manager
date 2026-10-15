@@ -1,5 +1,6 @@
 "use client";
 
+import { PaginatedDataTable as Table } from "@/components/ui/paginated-data-table"
 import React, { useState, useTransition } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -432,9 +433,9 @@ export function CollectionsTab({
           </p>
         </div>
       ) : (
-        <div className="rounded-3xl border border-zinc-200/80 dark:border-white/10 overflow-hidden bg-white/80 dark:bg-zinc-900/80 backdrop-blur-md shadow-sm">
+        <div className="overflow-hidden">
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs border-collapse">
+            <Table className="w-full text-left text-xs border-collapse">
               <thead>
                 <tr className="border-b border-zinc-200 dark:border-white/10 bg-zinc-50/80 dark:bg-zinc-800/60 text-zinc-500 dark:text-zinc-400 font-semibold uppercase tracking-wider text-[10px]">
                   <th className="py-3.5 px-4">Inquilino & Teléfono</th>
@@ -459,7 +460,7 @@ export function CollectionsTab({
                       className="hover:bg-zinc-50/60 dark:hover:bg-white/5 transition-colors"
                     >
                       <td className="py-3.5 px-4">
-                        <div className="font-bold text-zinc-900 dark:text-white flex items-center gap-1.5">
+                        <div className="font-semibold text-zinc-900 dark:text-white flex items-center gap-1.5">
                           <Users className="h-3.5 w-3.5 text-emerald-500" />
                           {tenant?.name || "Sin inquilino"}
                         </div>
@@ -481,7 +482,7 @@ export function CollectionsTab({
                         {s.period}
                       </td>
 
-                      <td className="py-3.5 px-4 font-mono font-bold text-zinc-900 dark:text-white text-sm">
+                      <td className="py-3.5 px-4 font-mono font-semibold text-zinc-900 dark:text-white text-xs">
                         {formatCOP(totalDue)}
                         {s.admin_fee_amount > 0 && lease?.admin_paid_by === "agency" && (
                           <span className="block text-[10px] text-zinc-400 font-normal">
@@ -519,7 +520,7 @@ export function CollectionsTab({
                               type="button"
                               size="sm"
                               onClick={() => handleOpenRecordPayment(s)}
-                              className="rounded-xl h-8 px-2.5 text-xs font-bold bg-brand-pink hover:bg-brand-pink/90 text-white gap-1"
+                              className="rounded-xl h-8 px-2.5 text-xs font-semibold bg-brand-pink hover:bg-brand-pink/90 text-white gap-1"
                             >
                               <Banknote className="h-3.5 w-3.5" />
                               Registrar Pago
@@ -535,7 +536,7 @@ export function CollectionsTab({
                   );
                 })}
               </tbody>
-            </table>
+            </Table>
           </div>
         </div>
       )}

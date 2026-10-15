@@ -1,17 +1,11 @@
 
 'use client'
 
+import { PaginatedDataTable as Table } from "@/components/ui/paginated-data-table"
 import { useState } from 'react'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import {
-    Table,
-    TableBody,
-    TableCell,
-    TableHead,
-    TableHeader,
-    TableRow
-} from '@/components/ui/table'
+import { TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Search, FileText, Eye, Download, Printer, Trash2 } from 'lucide-react'
 import { ManifestUploadDialog } from './manifest-upload-dialog'
 import { searchIMEI, getManifestUrl } from '../actions'
@@ -114,7 +108,7 @@ export function ManifestsDashboard({ initialDocs }: { initialDocs: any[] }) {
                 </div>
             </div>
 
-            <div className="border rounded-md">
+            <div className="min-w-0">
                 <Table>
                     <TableHeader>
                         <TableRow>

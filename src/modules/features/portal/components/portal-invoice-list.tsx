@@ -1,5 +1,6 @@
 "use client"
 
+import { PaginatedDataTable as Table } from "@/components/ui/paginated-data-table"
 import { Invoice } from "@/types"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -52,10 +53,10 @@ export function PortalInvoiceList({ invoices, settings = {}, selectedInvoices = 
                 </p>
             </CardHeader>
             <CardContent className="px-0">
-                <div className="bg-white dark:bg-zinc-900 rounded-xl border border-zinc-200/80 dark:border-white/10 shadow-sm overflow-hidden">
+                <div className="overflow-hidden">
                     {/* Desktop Table */}
                     <div className="hidden md:block">
-                        <table className="w-full text-sm text-left">
+                        <Table className="w-full text-xs text-left">
                             <thead className="bg-gray-50 dark:bg-zinc-800/60 text-gray-500 dark:text-zinc-400 font-medium border-b border-zinc-200/80 dark:border-white/10">
                                 <tr>
                                     <th className="px-6 py-4 w-12">
@@ -125,7 +126,7 @@ export function PortalInvoiceList({ invoices, settings = {}, selectedInvoices = 
                                                         {status === 'paid' ? t('portal.components.invoice_list.status.paid') : status === 'overdue' ? t('portal.components.invoice_list.status.overdue') : t('portal.components.invoice_list.status.pending')}
                                                     </Badge>
                                                 </td>
-                                                <td className="px-6 py-4 text-right font-bold text-gray-900 dark:text-white">${invoice.total.toLocaleString()}</td>
+                                                <td className="px-6 py-4 text-right font-semibold text-gray-900 dark:text-white">${invoice.total.toLocaleString()}</td>
                                                 <td className="px-6 py-4 text-right" onClick={(e) => e.stopPropagation()}>
                                                     {token ? (
                                                         <Button
@@ -150,7 +151,7 @@ export function PortalInvoiceList({ invoices, settings = {}, selectedInvoices = 
                                                     <td colSpan={6} className="px-6 pb-6 pt-0">
                                                         <div className="bg-white dark:bg-zinc-900 rounded-lg border border-gray-100 dark:border-white/10 shadow-sm overflow-hidden mt-2 ml-12">
                                                             {/* Mini Header Details */}
-                                                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 border-b border-gray-50 dark:border-white/5 text-sm bg-gray-50/30 dark:bg-zinc-800/50">
+                                                            <div className="grid grid-cols-2 md:grid-cols-4 gap-4 p-4 border-b border-gray-50 dark:border-white/5 text-xs bg-gray-50/30 dark:bg-zinc-800/50">
                                                                 <div>
                                                                     <p className="text-xs text-gray-500 dark:text-zinc-400 uppercase tracking-wider mb-1">{t('portal.components.invoice_list.details.emission')}</p>
                                                                     <p className="font-medium text-gray-900 dark:text-zinc-100 flex items-center gap-1.5"><Calendar className="h-3.5 w-3.5 text-gray-400 dark:text-zinc-500" /> {new Date(invoice.date).toLocaleDateString()}</p>
@@ -172,17 +173,17 @@ export function PortalInvoiceList({ invoices, settings = {}, selectedInvoices = 
                                                                 {invoice.items?.map((item: any, idx: number) => (
                                                                     <div key={idx} className="flex justify-between items-center p-3 px-4 hover:bg-gray-50 dark:hover:bg-zinc-800/50 transition-colors">
                                                                         <div className="flex flex-col">
-                                                                            <span className="text-sm font-medium text-gray-700 dark:text-zinc-300">{item.description}</span>
+                                                                            <span className="text-xs font-medium text-gray-700 dark:text-zinc-300">{item.description}</span>
                                                                             {item.quantity > 1 && <span className="text-xs text-gray-400 dark:text-zinc-500">{t('portal.components.invoice_list.details.quantity')}: {item.quantity}</span>}
                                                                         </div>
-                                                                        <span className="text-sm font-medium text-gray-900 dark:text-zinc-100">${(item.price * item.quantity).toLocaleString()}</span>
+                                                                        <span className="text-xs font-medium text-gray-900 dark:text-zinc-100">${(item.price * item.quantity).toLocaleString()}</span>
                                                                     </div>
                                                                 ))}
                                                             </div>
                                                             {/* Total Footer */}
                                                             <div className="bg-gray-50 dark:bg-zinc-800/50 p-3 px-4 flex justify-between items-center border-t border-gray-100 dark:border-white/10">
-                                                                <span className="text-sm font-bold text-gray-600 dark:text-zinc-400">{t('portal.components.invoice_list.details.total_invoice')}</span>
-                                                                <span className="text-lg font-bold text-[var(--portal-primary)]" style={{ color: settings?.portal_primary_color }}>${invoice.total.toLocaleString()}</span>
+                                                                <span className="text-xs font-semibold text-gray-600 dark:text-zinc-400">{t('portal.components.invoice_list.details.total_invoice')}</span>
+                                                                <span className="text-lg font-semibold text-[var(--portal-primary)]" style={{ color: settings?.portal_primary_color }}>${invoice.total.toLocaleString()}</span>
                                                             </div>
                                                         </div>
                                                     </td>
@@ -192,7 +193,7 @@ export function PortalInvoiceList({ invoices, settings = {}, selectedInvoices = 
                                     )
                                 })}
                             </tbody>
-                        </table>
+                        </Table>
                     </div>
 
                     {/* Mobile List */}

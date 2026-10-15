@@ -1,11 +1,12 @@
 "use client"
 
+import { PaginatedDataTable as Table } from "@/components/ui/paginated-data-table"
 import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
@@ -180,7 +181,7 @@ export function TeamSettingsTab() {
                 </div>
             </div>
 
-            <Card className="glass-card rounded-2xl relative overflow-hidden">
+            <Card className="relative border-0 shadow-none bg-transparent">
                 <CardContent className="p-0">
                     <Table>
                         <TableHeader>
@@ -210,7 +211,7 @@ export function TeamSettingsTab() {
                                     <TableRow key={member.id}>
                                         <TableCell>
                                             <div className="flex items-center gap-3">
-                                                <div className="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-bold text-xs">
+                                                <div className="h-8 w-8 rounded-full bg-indigo-100 flex items-center justify-center text-indigo-700 font-semibold text-xs">
                                                     {(member.user?.full_name?.[0] || member.user?.email?.[0] || 'U').toUpperCase()}
                                                 </div>
                                                 <div>
@@ -224,13 +225,13 @@ export function TeamSettingsTab() {
                                                 {member.role_name || (member.role === 'owner' ? 'Dueño' : member.role === 'admin' ? 'Admin' : member.role)}
                                             </Badge>
                                         </TableCell>
-                                        <TableCell className="text-zinc-500 text-sm">
+                                        <TableCell className="text-zinc-500 text-xs">
                                             {member.created_at ? format(new Date(member.created_at), "d MMM, yyyy", { locale: es }) : 'N/A'}
                                         </TableCell>
                                         <TableCell>
                                             <div className="flex items-center gap-2">
                                                 <div className={`h-2 w-2 rounded-full ${member.status === 'blocked' ? 'bg-red-500' : 'bg-emerald-500'}`} />
-                                                <span className="text-sm text-zinc-600">
+                                                <span className="text-xs text-zinc-600">
                                                     {member.status === 'blocked' ? 'Bloqueado' : 'Acceso Permitido'}
                                                 </span>
                                             </div>

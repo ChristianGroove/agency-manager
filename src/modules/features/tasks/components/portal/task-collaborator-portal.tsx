@@ -1,5 +1,8 @@
 "use client"
 
+import { DataTable } from "@/components/ui/data-table"
+import { getPaginationRange } from "@/components/ui/table-pagination"
+import { DataTablePagination } from "@/components/ui/data-table-pagination"
 import React, { useState, useEffect, useMemo, useRef } from "react"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
@@ -72,8 +75,6 @@ import {
   Code2,
   Palette,
   ExternalLink,
-  ChevronLeft,
-  ChevronRight,
   TrendingUp,
   TrendingDown,
   Award,
@@ -2448,16 +2449,13 @@ export function TaskCollaboratorPortal({
   }, [consolidatedCalendarScopeTasks, statusFilter, searchQuery])
 
   // Pagination calculations for Grid, Compact, and List views
-  const totalPages = Math.max(1, Math.ceil(displayedTasks.length / pageSize))
-  const safePage = Math.min(currentPage, totalPages)
+  const { safePage } = getPaginationRange(displayedTasks.length, currentPage, pageSize)
   const paginatedTasks = useMemo(() => {
     if (viewMode === "kanban") return displayedTasks
     const start = (safePage - 1) * pageSize
     return displayedTasks.slice(start, start + pageSize)
   }, [displayedTasks, safePage, pageSize, viewMode])
 
-  const startRecord = displayedTasks.length > 0 ? (safePage - 1) * pageSize + 1 : 0
-  const endRecord = Math.min(safePage * pageSize, displayedTasks.length)
 
   // Bulk selection & mass deletion handlers for PMs / authorized collaborators
   const handleToggleSelectTask = (taskId: string) => {
@@ -4284,9 +4282,8 @@ export function TaskCollaboratorPortal({
                 isDeleting={isBulkDeleting}
               />
             )}
-            <div className="glass-card rounded-3xl border border-zinc-200/80 dark:border-white/10 overflow-hidden shadow-sm bg-card">
-              <div className="overflow-x-auto">
-                <table className="w-full min-w-[850px] text-left text-xs">
+            <div className="min-w-0">
+              <DataTable className="w-full min-w-[850px] text-left text-xs">
                   <thead className="bg-zinc-50/80 dark:bg-white/5 border-b border-zinc-200/80 dark:border-white/10 text-muted-foreground font-semibold uppercase tracking-wider text-[10px]">
                     <tr>
                       {canBulkDelete && (
@@ -4755,8 +4752,7 @@ export function TaskCollaboratorPortal({
                       })
                     )}
                   </tbody>
-                </table>
-              </div>
+                </DataTable>
             </div>
           </div>
         )}
@@ -4792,80 +4788,14 @@ export function TaskCollaboratorPortal({
 
         {/* Pagination Footer (Para vistas Grid, Compact y List) */}
         {displayedTasks.length > 0 && viewMode !== "kanban" && viewMode !== "calendar" && (
-          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 px-5 py-3.5 bg-card/80 backdrop-blur-md border border-zinc-200/80 dark:border-white/10 rounded-2xl text-xs text-muted-foreground shadow-2xs">
-            <div className="flex items-center gap-2">
-              <span>
-                Mostrando <strong className="text-foreground font-semibold">{startRecord}</strong> - <strong className="text-foreground font-semibold">{endRecord}</strong> de{" "}
-                <strong className="text-foreground font-semibold">{displayedTasks.length}</strong> tickets
-              </span>
-            </div>
-
-            <div className="flex items-center gap-3">
-              <div className="flex items-center gap-1.5">
-                <span className="text-[11px] text-muted-foreground">Por pág:</span>
-                <Select
-                  value={String(pageSize)}
-                  onValueChange={(val) => {
-                    setPageSize(Number(val))
-                    setCurrentPage(1)
-                  }}
-                >
-                  <SelectTrigger className="h-8 w-[72px] text-xs font-semibold rounded-xl bg-background border-zinc-200/80 dark:border-white/10">
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent align="end" className="rounded-xl">
-                    <SelectItem value="25" className="text-xs">25</SelectItem>
-                    <SelectItem value="50" className="text-xs">50</SelectItem>
-                    <SelectItem value="100" className="text-xs">100</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="flex items-center gap-1">
-                <TooltipProvider delayDuration={150}>
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-8 w-8 p-0 rounded-xl cursor-pointer border-zinc-200/80 dark:border-white/10 hover:bg-zinc-100 dark:hover:bg-white/10"
-                        disabled={safePage <= 1}
-                        onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
-                        aria-label="Página anterior"
-                      >
-                        <ChevronLeft className="w-3.5 h-3.5" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent className="rounded-xl text-xs">
-                      Página anterior
-                    </TooltipContent>
-                  </Tooltip>
-
-                  <span className="px-2 text-[11px] font-mono font-medium text-foreground">
-                    {safePage} / {totalPages}
-                  </span>
-
-                  <Tooltip>
-                    <TooltipTrigger asChild>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-8 w-8 p-0 rounded-xl cursor-pointer border-zinc-200/80 dark:border-white/10 hover:bg-zinc-100 dark:hover:bg-white/10"
-                        disabled={safePage >= totalPages}
-                        onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
-                        aria-label="Página siguiente"
-                      >
-                        <ChevronRight className="w-3.5 h-3.5" />
-                      </Button>
-                    </TooltipTrigger>
-                    <TooltipContent className="rounded-xl text-xs">
-                      Página siguiente
-                    </TooltipContent>
-                  </Tooltip>
-                </TooltipProvider>
-              </div>
-            </div>
-          </div>
+          <DataTablePagination
+            totalCount={displayedTasks.length}
+            page={safePage}
+            pageSize={pageSize}
+            onPageChange={setCurrentPage}
+            onPageSizeChange={(size) => { setPageSize(size); setCurrentPage(1) }}
+            itemLabel={"tickets"}
+          />
         )}
 
         {/* Empty State (Para vistas Grid, Compact y List) */}

@@ -1,5 +1,6 @@
 "use client"
 
+import { PaginatedDataTable as Table } from "@/components/ui/paginated-data-table"
 import React, { useState, useTransition } from "react"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
@@ -8,7 +9,7 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
+import { TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from "@/components/ui/dialog"
 import { Progress } from "@/components/ui/progress"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
@@ -390,7 +391,7 @@ export function AIGovernanceManager({
                     </div>
 
                     {/* Matrix Table */}
-                    <div className="border rounded-2xl overflow-hidden bg-card shadow-sm">
+                    <div className="overflow-hidden">
                         <Table>
                             <TableHeader className="bg-muted/40">
                                 <TableRow>
@@ -413,7 +414,7 @@ export function AIGovernanceManager({
                                     return (
                                         <TableRow key={tenant.id} className={isSuspended ? "bg-muted/20 opacity-75" : ""}>
                                             <TableCell>
-                                                <div className="font-medium text-sm text-foreground">{tenant.name}</div>
+                                                <div className="font-medium text-xs text-foreground">{tenant.name}</div>
                                                 <div className="text-xs text-muted-foreground font-mono">{tenant.slug}</div>
                                             </TableCell>
 

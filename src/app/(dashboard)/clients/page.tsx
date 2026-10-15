@@ -1,3 +1,5 @@
+import { parseTablePage, parseTablePageSize } from "@/components/ui/table-pagination"
+import { redirect } from "next/navigation"
 import { getPaginatedClients } from "@/modules/features/crm/services/logic/actions"
 import { getSettings } from "@/modules/core/settings/actions/crud"
 import { getClientCategories } from "@/modules/features/crm/services/logic/categories-actions"
@@ -17,17 +19,29 @@ export default async function ClientsPage({
     searchParams: Promise<{ [key: string]: string | string[] | undefined }>
 }) {
     const resolvedParams = await searchParams
-    const page = typeof resolvedParams?.page === 'string' ? parseInt(resolvedParams.page) : 1
+    const page = parseTablePage(resolvedParams.page)
+    const pageSize = parseTablePageSize(resolvedParams.pageSize)
     const search = typeof resolvedParams?.search === 'string' ? resolvedParams.search : ''
     const filter = typeof resolvedParams?.filter === 'string' ? resolvedParams.filter : 'all'
 
     // Parallel data fetching for maximum performance
     const [paginatedData, settings, categoriesRes, spaceType] = await Promise.all([
-        getPaginatedClients(page, 50, search, filter),
+        getPaginatedClients(page, pageSize, search, filter),
         getSettings(),
         getClientCategories(),
         getOrgSpaceCategory()
     ])
+
+    const lastPage = Math.max(1, Math.ceil((paginatedData?.totalCount || 0) / pageSize))
+    if (page > lastPage) {
+        const query = new URLSearchParams()
+        for (const [key, value] of Object.entries(resolvedParams)) {
+            if (typeof value === "string") query.set(key, value)
+            else if (Array.isArray(value)) value.forEach(item => query.append(key, item))
+        }
+        query.set("page", String(lastPage))
+        redirect("/clients?" + query.toString())
+    }
 
     const allCategories = categoriesRes.success ? (categoriesRes.data || []) : []
 

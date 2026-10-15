@@ -1,11 +1,14 @@
 "use client"
 
+import { DataTableText } from "@/components/ui/data-table"
+import { DataTable as Table } from "@/components/ui/data-table"
+import { DataTablePagination } from "@/components/ui/data-table-pagination"
+import { useClientTablePagination } from "@/components/ui/use-table-pagination"
 import { useState, useEffect } from "react"
 import { getAllSystemModules, getModuleUsageStats } from "@/modules/core/saas/module-management-actions"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import {
-    Table,
     TableBody,
     TableCell,
     TableHead,
@@ -63,6 +66,8 @@ export function ModulesTable() {
         fetchData()
     }, [])
 
+    const { rows: pageRows, pagination } = useClientTablePagination(modules)
+
     if (loading) {
         return (
             <div className="flex h-64 items-center justify-center">
@@ -72,7 +77,7 @@ export function ModulesTable() {
     }
 
     return (
-        <div className="rounded-md border bg-white shadow-sm overflow-hidden">
+        <div className="space-y-3">
             <Table>
                 <TableHeader>
                     <TableRow className="bg-gray-50/50">
@@ -92,7 +97,7 @@ export function ModulesTable() {
                             </TableCell>
                         </TableRow>
                     ) : (
-                        modules.map((module) => (
+                        pageRows.map((module) => (
                             <TableRow key={module.key} className="group hover:bg-gray-50/50">
                                 <TableCell>
                                     <div className="flex items-start gap-3">
@@ -100,20 +105,20 @@ export function ModulesTable() {
                                             <Package className="h-5 w-5" />
                                         </div>
                                         <div>
-                                            <div className="font-semibold text-gray-900 flex items-center gap-2">
+                                            <DataTableText as="div" className="text-gray-900 flex items-center gap-2">
                                                 {module.name}
                                                 <Badge variant="secondary" className="text-[10px] font-mono px-1 py-0.5 bg-gray-100 text-gray-500 hover:bg-gray-200">
                                                     {module.key}
                                                 </Badge>
-                                            </div>
-                                            <p className="text-sm text-muted-foreground max-w-[300px] line-clamp-2">
+                                            </DataTableText>
+                                            <p className="text-xs text-muted-foreground max-w-[300px] line-clamp-2">
                                                 {module.description || "Sin descripción disponible"}
                                             </p>
                                         </div>
                                     </div>
                                 </TableCell>
                                 <TableCell>
-                                    <div className="flex items-center gap-1.5 text-sm text-gray-600 font-mono">
+                                    <div className="flex items-center gap-1.5 text-xs text-gray-600 font-mono">
                                         v{module.version || '1.0.0'}
                                     </div>
                                 </TableCell>
@@ -161,6 +166,7 @@ export function ModulesTable() {
                     )}
                 </TableBody>
             </Table>
+                <DataTablePagination {...pagination} itemLabel="módulos" className="mt-3" />
         </div>
     )
 }
