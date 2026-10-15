@@ -103,11 +103,27 @@ export async function getCampaign(id: string) {
     } catch (error) { return { success: false as const, error: publicMarketingError(error) } }
 }
 
-export async function createCampaign(data: { name: string, description?: string, goal?: string }) {
+export async function createCampaign(data: {
+    name: string
+    description?: string
+    goal?: string
+    channel?: 'whatsapp' | 'email'
+    connection_id?: string
+    smtp_config_id?: string
+    delivery_mode?: 'stealth' | 'growth' | 'turbo'
+}) {
     try {
         const access = await requireMarketingAccess('manage')
 
-        data = z.object({name:z.string().trim().min(1).max(160), description:z.string().max(2000).optional(),goal:z.string().max(100).optional()}).strict().parse(data)
+        data = z.object({
+            name: z.string().trim().min(1).max(160),
+            description: z.string().max(2000).optional(),
+            goal: z.string().max(100).optional(),
+            channel: z.enum(['whatsapp', 'email']).optional(),
+            connection_id: z.string().uuid().optional(),
+            smtp_config_id: z.string().uuid().optional(),
+            delivery_mode: z.enum(['stealth', 'growth', 'turbo']).optional(),
+        }).strict().parse(data)
 
         const supabase = await createClient()
 
@@ -117,16 +133,32 @@ export async function createCampaign(data: { name: string, description?: string,
 
         const member = { organization_id: access.organizationId }
 
+        const insertPayload: Record<string, any> = {
+            organization_id: member.organization_id,
+            name: data.name,
+            description: data.description,
+            goal: data.goal,
+            delivery_config: {
+                mode: data.delivery_mode || 'growth',
+                humanize: true,
+                timezone: 'America/Bogota',
+                recipient_cooldown_hours: 24,
+            },
+            created_by: user.id
+        }
+        if (data.channel) {
+            insertPayload.channel = data.channel
+        }
+        if (data.connection_id) {
+            insertPayload.connection_id = data.connection_id
+        }
+        if (data.smtp_config_id) {
+            insertPayload.smtp_config_id = data.smtp_config_id
+        }
+
         const { data: campaign, error } = await supabase
             .from('marketing_campaigns')
-            .insert({
-                organization_id: member.organization_id,
-                name: data.name,
-                description: data.description,
-                goal: data.goal,
-                delivery_config: { mode: 'growth', humanize: true, timezone: 'America/Bogota', recipient_cooldown_hours: 24 },
-                created_by: user.id
-            })
+            .insert(insertPayload)
             .select().eq('organization_id', access.organizationId)
             .single()
 
@@ -189,6 +221,7 @@ export async function updateCampaign(id: string, data: Partial<Campaign>) {
             .eq('id', id).eq('organization_id', access.organizationId).single()
         if (current.error || !current.data) return { success: false, error: 'Campaña no encontrada.' }
         if (data.status === 'draft' && current.data.execution_version) return { success: false, error: 'Una campaña ejecutada no puede volver a borrador.' }
+        if (data.status === 'archived' && current.data.status === 'active') return { success: false, error: 'Pausa la campaña antes de archivarla.' }
         const { error } = await supabase
             .from('marketing_campaigns')
             .update(updates).eq('organization_id', access.organizationId)
