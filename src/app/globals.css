@@ -319,8 +319,9 @@
     position: relative;
     border-radius: 1.5rem;
     background: linear-gradient(145deg, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0.04) 100%), rgba(255, 255, 255, 0.05) !important;
-    backdrop-filter: blur(8px);
+    /* Standard property last: CSS optimization must retain blur outside WebKit. */
     -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
     box-shadow: 0 20px 48px -12px rgba(0, 0, 0, 0.06),
                 0 4px 14px -2px rgba(0, 0, 0, 0.03),
                 inset 0 1px 0 0 rgba(255, 255, 255, 0.5);
@@ -386,8 +387,9 @@
     position: relative;
     border-radius: 1.5rem;
     background: linear-gradient(145deg, rgba(255, 255, 255, 0.14) 0%, rgba(255, 255, 255, 0.04) 100%), rgba(255, 255, 255, 0.05) !important;
-    backdrop-filter: blur(8px);
+    /* Standard property last: CSS optimization must retain blur outside WebKit. */
     -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
     box-shadow: 0 20px 48px -12px rgba(0, 0, 0, 0.06),
                 0 4px 14px -2px rgba(0, 0, 0, 0.03),
                 inset 0 1px 0 0 rgba(255, 255, 255, 0.5);
