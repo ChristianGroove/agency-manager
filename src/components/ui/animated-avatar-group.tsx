@@ -53,7 +53,7 @@ export default function AnimatedAvatarGroup({ users, limit = 5 }: AvatarGroupPro
                                 {/* Tooltip on hover */}
                                 <div className="absolute -top-10 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity bg-gray-900 text-white text-[10px] px-2 py-1 rounded-md whitespace-nowrap pointer-events-none shadow-xl">
                                     {user.name}
-                                    {user.debt && <span className="text-red-300 ml-1">(-${user.debt.toLocaleString()})</span>}
+                                    {!!user.debt && <span className="text-red-300 ml-1">(-${user.debt.toLocaleString('es-CO')})</span>}
                                     <div className="absolute bottom-[-4px] left-1/2 -translate-x-1/2 w-2 h-2 bg-gray-900 rotate-45"></div>
                                 </div>
                             </div>

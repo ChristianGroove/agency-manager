@@ -30,7 +30,7 @@
  *      evitando cierres abruptos por movimientos accidentales del cursor.
  */
 
-import { useCallback, useEffect, useMemo, useRef, useState } from "react"
+import { useEffect, useRef, useState } from "react"
 import { AnimatePresence, motion, useReducedMotion } from "framer-motion"
 import { ListFilter, Search, X } from "lucide-react"
 import { cn } from "@/modules/infrastructure/utils/utils"
@@ -71,6 +71,15 @@ const GAP = 10
 
 type HoverTarget = { label: string; count?: number; color: string; icon?: IconType }
 
+function resolveActiveFilter(filters: SpotlightFilterOption[], activeId: string) {
+    for (const filter of filters) {
+        if (filter.id === activeId) return { parent: filter, sub: undefined as SpotlightFilterSubOption | undefined }
+        const sub = filter.subOptions?.find((option) => option.id === activeId)
+        if (sub) return { parent: filter, sub }
+    }
+    return null
+}
+
 export function SpotlightFilterBar({
     searchTerm,
     onSearchChange,
@@ -88,32 +97,22 @@ export function SpotlightFilterBar({
     const leaveTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
 
     const [hovered, setHovered] = useState(false)
-    const [inputFocused, setInputFocused] = useState(false)
+    const [focusWithin, setFocusWithin] = useState(false)
     const [openGroup, setOpenGroup] = useState<string | null>(null)
     const [hoverTarget, setHoverTarget] = useState<HoverTarget | null>(null)
 
     // Ancho matemático constante para la bandeja (cada burbuja mide 40px + 10px gap):
     // Esto previene que el componente completo brinque o se anchee al alternar filtros
-    const trayWidth = useMemo(() => {
-        if (!filters.length) return 0
-        return filters.length * 40 + (filters.length - 1) * GAP + GAP
-    }, [filters.length])
+    const trayWidth = filters.length ? filters.length * 40 + (filters.length - 1) * GAP + GAP : 0
 
-    const expanded = hovered || (inputFocused && !searchTerm)
+    const expanded = hovered || (focusWithin && !searchTerm)
 
     // ---------- Resolución del filtro activo ----------
     const defaultId: string = filters.some((f) => f.id === "all") ? "all" : (filters[0]?.id ?? "all")
     const currentActiveId =
         activeFilter || (filters.some((f) => f.id === "active") ? "active" : defaultId)
 
-    const active = useMemo(() => {
-        for (const f of filters) {
-            if (f.id === currentActiveId) return { parent: f, sub: undefined as SpotlightFilterSubOption | undefined }
-            const sub = f.subOptions?.find((s) => s.id === currentActiveId)
-            if (sub) return { parent: f, sub }
-        }
-        return null
-    }, [filters, currentActiveId])
+    const active = resolveActiveFilter(filters, currentActiveId)
 
     const hasActiveFilter = !!active && currentActiveId !== defaultId
     const activeTarget: HoverTarget | null = active
@@ -146,7 +145,11 @@ export function SpotlightFilterBar({
     }
 
     const handleMouseLeave = (e: React.MouseEvent) => {
-        if (rootRef.current?.contains(e.relatedTarget as Node)) return
+        if (e.relatedTarget instanceof Node && rootRef.current?.contains(e.relatedTarget)) return
+        if (rootRef.current?.contains(document.activeElement)) {
+            setHovered(false)
+            return
+        }
         if (leaveTimer.current) clearTimeout(leaveTimer.current)
         leaveTimer.current = setTimeout(() => {
             setHovered(false)
@@ -163,8 +166,10 @@ export function SpotlightFilterBar({
         }
         setHovered(false)
         setHoverTarget(null)
-        setInputFocused(false)
-        inputRef.current?.blur()
+        setFocusWithin(false)
+        if (document.activeElement instanceof HTMLElement && rootRef.current?.contains(document.activeElement)) {
+            document.activeElement.blur()
+        }
     }
 
     const select = (id: string) => {
@@ -175,7 +180,7 @@ export function SpotlightFilterBar({
         onFilterChange?.(defaultId)
         setHoverTarget(null)
         setOpenGroup(null)
-        setInputFocused(false)
+        setFocusWithin(false)
         inputRef.current?.blur()
         if (typeof document !== "undefined" && document.activeElement instanceof HTMLElement) {
             document.activeElement.blur()
@@ -207,6 +212,15 @@ export function SpotlightFilterBar({
             onMouseEnter={handleMouseEnter}
             onMouseLeave={handleMouseLeave}
             onKeyDown={handleKeyDown}
+            onFocusCapture={() => {
+                if (leaveTimer.current) clearTimeout(leaveTimer.current)
+                setFocusWithin(true)
+            }}
+            onBlurCapture={(e) => {
+                if (!(e.relatedTarget instanceof Node) || !e.currentTarget.contains(e.relatedTarget)) {
+                    setFocusWithin(false)
+                }
+            }}
             className={cn("relative flex items-center flex-1 min-w-0 max-w-full", className)}
         >
             {/* ---------------- Barra de Búsqueda ---------------- */}
@@ -267,8 +281,6 @@ export function SpotlightFilterBar({
                         type="text"
                         value={searchTerm}
                         onChange={(e) => onSearchChange(e.target.value)}
-                        onFocus={() => setInputFocused(true)}
-                        onBlur={() => setInputFocused(false)}
                         aria-label={searchPlaceholder}
                         className="relative w-full h-full bg-transparent border-0 outline-none focus:ring-0 text-sm text-zinc-700 dark:text-white min-w-0"
                     />
@@ -440,6 +452,21 @@ function MorphingFilterCapsule({
     const capsuleRef = useRef<HTMLDivElement>(null)
     const closeTimer = useRef<ReturnType<typeof setTimeout> | null>(null)
     const [dir, setDir] = useState<"down" | "up">("down")
+    const keyboardOpen = useRef(false)
+
+    useEffect(() => () => {
+        if (closeTimer.current) clearTimeout(closeTimer.current)
+    }, [])
+
+    useEffect(() => {
+        if (!keyboardOpen.current) return
+        if (isGroupOpen) {
+            capsuleRef.current?.querySelector<HTMLButtonElement>('[role="menuitemradio"]')?.focus()
+        } else {
+            keyboardOpen.current = false
+            capsuleRef.current?.querySelector<HTMLButtonElement>('[aria-haspopup="menu"]')?.focus()
+        }
+    }, [isGroupOpen])
 
     const subs = filter.subOptions ?? []
     const activeSub = subs.find((s) => s.id === currentActiveId)
@@ -451,14 +478,14 @@ function MorphingFilterCapsule({
     const DisplayIcon = activeSub?.icon || filter.icon
 
     // Determinar si extender hacia abajo o hacia arriba según espacio
-    const checkDirection = useCallback(() => {
+    const checkDirection = () => {
         if (!capsuleRef.current) return
         const r = capsuleRef.current.getBoundingClientRect()
         const totalHeight = 40 + 8 + subs.length * 34
         const below = window.innerHeight - r.bottom
         const above = r.top
         setDir(below >= totalHeight || below >= above ? "down" : "up")
-    }, [subs.length])
+    }
 
     const handleMouseEnter = () => {
         if (closeTimer.current) clearTimeout(closeTimer.current)
@@ -468,6 +495,7 @@ function MorphingFilterCapsule({
 
     const handleMouseLeave = () => {
         if (closeTimer.current) clearTimeout(closeTimer.current)
+        if (capsuleRef.current?.contains(document.activeElement)) return
         closeTimer.current = setTimeout(() => {
             onClose()
         }, 80)
@@ -514,9 +542,19 @@ function MorphingFilterCapsule({
                         <TooltipTrigger asChild>
                             <button
                                 type="button"
+                                aria-expanded={false}
+                                aria-haspopup="menu"
+                                onKeyDown={(e) => {
+                                    if (e.key !== 'ArrowDown' && e.key !== 'ArrowUp') return
+                                    e.preventDefault()
+                                    keyboardOpen.current = true
+                                    checkDirection()
+                                    onOpen()
+                                }}
                                 onClick={(e) => {
                                     e.stopPropagation()
                                     onSelect(filter.id)
+                                    onOpen()
                                 }}
                                 onMouseEnter={() =>
                                     onHover(
@@ -559,7 +597,22 @@ function MorphingFilterCapsule({
                     </Tooltip>
                 ) : (
                     /* Estado expandido: contenedor extendido con iconos puros sin bordes anidados */
-                    <div className={cn("flex items-center w-full", dir === "down" ? "flex-col" : "flex-col-reverse")}>
+                    <div
+                        className={cn("flex items-center w-full", dir === "down" ? "flex-col" : "flex-col-reverse")}
+                        role="menu"
+                        aria-label={filter.label}
+                        onKeyDown={(e) => {
+                            if (!['ArrowDown', 'ArrowUp', 'Home', 'End'].includes(e.key)) return
+                            const items = Array.from(capsuleRef.current?.querySelectorAll<HTMLButtonElement>('[role="menuitemradio"]') ?? [])
+                            if (dir === 'up') items.reverse()
+                            if (!items.length) return
+                            e.preventDefault()
+                            const current = items.indexOf(document.activeElement as HTMLButtonElement)
+                            const next = e.key === 'Home' ? 0 : e.key === 'End' ? items.length - 1
+                                : (current + (e.key === 'ArrowDown' ? 1 : -1) + items.length) % items.length
+                            items[next]?.focus()
+                        }}
+                    >
                         {/* Opción Padre: "Todas las [filtro]" */}
                         <Tooltip>
                             <TooltipTrigger asChild>

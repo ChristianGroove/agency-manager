@@ -156,7 +156,7 @@ export function AgencyDashboard({ dashboardData: dashboardRes, extraData, userRo
         ],
         smartAlert: totalOverdue > 0 ? {
             title: t('dashboard.alerts.attention_required'),
-            message: <span>{debtors.length} {t('dashboard.alerts.clients_in_debt')}. <span className="font-bold text-gray-900 dark:text-white">${totalOverdue.toLocaleString()}</span>.</span>,
+            message: <span>{debtors.length} {t('dashboard.alerts.clients_in_debt')}. <span className="font-bold text-gray-900 dark:text-white">${totalOverdue.toLocaleString('es-CO')}</span>.</span>,
             itemsHeading: t('dashboard.alerts.in_debt'),
             items: debtors
         } : undefined

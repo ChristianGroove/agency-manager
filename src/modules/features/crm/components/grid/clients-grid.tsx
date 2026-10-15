@@ -279,7 +279,7 @@ export function ClientsGrid({
                                                         "text-xl font-black",
                                                         debt > 0 ? "text-red-700 dark:text-red-500" : "text-amber-700 dark:text-amber-500"
                                                     )}>
-                                                        ${(debt + futureDebt).toLocaleString()}
+                                                        ${(debt + futureDebt).toLocaleString('es-CO')}
                                                     </span>
                                                 )}
                                             </div>

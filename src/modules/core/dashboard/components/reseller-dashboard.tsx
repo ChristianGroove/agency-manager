@@ -124,7 +124,7 @@ export function ResellerDashboard({ dashboardData: dashboardRes, extraData, user
         ],
         smartAlert: totalOverdue > 0 ? {
             title: t('dashboard.alerts.attention_portfolio'),
-            message: <span>{t('dashboard.alerts.attention_portfolio_msg')} Total: <span className="font-bold text-gray-900 dark:text-white">${totalOverdue.toLocaleString()}</span>.</span>,
+            message: <span>{t('dashboard.alerts.attention_portfolio_msg')} Total: <span className="font-bold text-gray-900 dark:text-white">${totalOverdue.toLocaleString('es-CO')}</span>.</span>,
             itemsHeading: t('dashboard.alerts.in_debt'),
             items: debtors
         } : undefined
