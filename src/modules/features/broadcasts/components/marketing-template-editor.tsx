@@ -1,18 +1,22 @@
 'use client'
 
+import { useMarketingApi } from '../marketing-client-api'
+
 import { useEffect, useState } from 'react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { getMarketingSetup, MarketingChannel } from '../marketing-preflight-actions'
-import { CampaignTemplate, describeCampaignTemplate, TemplateSelection } from '../marketing-template-contract'
+import type { MarketingChannel } from '../marketing-preflight-actions'
+import { CampaignTemplate, describeCampaignTemplate, TemplateSelection, validateCampaignTemplate } from '../marketing-template-contract'
 import { previewMarketingTemplate } from '../marketing-template-preview'
 
-export function MarketingTemplateEditor({ connectionId, onConnectionChange, value, onChange, disabled = false }: {
+export function MarketingTemplateEditor({ connectionId, onConnectionChange, value, onChange, disabled = false, onValidityChange }: {
     connectionId: string; onConnectionChange?: (id: string) => void;
     value: TemplateSelection | null; onChange: (selection: TemplateSelection | null) => void;
     disabled?: boolean;
+    onValidityChange?: (valid: boolean) => void;
 }) {
+    const { getMarketingSetup } = useMarketingApi()
     const [channels, setChannels] = useState<MarketingChannel[]>([])
     const [templates, setTemplates] = useState<CampaignTemplate[]>([])
     const [loading, setLoading] = useState(true)
@@ -31,6 +35,13 @@ export function MarketingTemplateEditor({ connectionId, onConnectionChange, valu
     }, [connectionId, retry])
     const template = templates.find(item => item.id === value?.template_id)
     const description = template ? describeCampaignTemplate(template) : null
+    let validationError = ''
+    if (template && value) {
+        try { validateCampaignTemplate(template, value, connectionId) }
+        catch (failure) { validationError = failure instanceof Error ? failure.message : 'Revisa las variables de la plantilla.' }
+    }
+    const valid = !!template && !!value && !loading && !error && !validationError
+    useEffect(() => { onValidityChange?.(valid) }, [valid, onValidityChange])
     return <div className="space-y-4">
         {onConnectionChange && <div className="space-y-2">
             <Label>Número emisor de WhatsApp</Label>
@@ -61,6 +72,7 @@ export function MarketingTemplateEditor({ connectionId, onConnectionChange, valu
             <Input className="h-10 rounded-xl bg-background" disabled={disabled} id={`binding-${field.key}`} value={value?.bindings[field.key] || ''} placeholder={field.kind === 'media' ? 'https://…' : field.kind === 'payload' ? 'Ejemplo: BAJA_PROMOCIONES' : 'Valor o variable de contacto'}
                 onChange={event => { if (value) onChange({ ...value, bindings: { ...value.bindings, [field.key]: event.target.value } }) }} />
         </div>)}
+        {validationError && <p role="status" className="text-xs leading-relaxed text-amber-700 dark:text-amber-300">{validationError}</p>}
         {template && <div className="rounded-xl border border-emerald-500/20 bg-emerald-500/5 p-4 text-sm leading-relaxed whitespace-pre-wrap">
             <p className="text-xs text-muted-foreground mb-2">Vista previa con contacto ficticio · no es un envío</p>
             {previewMarketingTemplate(template, value).map((part, index) => <div key={index} className="mb-2"><p className="text-xs text-muted-foreground">{part.label}</p><p>{part.text}</p></div>)}

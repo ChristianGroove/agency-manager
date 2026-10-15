@@ -5,16 +5,17 @@ export function registerBroadcastsHelp() {
     const articles: HelpArticle[] = [
         {
             id: "broadcasts-intro",
-            title: "Difusiones Masivas",
-            description: "Prepara campañas WhatsApp con plantillas, autorización y resultados.",
+            title: "Campañas masivas",
+            description: "Prepara campañas de WhatsApp y email con autorización y seguimiento.",
             relatedViews: ["broadcasts", "marketing"],
             relatedActions: ["create-broadcast"],
-            keywords: ["difusión", "masivo", "whatsapp", "campaña"],
+            keywords: ["difusión", "masivo", "whatsapp", "email", "campaña"],
             contentBlocks: [
-                { type: "text", content: "Las campañas envían plantillas de WhatsApp a destinatarios con autorización vigente. Se excluyen duplicados, bajas y contactos sin autorización." },
-                { type: "text", content: "**Recorrido**:\n1. Elige el número y los destinatarios.\n2. Selecciona una plantilla aprobada.\n3. Define la programación.\n4. Revisa y confirma. Guardar un borrador no envía mensajes. Email y SMS no están habilitados para estas campañas." },
-                { type: "callout", content: "Respeta las políticas de WhatsApp: solo envía a contactos que hayan dado consentimiento.", variant: "warning" },
-                { type: "text", content: "{{action:create-broadcast|Crear Difusión}}." }
+                { type: "text", content: "Elige WhatsApp o email y un emisor de tu organización. WhatsApp usa plantillas MARKETING aprobadas; email usa una cuenta SMTP verificada. Solo se incluyen destinatarios con autorización vigente para ese canal." },
+                { type: "text", content: "**Recorrido**:\n1. Completa nombre y emisor.\n2. Prepara el mensaje y elige destinatarios del CRM o una lista importada.\n3. Ajusta inicio, horario y ritmo en Envío si lo necesitas.\n4. Guarda el borrador o pulsa Iniciar campaña. Con fecha futura, la acción se llama Programar campaña. Se guardan y validan los datos sin abrir otra confirmación." },
+                { type: "callout", content: "Guardar e importar no envían mensajes ni conceden permiso comercial. Las bajas y los contactos sin autorización se excluyen del envío.", variant: "info" },
+                { type: "text", content: "Consulta resultados, incidencias e historial en Actividad. Pausar conserva el avance; Reanudar campaña valida y retoma los destinatarios originales. La ejecución debe estar habilitada en el entorno." },
+                { type: "text", content: "{{action:create-broadcast|Crear campaña}}." }
             ]
         },
         {
@@ -26,8 +27,21 @@ export function registerBroadcastsHelp() {
             keywords: ["plantilla", "template", "meta", "aprobación"],
             contentBlocks: [
                 { type: "text", content: "WhatsApp requiere que uses plantillas aprobadas para mensajes iniciados por ti (no respuestas)." },
-                { type: "text", content: "Selecciona una plantilla MARKETING aprobada y sincronizada para el número emisor. Completa sus variables; la revisión señalará datos faltantes o cambios de disponibilidad." },
+                { type: "text", content: "Selecciona una plantilla MARKETING aprobada y sincronizada para el número emisor. Completa las variables y comprueba la vista previa. Al iniciar se validan los datos y la disponibilidad de la plantilla." },
                 { type: "callout", content: "Ningún ritmo garantiza evitar restricciones. Consulta la salud del canal y las incidencias en los resultados de la campaña.", variant: "info" }
+            ]
+        },
+        {
+            id: "broadcasts-email",
+            title: "Campañas de email",
+            description: "Emisor SMTP, consentimiento, resultados y bajas.",
+            relatedViews: ["broadcasts", "marketing"],
+            relatedActions: [],
+            keywords: ["email", "smtp", "correo", "baja", "campaña"],
+            contentBlocks: [
+                { type: "text", content: "Configura y verifica el SMTP de tu organización en Motor de correos. En la campaña, completa asunto y mensaje; puedes personalizarlos con {{nombre}}, {{empresa}} y {{email}}. El permiso de email es independiente del de WhatsApp." },
+                { type: "text", content: "Cada correo incluye un enlace de baja. Las respuestas llegan al buzón del emisor. SMTP confirma aceptación del servidor; no acredita entrega en bandeja, lectura ni apertura." },
+                { type: "callout", content: "Un envío sin resultado confirmado puede haberse enviado y no se reenvía automáticamente. Consulta el historial y contrástalo con el registro del proveedor antes de resolverlo.", variant: "warning" }
             ]
         }
     ]

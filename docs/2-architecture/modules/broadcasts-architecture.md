@@ -1,6 +1,6 @@
 # Arquitectura de Campañas masivas
 
-Actualizada el 11 de octubre de 2026 para `codex/marketing-campaign-hardening`, implementación `8f82db13`.
+Actualizada el 15 de octubre de 2026 para la revisión local de `master`, base `372884cb`. Integra el cierre de interfaz posterior a los dos commits locales de creación/edición.
 
 El [cierre de implementación](../../marketing/README.md) es la referencia de alcance, validación, migraciones y operación. Los reportes por etapa conservan el historial de decisiones.
 
@@ -8,7 +8,16 @@ El [cierre de implementación](../../marketing/README.md) es la referencia de al
 
 El módulo `broadcasts` administra campañas y seguimientos. Esta versión ejecuta **plantillas WhatsApp y esperas** sobre conexiones activas `whatsapp_cloud` y `meta_whatsapp` del tenant. También ejecuta email mediante el SMTP verificado del tenant, con asunto, texto y bajas propias. SMS sigue siendo una integración futura. Meta Ads pertenece a su módulo independiente.
 
-La interfaz usa listado paginado y un espacio flotante con Preparación y Actividad. El recorrido principal es canal → mensaje → destinatarios → revisión y envío. Segmentos, filtros adicionales y programación permanecen opcionales.
+La interfaz usa listado paginado y un modal con Preparación y Actividad. El recorrido principal es nombre/emisor → mensaje → destinatarios → guardar o iniciar/programar. Envío reúne horario y cadencia en una sección compacta; Actividad muestra progreso, incidencias e historial, con diagnóstico desplegable. Segmentos y filtros adicionales permanecen opcionales. No existe una confirmación visual adicional de inicio; el servidor conserva su revisión transaccional.
+
+## Componentes y estado del editor
+
+- `CampaignWorkspaceSheet` coordina el modal, cambios pendientes, cierre/descarte y actualización del listado tras una mutación.
+- `CampaignBuilder` concentra el formulario y el guardado previo a iniciar/programar/reanudar. El primer mensaje se prepara en memoria; abrir/cancelar no crea borradores. Un guardado parcial conserva el ID y permite reintentar sin duplicar la campaña.
+- `CampaignDialog` y `CampaignDiscardDialog` aportan presentación y controles accesibles; importación y autorización conservan revisiones explícitas con menos texto.
+- `marketing-workspace.ts`, `marketing-actions.ts` y `marketing-preflight-actions.ts` aplican permisos y contratos de persistencia/revisión. Un borrador antiguo sin audiencia no se considera modificado solo por abrirlo.
+- `marketing-client-api.tsx` centraliza las operaciones del cliente y permite un adaptador aislado de ejemplos. Las acciones no implementadas por ese adaptador fallan sin recurrir a acciones reales.
+- `/crm/marketing/examples` presenta catorce casos con los mismos componentes y estado en memoria; solo existe en desarrollo y devuelve `notFound()` en producción. No inserta fixtures en la base.
 
 ## Datos y autorización
 
@@ -27,7 +36,7 @@ La [etapa 14](../../marketing/implementation-stage-14.md) describe el canal emai
 
 ## Ejecución
 
-1. La revisión previa valida conexión, plantilla, parámetros, audiencia, consentimiento y exclusiones. La confirmación vuelve a comprobar la revisión y fija el snapshot.
+1. La acción explícita de inicio guarda los cambios y solicita una revisión vigente que valida conexión, plantilla, parámetros, audiencia, consentimiento y exclusiones. Confirma con un ticket de diez minutos ligado al actor, organización, operación, diseño y audiencia; vuelve a comprobarlo y fija el snapshot. Se bloquea el doble clic y una respuesta incierta exige actualizar el estado antes de otro intento.
 2. `scripts/marketing-worker.mjs` invoca la ruta protegida `/api/marketing/run`; el flag `MARKETING_EXECUTION_ENABLED` controla la ejecución. El cron de mantenimiento de canales no sustituye este programador.
 3. `marketing-runner.ts` adquiere trabajos con claims/leases y `SKIP LOCKED`, comprueba estado y procesa la secuencia. Pausa/reanudación conserva las inscripciones.
 4. El despacho reutiliza `outboundService` y el outbox Meta existentes. Antes de enviar se comprueban baja, salud, plantilla, horario, ritmo del número y controles de campaña. No se utiliza `MarketingAPIManager` como motor operativo de esta versión.
@@ -44,8 +53,10 @@ Los guards añadidos al envío común se limitan a claves de operación de campa
 
 ## Métricas, límites y operación
 
-Actividad muestra destinatarios, entregados, leídos y fallidos, con progreso y pendientes separados. Historial y exportación usan permisos por tenant; aceptar una solicitud del proveedor no equivale a entregar al destinatario.
+Actividad distingue procesamiento de destinatarios, aceptación WhatsApp/SMTP, entregas/lecturas WhatsApp, fallos e incertidumbre. La tasa de entrega solo usa aceptaciones WhatsApp como denominador; sin ellas no hay tasa disponible. Historial y exportación usan permisos por tenant; aceptar una solicitud del proveedor no equivale a entregar al destinatario. Refrescar resultados actualiza también el historial sin perder filtros.
 
 El worker adquiere hasta 25 trabajos por ciclo y reserva presupuesto para finalización. La capacidad comercial depende de scheduler, latencia, volumen y número de emisores; no se ha acreditado throughput real de gran escala. La importación simple está acotada a 1.000 filas/5 MB; archivos mayores requieren trabajo asíncrono futuro.
 
-Las pruebas automatizadas y build están registradas en la [etapa 13](../../marketing/implementation-stage-13.md). Migraciones aplicadas solo en Docker; ejecución masiva de producción no habilitada. Revisión visual autenticada y campaña real pequeña pendientes. Los controles de cadencia/salud no garantizan evitar restricciones de proveedores ni reemplazan sus requisitos.
+La [verificación del 15 de octubre](../../marketing/integrated-verification-2026-10-15.md) registra 295 pruebas, ocho suites SQL con rollback, concurrencia aislada sin leases duplicados, revisión visual autenticada y build completo. El endpoint local autentica con ejecución deshabilitada. Crear/guardar/reabrir con un emisor real y recibir mensajes permanece pendiente del piloto aplazado por el usuario.
+
+La aplicación remota de dieciséis migraciones y la configuración de Coolify están documentadas como antecedentes del 13 de octubre en el [índice vigente](../../marketing/README.md); esta revisión no volvió a validar ni modificar el destino remoto. El ledger local no contiene esas versiones, aunque los contratos existen y pasan las suites: no reaplicar a ciegas. El [estado y manual del módulo](../../marketing/module-state-2026-10-15.md) detalla puesta en marcha y evolución pendiente. Los controles de cadencia/salud no garantizan evitar restricciones de proveedores ni reemplazan sus requisitos.

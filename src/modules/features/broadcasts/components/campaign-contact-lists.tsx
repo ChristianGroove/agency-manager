@@ -1,10 +1,12 @@
 'use client'
 
+import { useMarketingApi } from '../marketing-client-api'
+
 import { useEffect, useState } from 'react'
 import { List, Search, Check } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { getMarketingContactListPage } from '../marketing-workspace-actions'
+
 import type { ContactListPage } from '../marketing-workspace'
 import dynamic from 'next/dynamic'
 const CampaignListAuthorization = dynamic(() => import('./campaign-list-authorization').then(module => module.CampaignListAuthorization))
@@ -12,6 +14,7 @@ const CampaignListAuthorization = dynamic(() => import('./campaign-list-authoriz
 export function CampaignContactLists({ value, disabled, onSelect, refresh = 0, canAuthorize = false, onAuthorized, channel = 'whatsapp' }: { channel?: 'whatsapp' | 'email';
     value?: string; disabled: boolean; onSelect: (id?: string) => void; refresh?: number; canAuthorize?: boolean; onAuthorized?: (count: number) => void;
 }) {
+    const { getMarketingContactListPage } = useMarketingApi()
     const [authorizationOpen, setAuthorizationOpen] = useState(false)
     const [open, setOpen] = useState(false), [search, setSearch] = useState(''), [query, setQuery] = useState('')
     const [cursor, setCursor] = useState<ContactListPage['next']>(null), [page, setPage] = useState<ContactListPage | null>(null)
@@ -28,15 +31,15 @@ export function CampaignContactLists({ value, disabled, onSelect, refresh = 0, c
         return () => { current = false }
     }, [value, open, query, cursor, revision, refresh])
     return <div className="space-y-3">
-        <div className="flex items-center gap-3 rounded-xl border border-primary/15 bg-primary/5 p-3">
+        <div className="flex flex-wrap items-center gap-3 rounded-xl bg-muted/40 p-3">
             <List className="h-5 w-5 shrink-0 text-primary" />
-            <div className="min-w-0 flex-1"><p className="text-sm font-semibold">{value ? page?.selected?.name || (loading ? 'Consultando lista…' : 'Lista guardada') : 'Contactos del CRM'}</p>
-                <p className="mt-0.5 text-xs text-muted-foreground">{value ? 'Solo contactos de esta lista con autorización vigente.' : `Contactos con ${channel === 'email' ? 'email' : 'teléfono'} y autorización vigente. Puedes elegir una lista importada.`}</p>
+            <div className="min-w-0 flex-1"><p className="break-words text-sm font-medium">{value ? page?.selected?.name || (loading ? 'Consultando lista…' : 'Lista guardada') : 'Contactos del CRM'}</p>
+                <p className="mt-0.5 text-[11px] text-muted-foreground">{value ? 'Lista importada' : `Con ${channel === 'email' ? 'email' : 'teléfono'} válido`}</p>
             </div>
             <Button type="button" size="sm" variant="outline" disabled={disabled} onClick={() => setOpen(!open)} aria-expanded={open}>Elegir lista</Button>
         </div>
         {error && <p role="alert" className="text-xs text-destructive">{error}</p>}
-        {value && canAuthorize && <div className="flex flex-wrap items-center justify-between gap-2"><p className="text-xs text-muted-foreground">¿La empresa ya obtuvo el permiso fuera de Pixy?</p><Button size="sm" variant="outline" disabled={disabled} onClick={() => setAuthorizationOpen(true)}>Registrar autorización de la lista</Button></div>}
+        {value && canAuthorize && <Button size="sm" variant="link" className="h-auto px-0 py-1 text-xs" disabled={disabled} onClick={() => setAuthorizationOpen(true)}>Registrar autorización de la lista</Button>}
         {authorizationOpen && value && <CampaignListAuthorization channel={channel} key={value} listId={value} onClose={() => setAuthorizationOpen(false)} onSaved={count => { setAuthorizationOpen(false); setRevision(n => n + 1); onAuthorized?.(count) }} />}
         {!loading && !error && value && page && !page.selected && <p role="alert" className="text-xs text-destructive">La lista guardada no está disponible. Elige otra antes de enviar.</p>}
         {open && <div className="space-y-3 rounded-xl border border-border/60 bg-muted/20 p-3">

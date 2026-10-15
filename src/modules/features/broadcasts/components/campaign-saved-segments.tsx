@@ -1,15 +1,18 @@
 'use client'
 
+import { useMarketingApi } from '../marketing-client-api'
+
 import { useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { getMarketingAudiencePage } from '../marketing-workspace-actions'
+
 import { AudiencePage } from '../marketing-workspace'
 import { audienceFiltersSchema } from '../marketing-contracts'
 import type { RecipientFilters } from './campaign-recipient-filters'
-import { createAudience } from '../marketing-actions'
+
 
 export function CampaignSavedSegments({ disabled, filters, onApply }: { disabled: boolean; filters: RecipientFilters; onApply: (filters: RecipientFilters) => void }) {
+    const { getMarketingAudiencePage, createAudience } = useMarketingApi()
     const [search, setSearch] = useState(''), [query, setQuery] = useState('')
     const [cursor, setCursor] = useState<AudiencePage['next']>(null), [page, setPage] = useState<AudiencePage | null>(null)
     const [error, setError] = useState(''), [loading, setLoading] = useState(true), [revision, setRevision] = useState(0)

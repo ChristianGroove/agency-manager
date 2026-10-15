@@ -46,7 +46,7 @@ describe('Explicit reviewed operations UI', () => {
         fireEvent.click(screen.getByLabelText('Importar fila 2'))
         fireEvent.click(screen.getByLabelText(/He revisado las filas/))
         fireEvent.click(screen.getByRole('button', { name: 'Confirmar importación (1)' }))
-        await screen.findByText(/1 contactos de marketing creados/)
+        await screen.findByText('Nuevos: 1 · Existentes: 0 · Autorizaciones: 1')
         expect(mocks.commit).toHaveBeenCalledWith({ token, rows: [2], confirmed: true, listName: 'synthetic' })
     })
     it('imports a plain list including a withdrawn contact without granting permission or activating messages', async () => {
@@ -69,7 +69,7 @@ describe('Explicit reviewed operations UI', () => {
         expect(mocks.commit).not.toHaveBeenCalled()
         fireEvent.click(screen.getByLabelText(/Confirmo la importación de los contactos/))
         fireEvent.click(screen.getByRole('button', { name: 'Confirmar importación (2)' }))
-        await screen.findByText(/1 contactos de marketing creados y 1 contactos conservados/)
+        await screen.findByText('Nuevos: 1 · Existentes: 1')
         expect(mocks.commit).toHaveBeenCalledWith({ token, rows: [2, 3], confirmed: true, listName: 'plain', mode: 'contacts' })
         expect(useList).not.toHaveBeenCalled()
         expect(mocks.enroll).not.toHaveBeenCalled()

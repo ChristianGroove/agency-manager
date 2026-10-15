@@ -688,7 +688,13 @@ export async function getCampaignStats(campaignId: string) {
             p_org: access.organizationId, p_campaign: campaignId,
         })
         if (result.error || !result.data) throw new Error('No se pudieron consultar los resultados de la campa\u00f1a.')
-        return { success: true as const, ...result.data as CampaignMetrics }
+        const metrics = result.data as CampaignMetrics
+        if (metrics.channel === 'email') {
+            const runtime = await supabaseAdmin.from('marketing_worker_runs').select('started_at,finished_at,status').order('started_at', { ascending: false }).limit(1).maybeSingle()
+            metrics.runtime = runtime.data ? { startedAt: runtime.data.started_at, finishedAt: runtime.data.finished_at, status: runtime.data.status } : null
+            metrics.runtimeUnavailable = !!runtime.error
+        }
+        return { success: true as const, ...metrics }
 
     } catch (error) { return { success: false as const, error: publicMarketingError(error) } }
 }
@@ -718,10 +724,12 @@ export async function getMarketingStats() {
             totalCampaigns,
             totalMessages,
             totalDelivered,
-            deliveryRate: totalMessages > 0 ? Math.round((totalDelivered / totalMessages) * 100) : 0
+            whatsappAccepted: accepted.count || 0,
+            emailAccepted: emails.count || 0,
+            deliveryRate: accepted.count ? Math.min(100, Math.round((totalDelivered / accepted.count) * 100)) : null
         }
 
-    } catch (error) { return { totalCampaigns: 0, totalMessages: 0, totalDelivered: 0, deliveryRate: 0, error: publicMarketingError(error) } }
+    } catch (error) { return { totalCampaigns: 0, totalMessages: 0, totalDelivered: 0, whatsappAccepted: 0, emailAccepted: 0, deliveryRate: null, error: publicMarketingError(error) } }
 }
 
 export async function getRecipientCount(filters: Record<string, unknown>) {

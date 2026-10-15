@@ -1,13 +1,16 @@
 'use client'
 
+import { useMarketingApi } from '../marketing-client-api'
+
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog'
-import { prepareMarketingRenewal, confirmMarketingRenewal } from '../marketing-review-actions'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from './campaign-dialog'
+
 
 export function MarketingRenewal({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
+    const { prepareMarketingRenewal, confirmMarketingRenewal } = useMarketingApi()
     const [phone, setPhone] = useState('')
     const [review, setReview] = useState<{ token: string; expiresAt: string; after: string } | null>(null)
     const [form, setForm] = useState({ source: '', evidence: '', date: '', confirmed: false })
@@ -27,8 +30,8 @@ export function MarketingRenewal({ onClose, onSaved }: { onClose: () => void; on
             onSaved()
         } catch { setError('No se pudo confirmar la renovación. Reintenta con la misma evidencia.') } finally { setBusy(false) }
     }
-    return <Dialog open onOpenChange={open => { if (!open && !busy) onClose() }}><DialogContent aria-labelledby="renewal-review-title" aria-describedby="renewal-review-description"><DialogHeader>
-        <DialogTitle id="renewal-review-title">Renovar autorización después de una baja</DialogTitle><DialogDescription id="renewal-review-description">Solo con una nueva autorización expresa del destinatario, obtenida después de su baja. Se conserva el historial de evidencias; las campañas canceladas no se reanudan.</DialogDescription>
+    return <Dialog open onOpenChange={open => { if (!open && !busy) onClose() }}><DialogContent><DialogHeader>
+        <DialogTitle>Renovar autorización después de una baja</DialogTitle><DialogDescription>Solo con una nueva autorización expresa del destinatario, obtenida después de su baja. Se conserva el historial de evidencias; las campañas canceladas no se reanudan.</DialogDescription>
     </DialogHeader><div className="space-y-3 text-sm">
         <label htmlFor="renew-phone">Teléfono internacional</label><Input id="renew-phone" disabled={busy} value={phone} onChange={event => { setPhone(event.target.value); setReview(null); setForm({ ...form, confirmed: false }) }} />
         <Button variant="outline" disabled={busy || !phone.trim()} onClick={check}>Revisar baja</Button>

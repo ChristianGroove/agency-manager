@@ -1,19 +1,22 @@
 'use client'
 
+import { useMarketingApi } from '../marketing-client-api'
+
 import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './campaign-dialog'
 import { toast } from 'sonner'
-import { getMarketingHistory, getMarketingStepHistory } from '../marketing-history-actions'
+
 import { deliveryLabels, executionLabels, type HistoryFilters, type HistoryPage, type HistoryRecipient, type HistoryStep, type StepCursor } from '../marketing-history'
 
 const defaults: HistoryFilters = { status: 'all', delivery: 'all', search: '' }
 const formatDate = (date: string | null) => date ? new Date(date).toLocaleString() : '—'
 
-export function CampaignHistory({ campaignId, email = false }: { campaignId: string; email?: boolean }) {
-    const [draft, setDraft] = useState(defaults), [filters, setFilters] = useState(defaults)
+export function CampaignHistory({ campaignId, email = false, initialDelivery = 'all', refresh }: { campaignId: string; email?: boolean; initialDelivery?: HistoryFilters['delivery']; refresh?: object }) {
+    const { getMarketingHistory } = useMarketingApi()
+    const [draft, setDraft] = useState({ ...defaults, delivery: initialDelivery }), [filters, setFilters] = useState({ ...defaults, delivery: initialDelivery })
     const [cursor, setCursor] = useState<string | null>(null), [previous, setPrevious] = useState<Array<string | null>>([])
     const [page, setPage] = useState<HistoryPage<HistoryRecipient, string> | null>(null)
     const [total, setTotal] = useState<number | null>(null), [error, setError] = useState(''), [loading, setLoading] = useState(true)
@@ -31,7 +34,7 @@ export function CampaignHistory({ campaignId, email = false }: { campaignId: str
         }).catch(() => { if (active) setError('No se pudo consultar el historial. Reintenta.') })
             .finally(() => { if (active) setLoading(false) })
         return () => { active = false }
-    }, [campaignId, filters, cursor, revision])
+    }, [campaignId, filters, cursor, revision, refresh, getMarketingHistory])
 
     async function download(kind: 'recipients' | 'steps') {
         setExporting(true)
@@ -47,36 +50,35 @@ export function CampaignHistory({ campaignId, email = false }: { campaignId: str
         } catch { toast.error('No se completó la exportación. Revisa permisos y filtra a menos de 50.000 filas; si persiste, reduce más el reporte.') }
         finally { setExporting(false) }
     }
-    return <Card className="p-5 space-y-4">
+    return <Card className="space-y-4 rounded-none border-0 bg-transparent p-0 shadow-none">
         <div className="flex flex-wrap items-center justify-between gap-3">
-            <div><h4 className="font-semibold">Historial de destinatarios y pasos</h4>
-                <p className="text-sm text-muted-foreground">Consulta toda la audiencia inscrita. Procesamiento terminado no significa mensaje entregado. Cada operación aparece en su último estado confirmado.</p></div>
-            <Button variant="outline" disabled={loading} onClick={() => setRevision(value => value + 1)}>Actualizar historial</Button>
+            <h4 className="text-sm font-semibold">Historial de destinatarios y pasos</h4>
+            {!refresh && <Button variant="ghost" size="sm" className="h-8 text-xs" disabled={loading} onClick={() => setRevision(value => value + 1)}>Actualizar historial</Button>}
         </div>
-        <form className="flex flex-wrap items-end gap-3" onSubmit={event => {
+        <form className="flex flex-wrap items-end gap-2" onSubmit={event => {
             event.preventDefault(); setPrevious([]); setCursor(null); setSelected(null)
             setFilters({ ...draft, search: draft.search.trim() }); setRevision(value => value + 1)
         }}>
-            <label className="space-y-1 text-sm flex-1 min-w-48">Nombre o teléfono
+            <label className="min-w-40 flex-1 space-y-1 text-xs">{email ? 'Nombre o email' : 'Nombre o teléfono'}
                 <Input value={draft.search} maxLength={80} onChange={event => setDraft(value => ({ ...value, search: event.target.value }))} placeholder="Buscar destinatario" /></label>
-            <label className="space-y-1 text-sm">Procesamiento
-                <select className="block h-10 rounded-md border bg-background px-3" value={draft.status}
+            <label className="space-y-1 text-xs">Procesamiento
+                <select className="block h-9 rounded-xl border bg-background px-3 text-xs" value={draft.status}
                     onChange={event => setDraft(value => ({ ...value, status: event.target.value as HistoryFilters['status'] }))}>
                     <option value="all">Todos</option>{Object.entries(executionLabels).map(([value, label]) => <option key={value} value={value}>{email && value === 'accepted' ? 'Aceptado por SMTP' : label}</option>)}
                 </select></label>
-            <label className="space-y-1 text-sm">Con mensajes en estado
-                <select className="block h-10 rounded-md border bg-background px-3" value={draft.delivery}
+            <label className="space-y-1 text-xs">Con mensajes en estado
+                <select className="block h-9 rounded-xl border bg-background px-3 text-xs" value={draft.delivery}
                     onChange={event => setDraft(value => ({ ...value, delivery: event.target.value as HistoryFilters['delivery'] }))}>
                     <option value="all">Todos</option>{Object.entries(deliveryLabels).filter(([value]) => value !== 'not_started' && (!email || !['queued', 'delivered', 'read'].includes(value))).map(([value, label]) => <option key={value} value={value}>{email && value === 'accepted' ? 'Aceptado por SMTP' : label}</option>)}
                 </select></label>
-            <Button type="submit" disabled={loading}>Aplicar filtros</Button>
+            <Button size="sm" className="rounded-xl" type="submit" disabled={loading}>Aplicar filtros</Button>
         </form>
-        <div className="flex flex-wrap gap-2 items-center">
+        {canExport && <details className="text-xs"><summary className="cursor-pointer font-medium text-muted-foreground">Exportar CSV</summary><div className="mt-3 flex flex-wrap items-center gap-2">
             <Button variant="outline" disabled={!canExport || exporting || loading || !!error} onClick={() => download('recipients')}>Exportar destinatarios CSV</Button>
             <Button variant="outline" disabled={!canExport || exporting || loading || !!error} onClick={() => download('steps')}>Exportar pasos CSV</Button>
-            <span className="text-xs text-muted-foreground">Requiere permiso de exportación. Máximo 50.000 filas por archivo.</span>
+            <span className="text-[11px] text-muted-foreground">Hasta 50.000 filas por archivo.</span>
             {exporting && <span role="status" className="text-sm">Preparando reporte… Se descarga cuando se recibe completo.</span>}
-        </div>
+        </div></details>}
         <div aria-live="polite">
             {loading ? <p className="text-sm">Consultando historial…</p> : error ? <p role="alert" className="text-sm text-destructive">{error}</p>
                 : page && <><p className="text-sm text-muted-foreground">{total == null ? 'Total pendiente de consulta' : `${total} destinatarios con los filtros aplicados`}. Página {previous.length + 1} · Consultado: {formatDate(page.queriedAt)}.</p>
@@ -108,6 +110,7 @@ export function CampaignHistory({ campaignId, email = false }: { campaignId: str
 }
 
 function RecipientSteps({ campaignId, enrollmentId, email = false }: { campaignId: string; enrollmentId: string; email?: boolean }) {
+    const { getMarketingStepHistory } = useMarketingApi()
     const [cursor, setCursor] = useState<StepCursor | null>(null), [previous, setPrevious] = useState<Array<StepCursor | null>>([])
     const [page, setPage] = useState<HistoryPage<HistoryStep, StepCursor> | null>(null), [error, setError] = useState('')
     const [loading, setLoading] = useState(true), [revision, setRevision] = useState(0)

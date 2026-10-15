@@ -1,17 +1,20 @@
 'use client'
 
+import { useMarketingApi } from '../marketing-client-api'
+
 import { useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { CampaignPreflight, recordMarketingPermission, reviewCampaign } from '../marketing-preflight-actions'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './campaign-dialog'
+import type { CampaignPreflight } from '../marketing-preflight-actions'
 import { toast } from 'sonner'
-import { recordEmailPermission } from '../marketing-email-actions'
+
 import { MarketingRenewal } from './marketing-renewal'
 
 export function CampaignReadiness({ campaignId, revision, canExecute = false, permissionsOnly = false, onChanged, channel = 'whatsapp' }: { channel?: 'whatsapp' | 'email'; campaignId: string; revision: number; canExecute?: boolean; permissionsOnly?: boolean; onChanged?: () => void }) {
+    const { recordMarketingPermission, reviewCampaign, recordEmailPermission } = useMarketingApi()
     const [review, setReview] = useState<CampaignPreflight | null>(null)
     const [loading, setLoading] = useState(false)
     const [error, setError] = useState('')
@@ -68,7 +71,7 @@ export function CampaignReadiness({ campaignId, revision, canExecute = false, pe
         <Dialog open={open} onOpenChange={value => { if (!saving) setOpen(value) }}><DialogContent><DialogHeader>
             <DialogTitle>Registrar autorización de marketing</DialogTitle><DialogDescription>Para un contacto existente. Tener sus datos no equivale a permiso para promociones. No se sobrescriben bajas.</DialogDescription>
         </DialogHeader><div className="space-y-3">
-            <Label htmlFor="consent-phone">Teléfono con código de país</Label><Input id="consent-phone" value={form.phone} onChange={event => setForm({ ...form, phone: event.target.value })} placeholder="+57…" />
+            <Label htmlFor="consent-phone">{channel === 'email' ? 'Email del contacto' : 'Teléfono con código de país'}</Label><Input id="consent-phone" type={channel === 'email' ? 'email' : 'tel'} value={form.phone} onChange={event => setForm({ ...form, phone: event.target.value })} placeholder={channel === 'email' ? 'contacto@empresa.com' : '+57…'} />
             <Label htmlFor="consent-source">Origen de la autorización</Label><Input id="consent-source" value={form.source} onChange={event => setForm({ ...form, source: event.target.value })} maxLength={120} placeholder="Formulario, contrato, solicitud del contacto…" />
             <Label htmlFor="consent-date">Fecha de obtención · hora local</Label><Input id="consent-date" type="datetime-local" value={form.date} onChange={event => setForm({ ...form, date: event.target.value })} />
             <Label htmlFor="consent-evidence">Evidencia o referencia verificable</Label><Textarea id="consent-evidence" value={form.evidence} onChange={event => setForm({ ...form, evidence: event.target.value })} maxLength={2000} placeholder="Referencia del registro y texto de autorización aceptado por el contacto" />

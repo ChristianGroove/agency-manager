@@ -1,15 +1,18 @@
 'use client'
 
+import { useMarketingApi } from '../marketing-client-api'
+
 import { useEffect, useRef, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from '@/components/ui/dialog'
-import { prepareMarketingListAuthorization, confirmMarketingListAuthorization, type ListAuthorizationReview } from '../marketing-review-actions'
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from './campaign-dialog'
+import type { ListAuthorizationReview } from '../marketing-review-actions'
 
-import { prepareEmailListAuthorization, confirmEmailListAuthorization } from '../marketing-email-actions'
+
 
 export function CampaignListAuthorization({ listId, onClose, onSaved, channel = 'whatsapp' }: { channel?: 'whatsapp' | 'email'; listId: string; onClose: () => void; onSaved: (count: number) => void }) {
+    const { prepareMarketingListAuthorization, confirmMarketingListAuthorization, prepareEmailListAuthorization, confirmEmailListAuthorization } = useMarketingApi()
     const [review, setReview] = useState<ListAuthorizationReview | null>(null), [error, setError] = useState('')
     const [loading, setLoading] = useState(true), [saving, setSaving] = useState(false)
     const [confirmed, setConfirmed] = useState(false), [reference, setReference] = useState(''), [revision, setRevision] = useState(0)

@@ -29,7 +29,7 @@ export async function getMarketingSetup(connectionId?: string) {
             if (result.error) throw new Error('No se pudieron consultar las plantillas de este número.')
             templates = result.data || []
         }
-        return { success: true as const, canExecute: access.canExecute, canManage: access.canManage, canImport: access.canImport, channels: (channels.data || []).map(channel => ({ id: channel.id,
+        return { success: true as const, executionEnabled: process.env.MARKETING_EXECUTION_ENABLED === 'true', canExecute: access.canExecute, canManage: access.canManage, canImport: access.canImport, channels: (channels.data || []).map(channel => ({ id: channel.id,
             name: [channel.connection_name, channel.display_phone_number].filter(Boolean).join(' · ') })), templates }
     } catch (error) { return { success: false as const, error: publicMarketingError(error) } }
 }

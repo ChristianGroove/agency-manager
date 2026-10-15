@@ -36,11 +36,17 @@ def claim(limit=25):
 
 tables = ['integration_connections', 'marketing_campaigns', 'marketing_sequences', 'marketing_steps', 'leads',
           'messaging_templates', 'marketing_enrollments', 'marketing_number_pacing', 'marketing_channel_health',
-          'marketing_consent_events', 'marketing_opt_out_receipts', 'meta_outbound_outbox']
+          'marketing_consent_events', 'marketing_opt_out_receipts', 'meta_outbound_outbox',
+          'marketing_recipient_pacing', 'conversations', 'messages']
 functions = ['marketing_phone_key(text)', 'marketing_schedule_open(jsonb,timestamp with time zone)',
              'marketing_recipient_allowed(uuid,text)', 'marketing_channel_dispatch_open(uuid,uuid)',
-             'marketing_outbound_allowed_before_health(uuid,uuid,text)', 'marketing_outbound_allowed(uuid,uuid,text)',
-             'claim_marketing_enrollments(integer)', 'reserve_marketing_dispatch(uuid,uuid,text,uuid)']
+             'marketing_outbound_allowed_before_health(uuid,uuid,text)',
+             'marketing_outbound_allowed_before_reply(uuid,uuid,text)', 'marketing_reply_at(uuid,uuid)',
+             'marketing_outbound_allowed(uuid,uuid,text)', 'stop_marketing_followups_on_reply(uuid,uuid,text)',
+             'claim_marketing_enrollments_before_email(integer)', 'claim_marketing_email_enrollments(integer)',
+             'claim_marketing_enrollments(integer)',
+             'reserve_marketing_dispatch_before_recipient(uuid,uuid,text,uuid)',
+             'reserve_marketing_dispatch(uuid,uuid,text,uuid)']
 definition_hash = hashlib.sha256()
 created = False
 try:

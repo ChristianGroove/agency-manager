@@ -6,6 +6,13 @@ import { getMarketingCampaignPage, getCampaignAudience, saveCampaignAudience, ge
 const id = '16000000-0000-4000-8000-000000000001'
 beforeEach(() => { vi.resetAllMocks(); mocks.access.mockResolvedValue({ organizationId: 'own-org', session: { rpc: mocks.rpc } }); mocks.rpc.mockResolvedValue({ data: { rows: [], next: null }, error: null }) })
 describe('Marketing workspace boundaries', () => {
+    it('normalizes a selected SMTP sender while preserving tenant-scoped paging', async () => {
+        expect((await getMarketingCampaignPage({ channel: `smtp:${id}` })).success).toBe(true)
+        expect(mocks.rpc).toHaveBeenCalledWith('read_marketing_campaign_page', expect.objectContaining({ p_org: 'own-org', p_channel: id }))
+        mocks.rpc.mockClear()
+        expect((await getMarketingCampaignPage({ channel: 'smtp:foreign-value' })).success).toBe(false)
+        expect(mocks.rpc).not.toHaveBeenCalled()
+    })
     it('reads imported lists through the authenticated tenant and bounded keyset page', async () => {
         expect((await getMarketingContactListPage({ search: ' October ', selected: id })).success).toBe(true)
         expect(mocks.rpc).toHaveBeenCalledWith('read_marketing_contact_list_page', { p_org: 'own-org', p_search: 'October', p_before: null, p_before_id: null, p_selected: id })

@@ -6,7 +6,7 @@ export const campaignStateLabels: Record<string, string> = {
 }
 export const campaignPageSchema = z.object({
     search: z.string().trim().max(100).default(''), status: z.enum(['all', ...campaignStates]).default('all'),
-    channel: z.string().uuid().nullable().default(null),
+    channel: z.union([z.string().uuid(), z.string().startsWith('smtp:').transform(value => value.slice(5)).pipe(z.string().uuid())]).nullable().default(null),
     cursor: z.object({ createdAt: z.string().datetime({ offset: true }), id: z.string().uuid() }).strict().nullable().default(null),
 }).strict()
 export type CampaignPageInput = z.input<typeof campaignPageSchema>

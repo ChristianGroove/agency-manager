@@ -1,5 +1,7 @@
 'use client'
 
+import { useMarketingApi } from '../marketing-client-api'
+
 import { memo, useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import {
@@ -17,9 +19,9 @@ import { Badge } from '@/components/ui/badge'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { cn } from '@/modules/infrastructure/utils/utils'
-import { getMarketingCampaignPage } from '../marketing-workspace-actions'
+
 import { CampaignPage, campaignStates, campaignStateLabels, campaignProgress } from '../marketing-workspace'
-import { deleteCampaign, updateCampaign } from '../marketing-actions'
+
 import type { MarketingChannel } from '../marketing-preflight-actions'
 
 const defaults = {
@@ -86,6 +88,7 @@ export const CampaignsList = memo(function CampaignsList({
     suspended?: boolean;
     refresh?: number;
 }) {
+    const { getMarketingCampaignPage, deleteCampaign, updateCampaign } = useMarketingApi()
     const [draft, setDraft] = useState(defaults)
     const [filters, setFilters] = useState(defaults)
     const [cursor, setCursor] = useState<CampaignPage['next']>(null)
@@ -174,7 +177,7 @@ export const CampaignsList = memo(function CampaignsList({
     }
 
     const handleChannelChange = (channel: string) => {
-        const c = channel === 'all' ? null : channel.replace(/^smtp:/, '')
+        const c = channel === 'all' ? null : channel
         setDraft(d => ({ ...d, channel: c }))
         setCursor(null)
         setPrevious([])

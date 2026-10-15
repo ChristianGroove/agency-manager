@@ -1,14 +1,17 @@
 'use client'
 
+import { useMarketingApi } from '../marketing-client-api'
+
 import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { getMarketingAssignees } from '../marketing-workspace-actions'
+
 import type { AssigneePage } from '../marketing-workspace'
 
 export function CampaignAssigneeFilter({ value, disabled, onChange }: {
     value?: string; disabled: boolean; onChange: (id: string | undefined) => void;
 }) {
+    const { getMarketingAssignees } = useMarketingApi()
     const [search, setSearch] = useState(''), [query, setQuery] = useState('')
     const [cursor, setCursor] = useState<string | null>(null), [page, setPage] = useState<AssigneePage | null>(null)
     const [loading, setLoading] = useState(true), [error, setError] = useState(''), [revision, setRevision] = useState(0)

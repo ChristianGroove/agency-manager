@@ -25,7 +25,7 @@ const saved = { has_phone: true, source: 'original', assigned_to: id, created_af
 beforeEach(() => {
     vi.resetAllMocks()
     mocks.emailSetup.mockResolvedValue({ success: true, channels: [] })
-    mocks.campaign.mockResolvedValue({ success: true, campaign: { id, status: 'draft', connection_id: emitter, delivery_config: { mode: 'growth', humanize: true, timezone: 'America/Bogota' } }, executionEnabled: false })
+    mocks.campaign.mockResolvedValue({ success: true, campaign: { id, status: 'draft', connection_id: emitter, delivery_config: { mode: 'growth', humanize: true, timezone: 'America/Bogota' } }, executionEnabled: true })
     mocks.flows.mockResolvedValue({ success: true, sequences: [{ id: 'sequence', is_active: true, steps: [{ id: 'step', type: 'whatsapp', name: 'Mensaje existente', content: { template_name: 'promo' } }] }] })
     mocks.audience.mockResolvedValue({ success: true, audience: { id: 'audience', filters: saved } })
     mocks.setup.mockResolvedValue({ success: true, canManage: true, canExecute: true, canImport: true, channels: [{ id: emitter, name: 'Emisor de prueba' }] })
@@ -37,6 +37,24 @@ beforeEach(() => {
 async function wizard() { render(<CampaignBuilder campaignId={id} campaignName="Campaña de prueba" />); await waitFor(() => expect(screen.queryByText('Cargando campaña…')).not.toBeInTheDocument()) }
 function tab(name: string) { fireEvent.mouseDown(screen.getByRole('tab', { name }), { button: 0, ctrlKey: false }) }
 describe('Simple campaign workspace', () => {
+    it('opens a legacy draft without an audience without inventing unsaved edits or requesting discard', async () => {
+        mocks.audience.mockResolvedValue({ success: true, audience: null })
+        const close = vi.fn()
+        render(<CampaignWorkspaceSheet campaign={{ id, name: 'Campaña de prueba' }} onClose={close} />)
+        await waitFor(() => expect(screen.queryByText('Cargando campaña…')).not.toBeInTheDocument())
+        expect(screen.queryByText('Cambios sin guardar')).not.toBeInTheDocument()
+        fireEvent.click(screen.getByRole('button', { name: 'Cerrar campaña' }))
+        expect(close).toHaveBeenCalledWith(false)
+        expect(screen.queryByRole('alertdialog')).not.toBeInTheDocument()
+        expect(mocks.saveAudience).not.toHaveBeenCalled()
+    })
+    it('creates the missing audience when a legacy draft is explicitly saved', async () => {
+        mocks.audience.mockResolvedValue({ success: true, audience: null })
+        await wizard()
+        fireEvent.change(screen.getByLabelText('Nombre de la campaña'), { target: { value: 'Borrador antiguo actualizado' } })
+        fireEvent.click(screen.getByRole('button', { name: 'Guardar configuración' }))
+        await waitFor(() => expect(mocks.saveAudience).toHaveBeenCalledWith(id, { has_phone: true, tags: undefined }))
+    })
     it('keeps an old frequency absent and saves an explicit inter-campaign wait', async () => {
         await wizard()
         expect(screen.getByLabelText(/Espera entre campañas para un mismo contacto/)).toHaveValue(0)
@@ -47,11 +65,11 @@ describe('Simple campaign workspace', () => {
     })
     it('presents the commercial order and keeps targeting and scheduling collapsed without discarding saved criteria', async () => {
         await wizard()
-        expect(screen.getAllByRole('heading', { level: 3 }).map(heading => heading.textContent).slice(0, 3)).toEqual(['1. Canal', '2. Mensaje', '3. Destinatarios'])
-        expect(screen.getByText(/Personalizar destinatarios · opcional/).closest('details')).not.toHaveAttribute('open')
-        expect(screen.getByText('Programar envío · opcional').closest('details')).not.toHaveAttribute('open')
+        expect(screen.getAllByRole('heading', { level: 3 }).map(heading => heading.textContent).slice(0, 2)).toEqual(['Mensaje', 'Destinatarios'])
+        expect(screen.getByText(/Filtrar contactos/).closest('details')).not.toHaveAttribute('open')
+        expect(screen.getByText('Envío', { exact: true }).closest('details')).not.toHaveAttribute('open')
         expect(screen.getByLabelText('Estado del contacto · vacío para todos')).not.toBeVisible()
-        expect(screen.getByRole('button', { name: 'Equilibrado: 30 s de intervalo base' })).toBeVisible()
+        expect(screen.getByText('Equilibrado')).not.toBeVisible()
         expect(mocks.saveAudience).not.toHaveBeenCalled()
     })
     it('loads the recipient step without creating, enrolling, changing consent or sending', async () => {
@@ -68,11 +86,11 @@ describe('Simple campaign workspace', () => {
         await waitFor(() => expect(mocks.saveAudience).toHaveBeenCalledWith(id, { ...saved, status: 'qualified', tags: undefined }))
         expect(mocks.update).not.toHaveBeenCalled()
     })
-    it('blocks final review while scheduling edits remain unsaved', async () => {
+    it('allows the review action to save pending scheduling edits first', async () => {
         await wizard(); tab('Preparación')
         fireEvent.change(screen.getByLabelText('Fecha de inicio · hora local del navegador'), { target: { value: '2099-01-01T12:00' } })
         tab('Preparación')
-        expect(screen.getByRole('button', { name: 'Revisar y enviar' })).toBeDisabled()
+        expect(screen.getByRole('button', { name: 'Programar campaña' })).toBeEnabled()
         expect(mocks.update).not.toHaveBeenCalled()
         tab('Preparación')
         expect(screen.getByLabelText('Fecha de inicio · hora local del navegador')).toHaveValue('2099-01-01T12:00')
@@ -103,15 +121,16 @@ describe('Simple campaign workspace', () => {
         await waitFor(() => expect(mocks.update).toHaveBeenCalledWith(id, { scheduled_for: null, delivery_config: { mode: 'stealth', humanize: true, timezone: 'America/Bogota', schedule_window: undefined } }))
         expect(mocks.update.mock.calls.every(([, patch]) => !('status' in patch))).toBe(true)
     })
-    it('keeps activation blocked after a partial configuration save fails', async () => {
+    it('keeps a failed configuration save visible and preserves the pending edits for retry', async () => {
         await wizard()
         fireEvent.change(screen.getByLabelText('Estado del contacto · vacío para todos'), { target: { value: 'qualified' } })
         fireEvent.change(screen.getByLabelText('Fecha de inicio · hora local del navegador'), { target: { value: '2099-01-01T12:00' } })
         mocks.update.mockResolvedValue({ success: false, error: 'Conflicto de prueba' })
         fireEvent.click(screen.getByRole('button', { name: 'Guardar configuración' }))
-        await waitFor(() => expect(mocks.toast).toHaveBeenCalledWith('Conflicto de prueba'))
+        await screen.findByText('Conflicto de prueba')
         expect(mocks.saveAudience).toHaveBeenCalled()
-        expect(screen.getByRole('button', { name: 'Revisar y enviar' })).toBeDisabled()
+        expect(screen.getByRole('button', { name: 'Programar campaña' })).toBeEnabled()
+        expect(screen.getByText('No se completó el guardado')).toBeVisible()
         expect(screen.getByLabelText('Fecha de inicio · hora local del navegador')).toHaveValue('2099-01-01T12:00')
     })
     it('keeps paused campaigns read-only and labels their real state', async () => {
@@ -123,7 +142,7 @@ describe('Simple campaign workspace', () => {
     it('respects view-only permissions in the editor', async () => {
         mocks.setup.mockResolvedValue({ success: true, canManage: false, canExecute: false, canImport: false, channels: [] })
         await wizard(); expect(screen.getByLabelText('Estado del contacto · vacío para todos')).toBeDisabled()
-        tab('Preparación'); expect(screen.getByRole('button', { name: 'Revisar y enviar' })).toBeDisabled()
+        tab('Preparación'); expect(screen.getByRole('button', { name: 'Iniciar campaña' })).toBeDisabled()
     })
     it('preserves the existing UTC timestamp and an unrestricted delivery window when changing the time zone', async () => {
         const iso = '2099-01-01T15:00:42.123Z'
@@ -229,9 +248,8 @@ describe('Floating campaign workspace', () => {
         expect(close).toHaveBeenCalledTimes(1); expect(confirm).not.toHaveBeenCalled()
         fireEvent.change(screen.getByLabelText('Estado del contacto · vacío para todos'), { target: { value: 'qualified' } })
         fireEvent.click(screen.getByRole('button', { name: 'Cerrar campaña' }))
-        expect(confirm).toHaveBeenCalled(); expect(close).toHaveBeenCalledTimes(1)
-        confirm.mockReturnValue(true)
-        fireEvent.click(screen.getByRole('button', { name: 'Cerrar campaña' }))
+        expect(screen.getByRole('alertdialog')).toBeInTheDocument(); expect(close).toHaveBeenCalledTimes(1)
+        fireEvent.click(screen.getByRole('button', { name: 'Descartar cambios' }))
         expect(close).toHaveBeenCalledTimes(2)
         confirm.mockRestore()
     })
@@ -256,7 +274,7 @@ it('opens email as the same campaign workspace and saves email content without c
     mocks.flows.mockResolvedValue({ success: true, sequences: [{ id: 'sequence', is_active: true, steps: [{ id: 'step', type: 'email', name: 'Email', content: { subject: 'Original subject', body: 'Original body' } }] }] })
     mocks.edit.mockResolvedValue({ success: true })
     await wizard()
-    expect(await screen.findByText('Campañas masivas · Email')).toBeInTheDocument()
+    expect(await screen.findByText('Email', { exact: true })).toBeInTheDocument()
     fireEvent.click(screen.getByRole('button', { name: /^Editar$/ }))
     const dialog = screen.getByRole('dialog')
     expect(within(dialog).queryByText('Editor de plantilla')).not.toBeInTheDocument()

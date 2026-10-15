@@ -8,6 +8,18 @@ import * as actions from './marketing-actions'
 
 beforeEach(()=>{ vi.resetAllMocks(); mocks.access.mockRejectedValue(new Error('No tienes acceso a esta organización.')) })
 describe('Marketing server action boundaries',()=>{
+    it.each([{ whatsapp: 100, email: 100, delivered: 100, rate: 100 }, { whatsapp: 0, email: 100, delivered: 0, rate: null }])('separates WhatsApp delivery from SMTP acceptance: $whatsapp / $email', async ({ whatsapp, email, delivered, rate }) => {
+        const counted = (count: number) => {
+            const query: any = { count, error: null }
+            for (const method of ['select', 'eq', 'like', 'in']) query[method] = vi.fn(() => query)
+            return query
+        }
+        mocks.access.mockResolvedValue({ organizationId: 'tenant-a' })
+        mocks.session.mockResolvedValue({ from: () => counted(2) })
+        mocks.admin.mockReturnValueOnce(counted(whatsapp)).mockReturnValueOnce(counted(delivered)).mockReturnValueOnce(counted(email))
+        const stats = await actions.getMarketingStats()
+        expect(stats).toMatchObject({ totalMessages: whatsapp + email, whatsappAccepted: whatsapp, emailAccepted: email, totalDelivered: delivered, deliveryRate: rate })
+    })
     it.each([
         ['deleteAudience',['audience-b']], ['getCampaign',['campaign-b']], ['updateCampaign',['campaign-b',{status:'paused'}]],
         ['deleteCampaign',['campaign-b']], ['getSequences',['campaign-b']], ['deleteSequence',['sequence-b']],
