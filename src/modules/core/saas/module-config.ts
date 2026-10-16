@@ -194,7 +194,6 @@ export const MODULE_ROUTES: ModuleRoute[] = [
         category: 'operations',
         parentModule: 'module_resto_orders',
         access: {
-            allowedRoles: ['owner', 'admin'],
             requiredPermission: 'operations.resto_orders.view'
         }
     },
@@ -206,7 +205,6 @@ export const MODULE_ROUTES: ModuleRoute[] = [
         category: 'operations',
         parentModule: 'module_resto_menu',
         access: {
-            allowedRoles: ['owner', 'admin'],
             requiredPermission: 'operations.resto_menu.view'
         }
     },
@@ -218,7 +216,6 @@ export const MODULE_ROUTES: ModuleRoute[] = [
         category: 'operations',
         parentModule: 'module_resto_orders',
         access: {
-            allowedRoles: ['owner', 'admin'],
             requiredPermission: 'operations.resto_staff.view'
         }
     },
@@ -231,7 +228,6 @@ export const MODULE_ROUTES: ModuleRoute[] = [
         parentModule: 'module_tasks',
         description: 'Gestión ágil de proyectos, tareas y portales de colaboradores',
         access: {
-            allowedRoles: ['owner', 'admin'],
             requiredPermission: 'operations.tasks.view'
         }
     },
@@ -256,8 +252,7 @@ export const MODULE_ROUTES: ModuleRoute[] = [
         category: 'operations',
         parentModule: 'module_quotes',
         access: {
-            allowedRoles: ['owner', 'admin'],
-            requiredCapabilities: ['crm.quotes']
+            requiredPermission: 'quotes.view'
         }
     },
     {
@@ -287,7 +282,8 @@ export const MODULE_ROUTES: ModuleRoute[] = [
         category: 'operations',
         parentModule: 'module_rentals',
         access: {
-            allowedSpaces: ['real_estate']
+            allowedSpaces: ['real_estate'],
+            requiredPermission: 'rentals.view'
         }
     },
     // HIDDEN FOR REGULAR USERS
@@ -403,8 +399,7 @@ export const MODULE_ROUTES: ModuleRoute[] = [
         category: 'finance',
         parentModule: 'module_invoicing',
         access: {
-            allowedRoles: ['owner', 'admin'],
-            requiredCapabilities: ['billing.management']
+            requiredPermission: 'invoicing.view'
         }
     },
     {
@@ -415,7 +410,7 @@ export const MODULE_ROUTES: ModuleRoute[] = [
         category: 'finance',
         parentModule: 'module_payments',
         access: {
-            allowedRoles: ['owner', 'admin']
+            requiredPermission: 'invoicing.view'
         }
     },
 
@@ -527,25 +522,23 @@ export function filterRoutesByModules(
         }
 
         // 3. CORE & DASHBOARD LOGIC
+        // 3. CORE & DASHBOARD LOGIC
         // Core modules and dashboard are infrastructure and should be visible if access allows
         if (isCore || key === 'dashboard') {
             if (!access) return true
             if (isOwner) return true
 
-            // Role check for non-owners
+            // IAM V2: Granular permission check takes absolute priority for non-owners
+            if (access.requiredPermission) {
+                return hasCap(access.requiredPermission)
+            }
+
+            // Fallback: Role check for non-owners if no granular permission is defined
             if (matchesAllowedRole(access.allowedRoles)) {
                 return true
             }
             
-            // Permission check (IAM V2)
-            if (access.requiredPermission && hasCap(access.requiredPermission)) {
-                return true
-            }
-
-            // If it's core but we have a role/perm restriction and we didn't pass, hide it
-            if (access.allowedRoles || access.requiredPermission) return false
-            
-            return true
+            return false
         }
 
         // 4. VERTICAL MODULES LOGIC (Requires subscription)
@@ -559,13 +552,13 @@ export function filterRoutesByModules(
         if (!access) return true
         if (isOwner) return true
 
-        // Role check for non-owners
-        if (matchesAllowedRole(access.allowedRoles)) {
-            return true
+        // IAM V2: Granular permission check takes absolute priority for non-owners
+        if (access.requiredPermission) {
+            return hasCap(access.requiredPermission)
         }
 
-        // Permission check (IAM V2)
-        if (access.requiredPermission && hasCap(access.requiredPermission)) {
+        // Fallback: Role check for non-owners if no granular permission is defined
+        if (matchesAllowedRole(access.allowedRoles)) {
             return true
         }
 
