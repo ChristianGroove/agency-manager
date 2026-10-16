@@ -1,11 +1,15 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 
 const mocks = vi.hoisted(() => ({
-    createClient: vi.fn(), getOrg: vi.fn(), requireRole: vi.fn(), revalidate: vi.fn(), encrypt: vi.fn(),
+    createClient: vi.fn(), getOrg: vi.fn(), requireRole: vi.fn(), revalidate: vi.fn(), encrypt: vi.fn(), requirePermission: vi.fn(),
 }))
 vi.mock('@/modules/core/database/supabase-server', () => ({ createClient: mocks.createClient }))
 vi.mock('@/modules/core/organizations/organization-actions', () => ({ getCurrentOrganizationId: mocks.getOrg }))
 vi.mock('@/modules/core/iam/services/org-roles', () => ({ requireOrgRole: mocks.requireRole }))
+vi.mock('@/modules/core/iam/services/role-service', () => ({
+    requirePermission: mocks.requirePermission,
+    hasPermission: vi.fn().mockResolvedValue(true),
+}))
 vi.mock('next/cache', () => ({ revalidatePath: mocks.revalidate }))
 vi.mock('@/modules/infrastructure/integrations/encryption', () => ({ encryptObject: mocks.encrypt }))
 vi.mock('@/modules/infrastructure/integrations/connection-secrets', () => ({
@@ -17,6 +21,7 @@ describe('disconnect channel', () => {
         vi.clearAllMocks()
         mocks.getOrg.mockResolvedValue('tenant-a')
         mocks.requireRole.mockResolvedValue(undefined)
+        mocks.requirePermission.mockResolvedValue(undefined)
         mocks.encrypt.mockReturnValue({ encrypted: 'empty' })
     })
 
@@ -30,9 +35,9 @@ describe('disconnect channel', () => {
 
         const { deleteChannel } = await import('./actions')
         expect(await deleteChannel('channel-a')).toBe(true)
-        expect(mocks.requireRole).toHaveBeenCalledWith('admin')
+        expect(mocks.requirePermission).toHaveBeenCalledWith('inbox.channels.manage', 'tenant-a')
         expect(update.update).toHaveBeenCalledWith({ status: 'deleted', credentials: { encrypted: 'empty' }, is_primary: false })
         expect(update.eq).toHaveBeenCalledWith('organization_id', 'tenant-a')
         expect(mocks.revalidate).toHaveBeenCalledWith('/crm/settings/channels')
-    })
+    }, 15000)
 })

@@ -3,8 +3,12 @@
 import { createClient } from "@/modules/core/database/supabase-server"
 import { RestoTable, RestoZone, VisualElement } from "./store/use-tables-store"
 import { revalidatePath } from "next/cache"
+import { requirePermission } from "@/modules/core/iam/services/role-service"
+import { PERMISSIONS } from "@/modules/core/iam/actions/permissions"
+import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 
 export async function getZonesAndTables(orgId: string) {
+    await requirePermission(PERMISSIONS.OPERATIONS.RESTO_VIEW, orgId)
     const supabase = await createClient()
 
     const [zonesResponse, tablesResponse] = await Promise.all([
@@ -20,6 +24,7 @@ export async function getZonesAndTables(orgId: string) {
 }
 
 export async function saveLayout(orgId: string, zone: RestoZone, tables: RestoTable[]) {
+    await requirePermission(PERMISSIONS.OPERATIONS.RESTO_MANAGE, orgId)
     const supabase = await createClient()
     
     // 1. Upsert Zone
@@ -138,22 +143,28 @@ export async function saveLayout(orgId: string, zone: RestoZone, tables: RestoTa
     return { success: true, zoneId, insertedTables: (allZoneTables as RestoTable[]) || insertedTables }
 }
 
-export async function deleteZone(zoneId: string) {
+export async function deleteZone(zoneId: string, explicitOrgId?: string) {
+    const orgId = explicitOrgId || await getCurrentOrganizationId()
+    if (!orgId) return { success: false, error: "No organization found" }
+    await requirePermission(PERMISSIONS.OPERATIONS.RESTO_MANAGE, orgId)
+
     const supabase = await createClient()
 
-    // Delete all tables in zone first
+    // Delete all tables in zone first (scoped to tenant)
     const { error: tablesError } = await supabase
         .from('resto_tables')
         .delete()
         .eq('zone_id', zoneId)
+        .eq('organization_id', orgId)
 
     if (tablesError) return { success: false, error: tablesError.message }
 
-    // Delete zone
+    // Delete zone (scoped to tenant)
     const { error: zoneError } = await supabase
         .from('resto_zones')
         .delete()
         .eq('id', zoneId)
+        .eq('organization_id', orgId)
 
     if (zoneError) return { success: false, error: zoneError.message }
 
@@ -162,13 +173,18 @@ export async function deleteZone(zoneId: string) {
     return { success: true }
 }
 
-export async function updateTableStatus(tableId: string, status: string) {
+export async function updateTableStatus(tableId: string, status: string, explicitOrgId?: string) {
+    const orgId = explicitOrgId || await getCurrentOrganizationId()
+    if (!orgId) return { success: false, error: "No organization found" }
+    await requirePermission(PERMISSIONS.OPERATIONS.RESTO_MANAGE, orgId)
+
     const supabase = await createClient()
 
     const { error } = await supabase
         .from('resto_tables')
         .update({ status })
         .eq('id', tableId)
+        .eq('organization_id', orgId)
 
     if (error) return { success: false, error: error.message }
 
@@ -177,13 +193,18 @@ export async function updateTableStatus(tableId: string, status: string) {
     return { success: true }
 }
 
-export async function renameZone(zoneId: string, name: string) {
+export async function renameZone(zoneId: string, name: string, explicitOrgId?: string) {
+    const orgId = explicitOrgId || await getCurrentOrganizationId()
+    if (!orgId) return { success: false, error: "No organization found" }
+    await requirePermission(PERMISSIONS.OPERATIONS.RESTO_MANAGE, orgId)
+
     const supabase = await createClient()
 
     const { error } = await supabase
         .from('resto_zones')
         .update({ name })
         .eq('id', zoneId)
+        .eq('organization_id', orgId)
 
     if (error) return { success: false, error: error.message }
 

@@ -2,6 +2,8 @@
 
 import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import { startOfDay, startOfWeek, startOfMonth } from "date-fns"
+import { requirePermission } from "@/modules/core/iam/services/role-service"
+import { PERMISSIONS } from "@/modules/core/iam/actions/permissions"
 
 // ─── Types ───────────────────────────────────────────────────────────
 
@@ -251,6 +253,7 @@ export async function getWaiterTipsSummary(
 
 export async function getStaffWithZoneAssignments(orgId: string) {
     try {
+        await requirePermission(PERMISSIONS.OPERATIONS.RESTO_STAFF_VIEW, orgId)
         const { data: staffList, error: staffError } = await supabaseAdmin
             .from('organization_staff')
             .select('*')
@@ -328,6 +331,7 @@ export async function createStaffMember(
     }
 ) {
     try {
+        await requirePermission(PERMISSIONS.OPERATIONS.RESTO_STAFF_MANAGE, orgId)
         const pinCode = await getUniquePinForOrg(orgId, payload.pinCode)
         const accessToken = crypto.randomUUID()
 
@@ -361,6 +365,7 @@ export async function updateStaffPin(
     newPin: string
 ): Promise<{ success: boolean; error?: string }> {
     try {
+        await requirePermission(PERMISSIONS.OPERATIONS.RESTO_STAFF_MANAGE, orgId)
         const trimmed = newPin.trim()
         if (!trimmed || trimmed.length < 4) {
             return { success: false, error: 'El PIN debe tener al menos 4 dígitos' }
@@ -434,6 +439,7 @@ export async function toggleStaffZoneAssignment(
     currentlyAssigned: boolean
 ) {
     try {
+        await requirePermission(PERMISSIONS.OPERATIONS.RESTO_STAFF_MANAGE, orgId)
         if (currentlyAssigned) {
             // Remove assignment
             const { error: delError } = await supabaseAdmin
@@ -521,6 +527,7 @@ export async function toggleStaffActiveStatus(
     currentIsActive: boolean
 ): Promise<{ success: boolean; error?: string }> {
     try {
+        await requirePermission(PERMISSIONS.OPERATIONS.RESTO_STAFF_MANAGE, orgId)
         const newStatus = !currentIsActive
         const { error } = await supabaseAdmin
             .from('organization_staff')
@@ -541,6 +548,7 @@ export async function regenerateStaffToken(
     staffId: string
 ): Promise<{ success: boolean; newToken?: string; error?: string }> {
     try {
+        await requirePermission(PERMISSIONS.OPERATIONS.RESTO_STAFF_MANAGE, orgId)
         const newToken = crypto.randomUUID()
         const { error } = await supabaseAdmin
             .from('organization_staff')
@@ -561,6 +569,7 @@ export async function deleteStaffMember(
     staffId: string
 ): Promise<{ success: boolean; error?: string }> {
     try {
+        await requirePermission(PERMISSIONS.OPERATIONS.RESTO_STAFF_MANAGE, orgId)
         const { error } = await supabaseAdmin
             .from('organization_staff')
             .delete()

@@ -6,7 +6,8 @@
 
 import { createClient } from '@/modules/core/database/supabase-server';
 import { getCurrentOrganizationId } from '@/modules/core/organizations/organization-actions';
-import { requireOrgRole } from '@/modules/core/iam/services/org-roles';
+import { requirePermission } from '@/modules/core/iam/services/role-service';
+import { PERMISSIONS } from '@/modules/core/iam/actions/permissions';
 import { revalidatePath } from 'next/cache';
 import { calculateSettlement } from './settlement-calculator';
 import type {
@@ -55,20 +56,10 @@ async function resolveOrganizationAndRole(
   explicitOrgId?: string,
   inputOrgId?: string
 ): Promise<{ orgId: string | null; error?: string }> {
-  const orgId = explicitOrgId || inputOrgId || await getCurrentOrganizationId();
+  const sessionOrgId = await getCurrentOrganizationId();
+  const orgId = explicitOrgId || sessionOrgId || inputOrgId;
   if (!orgId) {
     return { orgId: null, error: 'No se encontró la organización activa' };
-  }
-
-  // If executing in a live user session without explicit override, enforce member role
-  if (!explicitOrgId && !inputOrgId) {
-    try {
-      await requireOrgRole('member');
-    } catch (roleErr: any) {
-      if (roleErr?.message?.includes('Unauthorized')) {
-        return { orgId: null, error: 'No tienes permisos suficientes en esta organización' };
-      }
-    }
   }
 
   return { orgId };
@@ -139,6 +130,8 @@ export async function createLease(
     if (authError || !orgId) {
       return { success: false, error: authError || 'No se encontró la organización activa' };
     }
+
+    await requirePermission(PERMISSIONS.RENTALS.MANAGE_CONTRACTS, orgId || undefined);
 
     const supabase = await createClient();
 
@@ -234,6 +227,8 @@ export async function updateLease(
       return { success: false, error: authError || 'No se encontró la organización activa' };
     }
 
+    await requirePermission(PERMISSIONS.RENTALS.MANAGE_CONTRACTS, orgId || undefined);
+
     const supabase = await createClient();
 
     // Fetch existing lease to compare property or status transitions
@@ -326,6 +321,8 @@ export async function terminateLease(
       return { success: false, error: authError || 'No se encontró la organización activa' };
     }
 
+    await requirePermission(PERMISSIONS.RENTALS.MANAGE_CONTRACTS, orgId || undefined);
+
     const supabase = await createClient();
 
     const { data: existing, error: fetchError } = await supabase
@@ -390,6 +387,8 @@ export async function getLeases(
       return { success: false, error: authError || 'No se encontró la organización activa' };
     }
 
+    await requirePermission(PERMISSIONS.RENTALS.VIEW, orgId || undefined);
+
     const supabase = await createClient();
 
     let query = supabase
@@ -448,6 +447,8 @@ export async function getLeaseById(
       return { success: false, error: authError || 'No se encontró la organización activa' };
     }
 
+    await requirePermission(PERMISSIONS.RENTALS.VIEW, orgId || undefined);
+
     const supabase = await createClient();
 
     const { data, error } = await supabase
@@ -494,6 +495,8 @@ export async function generateMonthlySettlements(
     if (!/^\d{4}-\d{2}$/.test(period)) {
       return { success: false, error: 'Formato de periodo inválido. Debe ser YYYY-MM (ej. 2026-09)' };
     }
+
+    await requirePermission(PERMISSIONS.RENTALS.MANAGE_SETTLEMENTS, orgId || undefined);
 
     const supabase = await createClient();
 
@@ -606,6 +609,8 @@ export async function recordTenantPayment(
       return { success: false, error: authError || 'No se encontró la organización activa' };
     }
 
+    await requirePermission(PERMISSIONS.RENTALS.MANAGE_SETTLEMENTS, orgId || undefined);
+
     const supabase = await createClient();
 
     const updatePayload: Record<string, any> = {
@@ -664,6 +669,8 @@ export async function recordOwnerPayout(
       return { success: false, error: authError || 'No se encontró la organización activa' };
     }
 
+    await requirePermission(PERMISSIONS.RENTALS.MANAGE_SETTLEMENTS, orgId || undefined);
+
     const supabase = await createClient();
 
     const updatePayload: Record<string, any> = {
@@ -719,6 +726,8 @@ export async function addDeduction(
     if (authError || !orgId) {
       return { success: false, error: authError || 'No se encontró la organización activa' };
     }
+
+    await requirePermission(PERMISSIONS.RENTALS.MANAGE_SETTLEMENTS, orgId || undefined);
 
     const supabase = await createClient();
 
@@ -813,6 +822,8 @@ export async function getSettlements(
       return { success: false, error: authError || 'No se encontró la organización activa' };
     }
 
+    await requirePermission(PERMISSIONS.RENTALS.VIEW, orgId || undefined);
+
     const supabase = await createClient();
 
     let query = supabase
@@ -875,4 +886,33 @@ export {
   addDeduction as addDeductionAction,
   getSettlements as getSettlementsAction,
 };
+
+/**
+ * Update property rental status with permission check
+ */
+export async function updatePropertyRentalStatusAction(
+  propertyId: string,
+  rentalStatus: 'available' | 'rented' | 'reserved',
+  explicitOrgId?: string
+): Promise<ActionResponse<{ propertyId: string; rentalStatus: string }>> {
+  try {
+    const { orgId, error: authError } = await resolveOrganizationAndRole(explicitOrgId);
+    if (authError || !orgId) {
+      return { success: false, error: authError || 'No se encontró la organización activa' };
+    }
+
+    await requirePermission(PERMISSIONS.RENTALS.MANAGE_PROPERTIES, orgId || undefined);
+
+    const supabase = await createClient();
+    await updatePropertyRentalStatus(supabase, propertyId, orgId, rentalStatus);
+
+    safeRevalidate(['/rentals', '/portfolio']);
+
+    return { success: true, data: { propertyId, rentalStatus } };
+  } catch (err) {
+    console.error('[RENTALS_SERVICE] Unexpected error in updatePropertyRentalStatusAction:', err);
+    return { success: false, error: getErrorMessage(err, 'Error inesperado al actualizar el estado de la propiedad') };
+  }
+}
+
 

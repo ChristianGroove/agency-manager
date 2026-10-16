@@ -2,6 +2,8 @@ import { parseTablePage, parseTablePageSize } from "@/components/ui/table-pagina
 import { redirect } from "next/navigation"
 import { getClientsAction, getSettingsAction, getCategoriesAction } from "@/modules/features/crm/crm-actions"
 import { getOrgSpaceCategory } from "@/modules/core/organizations/space-helpers"
+import { hasPermission } from "@/modules/core/iam/services/role-service"
+import { PERMISSIONS } from "@/modules/core/iam/actions/permissions"
 import ClientsView from "@/modules/features/crm/components/clients-view"
 import { Suspense } from "react"
 import { VerticalType } from "@/modules/core/organizations/vertical-registry"
@@ -16,6 +18,10 @@ export default async function CRMContactsPage({
 }: {
     searchParams: Promise<{ [key: string]: string | string[] | undefined }>
 }) {
+    if (!await hasPermission(PERMISSIONS.CRM.VIEW_LEADS)) {
+        redirect("/dashboard?error=unauthorized")
+    }
+
     const params = await searchParams
     const page = parseTablePage(params.page)
     const pageSize = parseTablePageSize(params.pageSize)

@@ -83,7 +83,78 @@ Se implementó una arquitectura de contención en [`src/modules/core/settings/ac
 
 ---
 
-## 5. Procedimientos de Verificación y Compilación
+## 5. Expansión y Cobertura Completa del Catálogo IAM V2
+
+Se agregaron dominios completos y granulares en [`src/modules/core/iam/actions/permissions.ts`](file:///G:/Pixy/agency-manager-mejorasuxui/src/modules/core/iam/actions/permissions.ts) y [`default-roles.ts`](file:///G:/Pixy/agency-manager-mejorasuxui/src/modules/core/iam/services/default-roles.ts):
+
+- **Arriendos e Inmuebles (`module_rentals`)**:
+  - `rentals.view`: Lectura del centro de arriendos, cartera y contratos.
+  - `rentals.properties.manage`: Creación, edición y catálogo de propiedades.
+  - `rentals.contracts.manage`: Emisión y rescisión de contratos de arriendo.
+  - `rentals.settlements.manage`: Liquidaciones a propietarios y cobranza.
+- **Cotizaciones (`module_quotes`)**:
+  - `quotes.view`: Consulta de cotizaciones y propuestas comerciales.
+  - `quotes.manage`: Creación y modificación de propuestas comerciales.
+  - `quotes.convert`: Conversión de cotizaciones en clientes y contratos.
+- **Órdenes de Trabajo (`module_cleaning`)**:
+  - `work_orders.view`: Tablero de operaciones de campo y turnos.
+  - `work_orders.manage`: Asignación, despacho y finalización de servicios.
+- **Nómina y Liquidaciones (`module_attendance`)**:
+  - `payroll.view`: Historial y liquidaciones salariales.
+  - `payroll.process`: Procesamiento y cálculo de periodos de nómina.
+  - `payroll.pay`: Registro de desembolsos y pagos.
+- **Bóveda de Datos (`core_settings`)**:
+  - `vault.backup.manage`: Creación y descarga de copias de seguridad.
+  - `vault.backup.restore`: Restauración de respaldos.
+- **Permisos Huérfanos Saneados**:
+  - `automation.workflows.execute` agregado a `PERMISSION_GROUPS.automation`.
+  - `org.audit.view` agregado a `PERMISSION_GROUPS.org`.
+
+---
+
+## 6. Blindaje de Server Actions Críticas por Módulo
+
+Todas las acciones del servidor ahora implementan la primitiva canónica `await requirePermission(PERMISSIONS.<DOMINIO>.<ACCION>, orgId)` en [`role-service.ts`](file:///G:/Pixy/agency-manager-mejorasuxui/src/modules/core/iam/services/role-service.ts):
+
+- **Facturación (`billing-actions.ts`)**: `createInvoiceAction`, `deleteInvoicesAction`, `registerPaymentAction`, `deleteServicesAction` exigen `invoicing.manage`; `getInvoicesAction` exige `invoicing.view`.
+- **CRM (`lead-management-actions.ts`, `crm-advanced-actions.ts`, `crm-actions.ts`)**: `deleteLeads`, `deleteLeadsByPipeline`, `deleteAllLeads` exigen `crm.leads.delete`; `updateLead` exige `crm.leads.edit`.
+- **Tareas (`task-actions.ts`)**: `deleteTask`, `createProject`, `updateProject`, `deleteProject`, `updateWorkspace` exigen `operations.tasks.manage`.
+- **Restaurante (`resto-orders/actions.ts`, `resto/tables/actions.ts`, `menu/actions.ts`)**: `processOrderPayment` y `updateRestoOrderStatus` exigen `operations.resto_orders.manage`; `saveLayout` exige `operations.resto.manage`; categorías y platos exigen `operations.resto_menu.manage`.
+- **Canales (`channels/actions.ts`)**: `createChannel`, `updateChannel`, `deleteChannel`, `getChannelQrCode` sustituyeron el chequeo legacy `requireOrgRole('admin')` por `inbox.channels.manage`.
+- **Asistencia (`attendance/actions.ts`)**: Creación de turnos y registros manuales exigen `operations.attendance.manage`.
+- **Arriendos (`rentals-service.ts`, `leases.ts`)**: Creación y cancelación de contratos y liquidaciones exigen `rentals.contracts.manage` y `rentals.settlements.manage`.
+
+---
+
+## 7. Blindaje de Páginas de Servidor (Server Route Guards)
+
+Los Server Components de las rutas principales verifican `hasPermission` y redirigen de forma limpia a `/dashboard?error=unauthorized` si el usuario carece del permiso:
+
+- `/invoices` $\rightarrow$ `invoicing.view`
+- `/quotes` $\rightarrow$ `quotes.view`
+- `/quotes/create` $\rightarrow$ `quotes.manage`
+- `/rentals` $\rightarrow$ `rentals.view`
+- `/attendance` $\rightarrow$ `operations.attendance.view`
+- `/operations/tasks` $\rightarrow$ `operations.tasks.view`
+- `/operations/work-orders` $\rightarrow$ `work_orders.view`
+- `/crm/contacts` $\rightarrow$ `crm.leads.view`
+- `/crm/pipeline` $\rightarrow$ `crm.leads.view`
+- `/crm/marketing` $\rightarrow$ `marketing.campaigns.view`
+- `/crm/automations` $\rightarrow$ `automation.workflows.view`
+- `/platform/settings` $\rightarrow$ `org.settings.manage`
+
+---
+
+## 8. Hardening de Base de Datos y Asistente IA
+
+1. **Políticas RLS en Base de Datos**:
+   - Migración [`20261016000000_harden_task_management_rls.sql`](file:///G:/Pixy/agency-manager-mejorasuxui/supabase/migrations/20261016000000_harden_task_management_rls.sql): Reemplaza las políticas permisivas `USING (true)` en `task_projects`, `task_items`, `task_comments` y `task_project_members` por verificación estricta de aislamiento multi-tenant contra `organization_members`.
+2. **Contexto del Asistente IA**:
+   - En [`src/modules/assistant/context-resolver.ts`](file:///G:/Pixy/agency-manager-mejorasuxui/src/modules/assistant/context-resolver.ts), se sustituyó el mock estático de permisos por la resolución en tiempo real vía `getUserPermissionsPayload` y `getActiveModules`, manteniendo compatibilidad con las acciones del asistente.
+
+---
+
+## 9. Procedimientos de Verificación y Compilación
 
 Para certificar la integridad de este módulo antes de cualquier despliegue:
 
@@ -91,8 +162,8 @@ Para certificar la integridad de este módulo antes de cualquier despliegue:
 # 1. Comprobación estricta de tipos de TypeScript (0 errores requeridos)
 npm run check:types
 
-# 2. Ejecución de la suite completa de IAM, Settings y Messaging (218 pruebas)
-npx vitest run src/modules/core/iam src/modules/core/settings src/modules/features/messaging
+# 2. Ejecución de la suite completa de IAM, Settings y Módulos Operativos (60 suites)
+npx vitest run src/modules/core/iam src/modules/core/settings src/modules/features/billing src/modules/features/crm src/modules/features/tasks src/modules/features/resto-orders src/modules/features/resto/tables src/modules/features/menu src/modules/features/attendance src/modules/features/rentals src/modules/features/work-orders src/modules/features/channels
 
 # 3. Compilación de producción optimizada de Next.js
 npm run check:build

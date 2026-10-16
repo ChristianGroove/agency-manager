@@ -12,6 +12,8 @@ import { DealService } from "./services/deal-service"
 import { getCurrentUserPermissions } from "@/modules/core/settings/actions/team"
 import { ActionResponse, PipelineStage, Pipeline, PaginatedLeadsResponse } from "./types"
 import { Lead, Client } from "@/types"
+import { requirePermission } from "@/modules/core/iam/services/role-service"
+import { PERMISSIONS } from "@/modules/core/iam/actions/permissions"
 
 const PUBLIC_CRM_CONTACT_ACTION_ERROR = "No se pudo completar la accion de contactos"
 const PUBLIC_CRM_PIPELINE_ACTION_ERROR = "No se pudo completar la accion de pipeline"
@@ -235,7 +237,8 @@ export async function convertLeadToClientAction(id: string): Promise<ActionRespo
 
 export async function updateContactProfileAction(id: string, updates: any): Promise<ActionResponse<Lead>> {
     try {
-        const { contacts } = await getCrmServices()
+        const { contacts, orgId } = await getCrmServices()
+        await requirePermission(PERMISSIONS.CRM.EDIT_LEADS, orgId)
         const data = await contacts.updateProfile(id, updates)
         revalidatePath('/crm')
         revalidatePath('/clients')
@@ -247,7 +250,8 @@ export async function updateContactProfileAction(id: string, updates: any): Prom
 
 export async function deleteContactsAction(ids: string[]): Promise<ActionResponse<void>> {
     try {
-        const { contacts } = await getCrmServices()
+        const { contacts, orgId } = await getCrmServices()
+        await requirePermission(PERMISSIONS.CRM.DELETE_LEADS, orgId)
         await contacts.deleteContacts(ids)
         revalidatePath('/crm')
         revalidatePath('/clients')
@@ -259,7 +263,8 @@ export async function deleteContactsAction(ids: string[]): Promise<ActionRespons
 
 export async function exportContactsAction(): Promise<ActionResponse<string>> {
     try {
-        const { contacts, user } = await getCrmServices()
+        const { contacts, user, orgId } = await getCrmServices()
+        await requirePermission(PERMISSIONS.CRM.EXPORT_DATA, orgId)
         const perms = await getCurrentUserPermissions()
         const { evaluateInboxPermissions } = await import('@/modules/core/iam/utils/inbox-permissions')
         const { hasGlobalView, authorizedChannels } = evaluateInboxPermissions(perms)
@@ -296,7 +301,8 @@ export async function previewPurgeColdContactsAction(criteria: { inactiveDays: n
 
 export async function purgeColdContactsAction(criteria: { inactiveDays: number, minScore?: number }): Promise<ActionResponse<number>> {
     try {
-        const { contacts, user } = await getCrmServices()
+        const { contacts, user, orgId } = await getCrmServices()
+        await requirePermission(PERMISSIONS.CRM.DELETE_LEADS, orgId)
         const perms = await getCurrentUserPermissions()
         const { evaluateInboxPermissions } = await import('@/modules/core/iam/utils/inbox-permissions')
         const { hasGlobalView, authorizedChannels } = evaluateInboxPermissions(perms)
@@ -316,6 +322,7 @@ export async function purgeColdContactsAction(criteria: { inactiveDays: number, 
 export async function deleteClientsAction(ids: string[]): Promise<ActionResponse<void>> {
     try {
         const { supabase, orgId } = await getCrmServices()
+        await requirePermission(PERMISSIONS.CRM.DELETE_LEADS, orgId)
         const clientService = new ClientService(supabase, orgId || "")
         await clientService.deleteClients(ids)
         revalidatePath('/crm')

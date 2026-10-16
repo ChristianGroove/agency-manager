@@ -4,7 +4,8 @@ import { resolveConnectionCredentials, assertRawCredentialInput } from '@/module
 import { encryptObject } from '@/modules/infrastructure/integrations/encryption'
 import { createClient } from "@/modules/core/database/supabase-server"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
-import { requireOrgRole } from "@/modules/core/iam/services/org-roles"
+import { requirePermission } from "@/modules/core/iam/services/role-service"
+import { PERMISSIONS } from "@/modules/core/iam/actions/permissions"
 import { revalidatePath } from "next/cache"
 import { Channel, ChannelConfig } from "./types"
 
@@ -152,7 +153,7 @@ export async function getChannelQrCode(providerKey: string, credentials: Record<
     const orgId = await getCurrentOrganizationId()
     if (!orgId) throw new Error("Organization context required")
 
-    await requireOrgRole('admin')
+    await requirePermission(PERMISSIONS.INBOX.MANAGE_CHANNELS, orgId)
 
     assertRawCredentialInput(credentials)
     const adapter = integrationRegistry.getAdapter(providerKey)
@@ -179,7 +180,7 @@ export async function createChannel(input: {
     const orgId = await getCurrentOrganizationId()
     if (!orgId) throw new Error("Organization context required")
 
-    await requireOrgRole('admin') // Only admins can connect lines
+    await requirePermission(PERMISSIONS.INBOX.MANAGE_CHANNELS, orgId)
 
     assertRawCredentialInput(input.credentials)
     // 1. Verify Credentials
@@ -237,7 +238,7 @@ export async function updateChannel(channelId: string, updates: Partial<Channel>
     const orgId = await getCurrentOrganizationId()
     if (!orgId) throw new Error("Unauthorized")
 
-    await requireOrgRole('admin')
+    await requirePermission(PERMISSIONS.INBOX.MANAGE_CHANNELS, orgId)
 
     const supabase = await createClient()
 
@@ -285,7 +286,7 @@ export async function deleteChannel(channelId: string) {
     const orgId = await getCurrentOrganizationId()
     if (!orgId) throw new Error("Unauthorized")
 
-    await requireOrgRole('admin')
+    await requirePermission(PERMISSIONS.INBOX.MANAGE_CHANNELS, orgId)
 
     const supabase = await createClient()
     const { data: channel } = await supabase

@@ -6,7 +6,9 @@ import { getCurrentBrandingTier } from "@/modules/core/branding/tier-actions"
 import { getOrganizationModules, getCurrentOrganizationId, getOrganizationCardDetails } from "@/modules/core/organizations/organization-actions"
 import { getSubscriptionApp } from "@/modules/features/catalog/actions"
 import { getCurrentOrgRole } from "@/modules/core/iam/services/org-roles"
-import { getOrganizationRoles } from "@/modules/core/iam/services/role-service"
+import { getOrganizationRoles, hasPermission } from "@/modules/core/iam/services/role-service"
+import { PERMISSIONS } from "@/modules/core/iam/actions/permissions"
+import { redirect } from "next/navigation"
 import { Loader2 } from "lucide-react"
 
 export const metadata = {
@@ -19,6 +21,10 @@ export default async function SettingsPage() {
 
     if (!orgId) {
         return <div>Error: Organización no encontrada</div>
+    }
+
+    if (!await hasPermission(PERMISSIONS.ORG.MANAGE_SETTINGS, orgId)) {
+        redirect('/dashboard?error=unauthorized')
     }
 
     const [

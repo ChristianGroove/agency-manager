@@ -6,6 +6,8 @@ const mocks = vi.hoisted(() => ({
     getActiveEmitters: vi.fn(),
     getSettings: vi.fn(),
     getContactOptions: vi.fn(),
+    requirePermission: vi.fn().mockResolvedValue(undefined),
+    getCurrentOrganizationId: vi.fn().mockResolvedValue('test-org-123'),
 }))
 
 vi.mock('@/modules/core/database/supabase-server', () => ({
@@ -14,6 +16,15 @@ vi.mock('@/modules/core/database/supabase-server', () => ({
 
 vi.mock('next/cache', () => ({
     revalidatePath: mocks.revalidatePath,
+}))
+
+vi.mock('@/modules/core/iam/services/role-service', () => ({
+    requirePermission: mocks.requirePermission,
+    hasPermission: vi.fn().mockResolvedValue(true),
+}))
+
+vi.mock('@/modules/core/organizations/organization-actions', () => ({
+    getCurrentOrganizationId: mocks.getCurrentOrganizationId,
 }))
 
 vi.mock('@/modules/core/settings/emitters-actions', () => ({
@@ -98,6 +109,10 @@ afterEach(() => {
     mocks.getActiveEmitters.mockReset()
     mocks.getSettings.mockReset()
     mocks.getContactOptions.mockReset()
+    mocks.requirePermission.mockReset()
+    mocks.requirePermission.mockResolvedValue(undefined)
+    mocks.getCurrentOrganizationId.mockReset()
+    mocks.getCurrentOrganizationId.mockResolvedValue('test-org-123')
 })
 
 describe('billing server actions sanitized errors', () => {
@@ -192,4 +207,71 @@ describe('billing server actions sanitized errors', () => {
             error: 'No se pudieron cargar las opciones de contacto',
         })
     })
+
+    describe('IAM V2 permissions enforcement', () => {
+        it('enforces INVOICING.MANAGE on deleteInvoicesAction', async () => {
+            const query = updateInQuery(null)
+            mocks.createClient.mockResolvedValue(clientForQuery(query))
+            mocks.getCurrentOrganizationId.mockResolvedValue('org-test-456')
+
+            const { deleteInvoicesAction } = await import('./billing-actions')
+            await deleteInvoicesAction(['inv-1'])
+
+            expect(mocks.requirePermission).toHaveBeenCalledWith('invoicing.manage', 'org-test-456')
+        })
+
+        it('enforces INVOICING.VIEW on getInvoices and getInvoicesAction', async () => {
+            mocks.getCurrentOrganizationId.mockResolvedValue('org-test-456')
+
+            const { getInvoices, getInvoicesAction } = await import('./billing-actions')
+            await getInvoices()
+            expect(mocks.requirePermission).toHaveBeenCalledWith('invoicing.view', 'org-test-456')
+
+            mocks.requirePermission.mockClear()
+            await getInvoicesAction()
+            expect(mocks.requirePermission).toHaveBeenCalledWith('invoicing.view', 'org-test-456')
+        })
+
+        it('enforces INVOICING.MANAGE on createInvoiceAction', async () => {
+            mocks.getCurrentOrganizationId.mockResolvedValue('org-test-456')
+
+            const { createInvoiceAction } = await import('./billing-actions')
+            await createInvoiceAction({ organization_id: 'org-test-456', items: [] })
+
+            expect(mocks.requirePermission).toHaveBeenCalledWith('invoicing.manage', 'org-test-456')
+        })
+
+        it('enforces INVOICING.MANAGE on registerPaymentAction', async () => {
+            mocks.getCurrentOrganizationId.mockResolvedValue('org-test-456')
+
+            const { registerPaymentAction } = await import('./billing-actions')
+            await registerPaymentAction('inv-1', 100)
+
+            expect(mocks.requirePermission).toHaveBeenCalledWith('invoicing.manage', 'org-test-456')
+        })
+
+        it('enforces INVOICING.MANAGE on deleteServicesAction', async () => {
+            const query = updateInQuery(null)
+            mocks.createClient.mockResolvedValue(clientForQuery(query))
+            mocks.getCurrentOrganizationId.mockResolvedValue('org-test-456')
+
+            const { deleteServicesAction } = await import('./billing-actions')
+            await deleteServicesAction(['svc-1'])
+
+            expect(mocks.requirePermission).toHaveBeenCalledWith('invoicing.manage', 'org-test-456')
+        })
+
+        it('enforces INVOICING.MANAGE on registerServiceAction and toggleServiceStatusAction', async () => {
+            mocks.getCurrentOrganizationId.mockResolvedValue('org-test-456')
+
+            const { registerServiceAction, toggleServiceStatusAction } = await import('./billing-actions')
+            await registerServiceAction({ name: 'Hosting' })
+            expect(mocks.requirePermission).toHaveBeenCalledWith('invoicing.manage', 'org-test-456')
+
+            mocks.requirePermission.mockClear()
+            await toggleServiceStatusAction('svc-1', 'paused')
+            expect(mocks.requirePermission).toHaveBeenCalledWith('invoicing.manage', 'org-test-456')
+        })
+    })
 })
+

@@ -4,6 +4,8 @@ import { createClient } from "@/modules/core/database/supabase-server"
 import { revalidatePath } from "next/cache"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 import { messagingCleanupService } from "@/modules/features/messaging/cleanup-service"
+import { requirePermission } from "@/modules/core/iam/services/role-service"
+import { PERMISSIONS } from "@/modules/core/iam/actions/permissions"
 
 const PUBLIC_LEAD_MANAGEMENT_ERROR = "No se pudo completar la accion de gestion de leads"
 
@@ -77,6 +79,8 @@ export async function deleteLeads(leadIds: string[]): Promise<LeadManagementResp
     const orgId = await getCurrentOrganizationId()
     if (!orgId) return { success: false, error: "No authenticated organization" }
 
+    await requirePermission(PERMISSIONS.CRM.DELETE_LEADS, orgId)
+
     if (!leadIds.length) return { success: true }
 
     // 1. CLEANUP PHYSICAL MEDIA (Prevent orphans in Storage)
@@ -100,6 +104,8 @@ export async function deleteLeadsByPipeline(pipelineId: string): Promise<LeadMan
     const supabase = await createClient()
     const orgId = await getCurrentOrganizationId()
     if (!orgId) return { success: false, error: "No authenticated organization" }
+
+    await requirePermission(PERMISSIONS.CRM.DELETE_LEADS, orgId)
 
     // First find stages for this pipeline to be safe, or just relying on pipeline_id if leads have it?
     // Leads usually have `stage_id`. Stages link to Pipeline.
@@ -152,6 +158,8 @@ export async function deleteAllLeads(): Promise<LeadManagementResponse> {
     const supabase = await createClient()
     const orgId = await getCurrentOrganizationId()
     if (!orgId) return { success: false, error: "No authenticated organization" }
+
+    await requirePermission(PERMISSIONS.CRM.DELETE_LEADS, orgId)
 
     // 1. CLEANUP ALL PHYSICAL MEDIA FOR THIS ORG - Exclude master clients
     const { data: leads } = await supabase

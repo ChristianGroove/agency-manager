@@ -82,10 +82,29 @@ export async function resolveAssistantContext(): Promise<{ context: AssistantCon
     // Default to 'agency' if column missing or null
     const vertical = org?.vertical || 'agency';
 
-    // 5. Resolve Permissions (Mock mapping for Phase 0)
-    const permissions: string[] = [];
-    if (role === 'owner' || role === 'admin') {
-        permissions.push(
+    // 5. Resolve IAM V2 Permissions & Active Modules
+    const { getUserPermissionsPayload } = await import("@/modules/core/iam/services/role-service");
+    const { getActiveModules } = await import("@/modules/core/saas/saas-actions");
+
+    const [permsPayload, activeModules] = await Promise.all([
+        getUserPermissionsPayload(orgId, user.id).catch(() => null),
+        getActiveModules(orgId).catch(() => ['core_clients', 'core_crm', 'module_invoicing'])
+    ]);
+
+    const allowedActions: string[] = [];
+    if (permsPayload?.isOwner || permsPayload?.effectivePermissions?.['all']) {
+        allowedActions.push('all');
+    }
+    if (permsPayload?.effectivePermissions) {
+        for (const [permKey, isAllowed] of Object.entries(permsPayload.effectivePermissions)) {
+            if (isAllowed) {
+                allowedActions.push(permKey);
+            }
+        }
+    }
+    // Maintain backwards-compatible aliases for assistant action mapping
+    if (role === 'owner' || role === 'admin' || permsPayload?.isOwner) {
+        allowedActions.push(
             'clients.create',
             'clients.read',
             'quotes.create',
@@ -102,9 +121,9 @@ export async function resolveAssistantContext(): Promise<{ context: AssistantCon
             tenant_id: orgId,
             space_id: orgId,
             user_id: user.id,
-            role: role,
-            allowed_actions: permissions,
-            active_modules: ['core', 'crm', 'billing'],
+            role: permsPayload?.roleName || role,
+            allowed_actions: allowedActions,
+            active_modules: activeModules || ['core_clients', 'core_crm', 'module_invoicing'],
             vertical: vertical
         },
         supabase: supabase // Return the authenticated client

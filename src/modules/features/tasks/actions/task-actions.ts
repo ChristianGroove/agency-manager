@@ -38,6 +38,8 @@ import {
 } from "../types";
 import { calculateNextRecurrence } from "../utils/recurrence-utils";
 import { requireDashboardTaskManagement, validateTaskMutationIds } from '../services/task-mutation-access';
+import { requirePermission } from "@/modules/core/iam/services/role-service";
+import { PERMISSIONS } from "@/modules/core/iam/actions/permissions";
 
 /**
  * Helper to get current organization ID safely with authenticated session validation
@@ -326,7 +328,7 @@ export async function getWorkspaces(
  */
 export async function createWorkspace(data: {
   name: string;
-  key_prefix: string;
+  key_prefix?: string;
   description?: string;
   color?: string;
   icon?: string;
@@ -338,6 +340,7 @@ export async function createWorkspace(data: {
 }): Promise<{ success: boolean; workspace?: TaskWorkspace; error?: string }> {
   try {
     const orgId = await resolveOrgId(data.organization_id);
+    await requirePermission(PERMISSIONS.OPERATIONS.TASKS_MANAGE, orgId);
     const slug = data.name
       .toLowerCase()
       .trim()
@@ -389,6 +392,7 @@ export async function updateWorkspace(
 ): Promise<{ success: boolean; workspace?: TaskWorkspace; error?: string }> {
   try {
     const activeOrgId = await resolveOrgId(orgId);
+    await requirePermission(PERMISSIONS.OPERATIONS.TASKS_MANAGE, activeOrgId);
     const updateData: any = { ...data, updated_at: new Date().toISOString() };
     delete updateData.lead_staff;
     delete updateData.project_count;
@@ -422,6 +426,7 @@ export async function updateWorkspace(
 export async function deleteWorkspace(workspaceId: string, orgId?: string): Promise<{ success: boolean; error?: string }> {
   try {
     const activeOrgId = await resolveOrgId(orgId);
+    await requirePermission(PERMISSIONS.OPERATIONS.TASKS_MANAGE, activeOrgId);
     const { error } = await supabaseAdmin
       .from("task_workspaces")
       .delete()
@@ -510,6 +515,7 @@ export async function createProject(
 ): Promise<{ success: boolean; project?: TaskProject; error?: string }> {
   try {
     const orgId = await resolveOrgId(data.organization_id);
+    await requirePermission(PERMISSIONS.OPERATIONS.TASKS_MANAGE, orgId);
     const slug = data.name
       .toLowerCase()
       .trim()
@@ -567,6 +573,7 @@ export async function updateProject(
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const activeOrgId = await resolveOrgId(orgId);
+    await requirePermission(PERMISSIONS.OPERATIONS.TASKS_MANAGE, activeOrgId);
     const updateData: any = { ...data, updated_at: new Date().toISOString() };
     delete updateData.lead_staff;
     delete updateData.task_count;
@@ -594,6 +601,7 @@ export async function updateProject(
 export async function deleteProject(projectId: string, orgId?: string): Promise<{ success: boolean; error?: string }> {
   try {
     const activeOrgId = await resolveOrgId(orgId);
+    await requirePermission(PERMISSIONS.OPERATIONS.TASKS_MANAGE, activeOrgId);
     const { error } = await supabaseAdmin
       .from("task_projects")
       .delete()
@@ -1912,6 +1920,7 @@ export async function deleteTask(
 ): Promise<{ success: boolean; error?: string }> {
   try {
     const activeOrgId = await resolveOrgId(orgId);
+    await requirePermission(PERMISSIONS.OPERATIONS.TASKS_MANAGE, activeOrgId);
 
     // Cancelar en Google Calendar si es una reunion vinculada
     const { data: taskToDelete } = await supabaseAdmin

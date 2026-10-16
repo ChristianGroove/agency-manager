@@ -20,6 +20,11 @@ vi.mock('next/cache', () => ({
     revalidatePath: mocks.revalidatePath,
 }))
 
+vi.mock('@/modules/core/iam/services/role-service', () => ({
+    requirePermission: vi.fn().mockResolvedValue(undefined),
+    hasPermission: vi.fn().mockResolvedValue(true),
+}))
+
 function createQueryChain(result: { data?: any; error?: any }) {
     const chain: any = {}
     chain.select = vi.fn(() => chain)

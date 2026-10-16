@@ -14,6 +14,12 @@ const mocks = vi.hoisted(() => ({
         sendEmail: vi.fn(),
     },
     revalidatePath: vi.fn(),
+    requirePermission: vi.fn().mockResolvedValue(undefined),
+}))
+
+vi.mock('@/modules/core/iam/services/role-service', () => ({
+    requirePermission: mocks.requirePermission,
+    hasPermission: vi.fn().mockResolvedValue(true),
 }))
 
 vi.mock('@/modules/core/database/supabase-server', () => ({
@@ -99,6 +105,8 @@ afterEach(() => {
     mocks.advancedService.createTask.mockReset()
     mocks.advancedService.sendEmail.mockReset()
     mocks.revalidatePath.mockReset()
+    mocks.requirePermission.mockReset()
+    mocks.requirePermission.mockResolvedValue(undefined)
 })
 
 describe('crm advanced actions', () => {
@@ -112,6 +120,7 @@ describe('crm advanced actions', () => {
         const result = await updateLead('lead-current', { name: 'Ada' } as any)
 
         expect(result).toEqual({ success: true, data: { id: 'lead-current', name: 'Ada' } })
+        expect(mocks.requirePermission).toHaveBeenCalledWith('crm.leads.edit', 'org-current')
         expect(mocks.LeadsService).toHaveBeenCalledWith(supabase, 'org-current', 'user-current')
         expect(mocks.leadsService.updateProfile).toHaveBeenCalledWith('lead-current', { name: 'Ada' })
         expect(mocks.revalidatePath).toHaveBeenCalledWith('/crm')

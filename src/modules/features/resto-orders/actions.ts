@@ -4,6 +4,8 @@ import { createClient } from "@/modules/core/database/supabase-server"
 import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 import { revalidatePath } from "next/cache"
+import { requirePermission } from "@/modules/core/iam/services/role-service"
+import { PERMISSIONS } from "@/modules/core/iam/actions/permissions"
 
 // ─── Types ───────────────────────────────────────────────────────────
 export interface GroupedOrder {
@@ -291,6 +293,8 @@ export async function processOrderPayment(payload: ProcessPaymentPayload) {
     const orgId = await getCurrentOrganizationId()
     if (!orgId) return { success: false, error: "Unauthorized" }
 
+    await requirePermission(PERMISSIONS.OPERATIONS.RESTO_ORDERS_MANAGE, orgId)
+
     const supabase = supabaseAdmin
 
     try {
@@ -370,6 +374,8 @@ export async function processOrderPayment(payload: ProcessPaymentPayload) {
 export async function updateRestoOrderStatus(orderId: string, newStatus: string) {
     const orgId = await getCurrentOrganizationId()
     if (!orgId) return { success: false, error: "Unauthorized" }
+
+    await requirePermission(PERMISSIONS.OPERATIONS.RESTO_ORDERS_MANAGE, orgId)
 
     const supabase = await createClient()
 

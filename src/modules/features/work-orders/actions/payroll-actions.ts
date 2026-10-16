@@ -4,6 +4,8 @@ import { createClient } from "@/modules/core/database/supabase-server"
 import { supabaseAdmin } from "@/modules/core/database/supabase-admin"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 import { revalidatePath } from "next/cache"
+import { requirePermission } from "@/modules/core/iam/services/role-service"
+import { PERMISSIONS } from "@/modules/core/iam/actions/permissions"
 
 const PAYROLL_PATH = "/cleaning/payroll"
 
@@ -195,6 +197,7 @@ export async function createPayrollPeriod(data: {
     const orgId = await getCurrentOrganizationId()
 
     if (!orgId) return { success: false, error: "No organization found" }
+    await requirePermission(PERMISSIONS.PAYROLL.PROCESS, orgId)
 
     try {
         const { error } = await supabase
@@ -226,6 +229,7 @@ export async function getPayrollPeriods() {
     const orgId = await getCurrentOrganizationId()
 
     if (!orgId) return []
+    await requirePermission(PERMISSIONS.PAYROLL.VIEW, orgId)
 
     const { data, error } = await supabase
         .from('staff_payroll_periods')
@@ -241,6 +245,8 @@ export async function getPayrollPeriods() {
     return data || []
 }
 
+export const getPayrollHistory = getPayrollPeriods
+
 /**
  * Get single payroll period with settlements
  */
@@ -249,6 +255,7 @@ export async function getPayrollPeriod(periodId: string) {
     const orgId = await getCurrentOrganizationId()
 
     if (!orgId) return null
+    await requirePermission(PERMISSIONS.PAYROLL.VIEW, orgId)
 
     const { data, error } = await supabase
         .from('staff_payroll_periods')
@@ -283,6 +290,7 @@ export async function processPayrollPeriod(periodId: string) {
     const orgId = await getCurrentOrganizationId()
 
     if (!orgId) return { success: false, error: "No organization found" }
+    await requirePermission(PERMISSIONS.PAYROLL.PROCESS, orgId)
 
     try {
         // Get period details
@@ -374,6 +382,7 @@ export async function getPayrollSettlements(periodId: string) {
     const orgId = await getCurrentOrganizationId()
 
     if (!orgId) return []
+    await requirePermission(PERMISSIONS.PAYROLL.VIEW, orgId)
 
     const { data, error } = await supabase
         .from('staff_payroll_settlements')
@@ -405,6 +414,10 @@ export async function updateSettlement(
         notes?: string
     }
 ) {
+    const orgId = await getCurrentOrganizationId()
+    if (!orgId) return { success: false, error: "No organization found" }
+    await requirePermission(PERMISSIONS.PAYROLL.PROCESS, orgId)
+
     const supabase = await createClient()
 
     try {
@@ -417,6 +430,7 @@ export async function updateSettlement(
                 updated_at: new Date().toISOString()
             })
             .eq('id', settlementId)
+            .eq('organization_id', orgId)
 
         if (error) throw error
 
@@ -451,6 +465,7 @@ export async function registerPayment(
     const orgId = await getCurrentOrganizationId()
 
     if (!orgId) return { success: false, error: "No organization found" }
+    await requirePermission(PERMISSIONS.PAYROLL.PAY, orgId)
 
     try {
         // Get settlement to validate amount and get staff_id
@@ -458,6 +473,7 @@ export async function registerPayment(
             .from('staff_payroll_settlements')
             .select('staff_id, amount_owed')
             .eq('id', settlementId)
+            .eq('organization_id', orgId)
             .single()
 
         if (settlementError || !settlement) {
@@ -500,12 +516,17 @@ export async function registerPayment(
  * Get payments for a settlement
  */
 export async function getSettlementPayments(settlementId: string) {
+    const orgId = await getCurrentOrganizationId()
+    if (!orgId) return []
+    await requirePermission(PERMISSIONS.PAYROLL.VIEW, orgId)
+
     const supabase = await createClient()
 
     const { data, error } = await supabase
         .from('staff_payments')
         .select('*')
         .eq('settlement_id', settlementId)
+        .eq('organization_id', orgId)
         .order('payment_date', { ascending: false })
 
     if (error) {
@@ -516,6 +537,8 @@ export async function getSettlementPayments(settlementId: string) {
     return data || []
 }
 
+export const registerPayrollPayment = registerPayment
+
 /**
  * Get all payments for a staff member
  */
@@ -524,6 +547,7 @@ export async function getStaffPayments(staffId: string, limit?: number) {
     const orgId = await getCurrentOrganizationId()
 
     if (!orgId) return []
+    await requirePermission(PERMISSIONS.PAYROLL.VIEW, orgId)
 
     let query = supabase
         .from('staff_payments')
@@ -564,6 +588,7 @@ export async function getStaffPayrollSummary(staffId: string, year: number) {
     const orgId = await getCurrentOrganizationId()
 
     if (!orgId) return null
+    await requirePermission(PERMISSIONS.PAYROLL.VIEW, orgId)
 
     const startDate = `${year}-01-01`
     const endDate = `${year}-12-31`
@@ -608,6 +633,7 @@ export async function getOrganizationPayrollStats(startDate: string, endDate: st
     const orgId = await getCurrentOrganizationId()
 
     if (!orgId) return null
+    await requirePermission(PERMISSIONS.PAYROLL.VIEW, orgId)
 
     const { data: settlements, error } = await supabase
         .from('staff_payroll_settlements')

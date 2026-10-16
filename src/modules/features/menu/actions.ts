@@ -4,6 +4,8 @@ import { createClient } from "@/modules/core/database/supabase-server"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 import { revalidatePath } from "next/cache"
 import { RestoMenuCategory, RestoMenuItem } from "@/types"
+import { requirePermission } from "@/modules/core/iam/services/role-service"
+import { PERMISSIONS } from "@/modules/core/iam/actions/permissions"
 
 /**
  * =====================================
@@ -33,6 +35,7 @@ export async function createMenuCategory(name: string, icon?: string): Promise<R
     const supabase = await createClient()
     const orgId = await getCurrentOrganizationId()
     if (!orgId) throw new Error('No organization context')
+    await requirePermission(PERMISSIONS.OPERATIONS.RESTO_MENU_MANAGE, orgId)
 
     const slug = name.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
     
@@ -68,6 +71,7 @@ export async function updateMenuCategory(id: string, updates: Partial<RestoMenuC
     const supabase = await createClient()
     const orgId = await getCurrentOrganizationId()
     if (!orgId) throw new Error('No org')
+    await requirePermission(PERMISSIONS.OPERATIONS.RESTO_MENU_MANAGE, orgId)
 
     const safeUpdates: any = { ...updates, updated_at: new Date().toISOString() }
     if (updates.name) {
@@ -88,6 +92,7 @@ export async function deleteMenuCategory(id: string): Promise<void> {
     const supabase = await createClient()
     const orgId = await getCurrentOrganizationId()
     if (!orgId) throw new Error('No org')
+    await requirePermission(PERMISSIONS.OPERATIONS.RESTO_MENU_MANAGE, orgId)
 
     // Safe deletion check
     const { data: items } = await supabase
@@ -115,6 +120,7 @@ export async function reorderMenuCategories(categoryIds: string[]): Promise<void
     const supabase = await createClient()
     const orgId = await getCurrentOrganizationId()
     if (!orgId) throw new Error('No org')
+    await requirePermission(PERMISSIONS.OPERATIONS.RESTO_MENU_MANAGE, orgId)
 
     const updates = categoryIds.map((id, index) =>
         supabase
@@ -183,6 +189,7 @@ export async function createMenuItem(data: Partial<RestoMenuItem>): Promise<Rest
     const supabase = await createClient()
     const orgId = await getCurrentOrganizationId()
     if (!orgId) throw new Error('No org')
+    await requirePermission(PERMISSIONS.OPERATIONS.RESTO_MENU_MANAGE, orgId)
 
     const { category, modifiers, resto_item_modifier_groups, ...dbData } = data as any
 
@@ -205,6 +212,7 @@ export async function updateMenuItem(id: string, data: Partial<RestoMenuItem>): 
     const supabase = await createClient()
     const orgId = await getCurrentOrganizationId()
     if (!orgId) throw new Error('No org')
+    await requirePermission(PERMISSIONS.OPERATIONS.RESTO_MENU_MANAGE, orgId)
 
     const { category, modifiers, resto_item_modifier_groups, ...dbData } = data as any
     dbData.updated_at = new Date().toISOString()
@@ -223,6 +231,7 @@ export async function deleteMenuItem(id: string): Promise<void> {
     const supabase = await createClient()
     const orgId = await getCurrentOrganizationId()
     if (!orgId) throw new Error('No org')
+    await requirePermission(PERMISSIONS.OPERATIONS.RESTO_MENU_MANAGE, orgId)
 
     // Soft delete to maintain order history integrity
     const { error } = await supabase

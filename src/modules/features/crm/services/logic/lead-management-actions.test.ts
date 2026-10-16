@@ -25,6 +25,11 @@ vi.mock('@/modules/features/messaging/cleanup-service', () => ({
     },
 }))
 
+vi.mock('@/modules/core/iam/services/role-service', () => ({
+    requirePermission: vi.fn().mockResolvedValue(undefined),
+    hasPermission: vi.fn().mockResolvedValue(true),
+}))
+
 function secretError(message = 'lead secret-value failure') {
     return {
         message,

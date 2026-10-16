@@ -6,6 +6,7 @@ const mocks = vi.hoisted(() => ({
     getSettings: vi.fn(),
     revalidatePath: vi.fn(),
     getCurrentUserPermissions: vi.fn(),
+    requirePermission: vi.fn().mockResolvedValue(undefined),
     contactService: {
         createContact: vi.fn(),
         getPaginated: vi.fn(),
@@ -13,6 +14,8 @@ const mocks = vi.hoisted(() => ({
         convertToClient: vi.fn(),
         updateProfile: vi.fn(),
         deleteContacts: vi.fn(),
+        purgeColdAccounts: vi.fn(),
+        generateExportCSV: vi.fn(),
     },
     clientService: {
         getPaginated: vi.fn(),
@@ -106,6 +109,11 @@ vi.mock('./services/deal-service', () => ({
     DealService: mocks.DealService,
 }))
 
+vi.mock('@/modules/core/iam/services/role-service', () => ({
+    requirePermission: mocks.requirePermission,
+    hasPermission: vi.fn().mockResolvedValue(true),
+}))
+
 function supabaseSessionClient(userId = 'user-current', overrides: Record<string, unknown> = {}) {
     return {
         auth: {
@@ -124,6 +132,8 @@ afterEach(() => {
     mocks.getSettings.mockReset()
     mocks.revalidatePath.mockReset()
     mocks.getCurrentUserPermissions.mockReset()
+    mocks.requirePermission.mockReset()
+    mocks.requirePermission.mockResolvedValue(undefined)
     mocks.ContactService.mockReset()
     mocks.ClientService.mockReset()
     mocks.PipelineService.mockReset()
@@ -423,3 +433,37 @@ describe('CRM deal server actions', () => {
         expect(mocks.revalidatePath).not.toHaveBeenCalled()
     })
 })
+
+describe('CRM server actions IAM permission enforcement', () => {
+    it('enforces CRM.DELETE_LEADS on deleteContactsAction, purgeColdContactsAction, and deleteClientsAction', async () => {
+        const { deleteContactsAction, purgeColdContactsAction, deleteClientsAction } = await importCrmActions()
+
+        await deleteContactsAction(['contact-1'])
+        expect(mocks.requirePermission).toHaveBeenCalledWith('crm.leads.delete', 'org-current')
+
+        mocks.requirePermission.mockClear()
+        mocks.contactService.purgeColdAccounts = vi.fn().mockResolvedValue(5)
+        await purgeColdContactsAction({ inactiveDays: 30 })
+        expect(mocks.requirePermission).toHaveBeenCalledWith('crm.leads.delete', 'org-current')
+
+        mocks.requirePermission.mockClear()
+        await deleteClientsAction(['client-1'])
+        expect(mocks.requirePermission).toHaveBeenCalledWith('crm.leads.delete', 'org-current')
+    })
+
+    it('enforces CRM.EDIT_LEADS on updateContactProfileAction', async () => {
+        const { updateContactProfileAction } = await importCrmActions()
+
+        await updateContactProfileAction('contact-1', { name: 'New Name' })
+        expect(mocks.requirePermission).toHaveBeenCalledWith('crm.leads.edit', 'org-current')
+    })
+
+    it('enforces CRM.EXPORT_DATA on exportContactsAction', async () => {
+        const { exportContactsAction } = await importCrmActions()
+        mocks.contactService.generateExportCSV.mockResolvedValue('name,email\nTest,test@example.com')
+
+        await exportContactsAction()
+        expect(mocks.requirePermission).toHaveBeenCalledWith('crm.data.export', 'org-current')
+    })
+})
+

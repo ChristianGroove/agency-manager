@@ -89,19 +89,38 @@ export async function getOrganizationRoles(): Promise<Role[]> {
         });
 }
 
-/**
- * Verify if the current user has a specific permission
- * optimized with React Cache for minimal DB hits
- */
-// Request-level cache to deduplicate DB queries when checking multiple permissions
-const getUserPermissionsPayload = cache(async () => {
+export interface UserPermissionsPayload {
+    isOwner: boolean;
+    hierarchyLevel: number;
+    roleName: string;
+    rolePermissions: Record<string, any>;
+    memberOverrides: Record<string, any>;
+    effectivePermissions: Record<string, any>;
+}
+
+function createRequestCache<T extends (...args: any[]) => Promise<any>>(fn: T): T {
+    const reactCachedFn = cache(fn);
+    const fallbackCache = new Map<string, any>();
+
+    const wrapped = (async (...args: any[]) => {
+        if (process.env.VITEST) {
+            const key = JSON.stringify(args);
+            if (fallbackCache.has(key)) {
+                return fallbackCache.get(key);
+            }
+            const result = await fn(...args);
+            fallbackCache.set(key, result);
+            return result;
+        }
+        return reactCachedFn(...args);
+    }) as unknown as T;
+
+    return wrapped;
+}
+
+// Internal request-level cache keyed strictly by (orgId, targetUserId)
+const fetchUserPermissionsPayloadCached = createRequestCache(async (orgId: string, targetUserId: string): Promise<UserPermissionsPayload | null> => {
     const supabase = await createClient();
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) return null;
-
-    const orgId = await getCurrentOrganizationId();
-    if (!orgId) return null;
-
     const db = await getDbClient(supabase);
 
     // Query 1: Get the member row
@@ -109,19 +128,21 @@ const getUserPermissionsPayload = cache(async () => {
         .from('organization_members')
         .select('role, role_id, status, permissions')
         .eq('organization_id', orgId)
-        .eq('user_id', user.id)
+        .eq('user_id', targetUserId)
         .single();
 
     if (error || !member) {
         // Fallback for Platform Super Admins who may inspect an org without being in organization_members
         try {
-            const superAdmin = await isSuperAdmin(user.id);
+            const superAdmin = await isSuperAdmin(targetUserId);
             if (superAdmin) {
                 return {
                     isOwner: true,
                     hierarchyLevel: 100,
+                    roleName: 'superadmin',
                     rolePermissions: { all: true } as Record<string, any>,
-                    memberOverrides: {} as Record<string, any>
+                    memberOverrides: {} as Record<string, any>,
+                    effectivePermissions: { all: true } as Record<string, any>,
                 };
             }
         } catch {
@@ -139,6 +160,7 @@ const getUserPermissionsPayload = cache(async () => {
     let rolePermissions: Record<string, any> = {};
     let isOwner = legacyRoleNormalized === 'owner' || legacyRoleNormalized === 'dueño';
     let hierarchyLevel = isOwner ? 100 : (legacyRoleNormalized === 'admin' || legacyRoleNormalized === 'administrador' ? 50 : 10);
+    let roleName = member.role || (isOwner ? 'Dueño' : 'Miembro');
 
     if (member.role_id) {
         const { data: roleData } = await db
@@ -150,6 +172,7 @@ const getUserPermissionsPayload = cache(async () => {
 
         if (roleData) {
             const normalizedRole = normalizeRoleRecord(roleData as any);
+            roleName = normalizedRole.name || roleName;
             if (typeof normalizedRole.hierarchy_level === 'number') {
                 hierarchyLevel = normalizedRole.hierarchy_level;
             }
@@ -160,8 +183,15 @@ const getUserPermissionsPayload = cache(async () => {
         }
     }
 
-    // Legacy Admin/Member Fallback when role_id is null or permissions are empty
-    if (!isOwner && Object.keys(rolePermissions).length === 0) {
+    // System role fallbacks when role_id is null or permissions are empty
+    if (isOwner && Object.keys(rolePermissions).length === 0) {
+        const defaultOwnerRole = getDefaultRoles().find(r => r.name === 'Dueño');
+        if (defaultOwnerRole) {
+            rolePermissions = { ...defaultOwnerRole.permissions };
+        } else {
+            rolePermissions = { all: true };
+        }
+    } else if (!isOwner && Object.keys(rolePermissions).length === 0) {
         if (legacyRoleNormalized === 'admin' || legacyRoleNormalized === 'administrador') {
             const defaultAdminRole = getDefaultRoles().find(r => r.name === 'Administrador');
             if (defaultAdminRole) {
@@ -176,18 +206,67 @@ const getUserPermissionsPayload = cache(async () => {
         }
     }
 
-    return { isOwner, hierarchyLevel, rolePermissions, memberOverrides };
+    const effectivePermissions: Record<string, any> = {
+        ...rolePermissions,
+        ...memberOverrides,
+        modules: { ...(rolePermissions?.modules || {}), ...memberOverrides.modules },
+        features: { ...(rolePermissions?.features || {}), ...memberOverrides.features },
+    };
+    if (isOwner) {
+        effectivePermissions.all = true;
+    }
+
+    return {
+        isOwner,
+        hierarchyLevel,
+        roleName: sanitizeBrokenUtf8(roleName),
+        rolePermissions,
+        memberOverrides,
+        effectivePermissions,
+    };
 });
 
-export const hasPermission = async (permission: PermissionString): Promise<boolean> => {
-    const payload = await getUserPermissionsPayload();
+/**
+ * Resolves context defaults and retrieves the user permissions payload from the request cache.
+ */
+export async function getUserPermissionsPayload(explicitOrgId?: string, explicitUserId?: string): Promise<UserPermissionsPayload | null> {
+    let targetUserId = explicitUserId;
+
+    if (!targetUserId) {
+        try {
+            const supabase = await createClient();
+            if (!supabase?.auth?.getUser) return null;
+            const { data } = await supabase.auth.getUser();
+            const user = data?.user;
+            if (!user) return null;
+            targetUserId = user.id;
+        } catch {
+            return null;
+        }
+    }
+
+    let orgId = explicitOrgId;
+    if (!orgId) {
+        try {
+            orgId = await getCurrentOrganizationId() ?? undefined;
+        } catch {
+            return null;
+        }
+    }
+    if (!orgId) return null;
+
+    return fetchUserPermissionsPayloadCached(orgId, targetUserId);
+}
+
+export const hasPermission = async (permission: PermissionString, explicitOrgId?: string): Promise<boolean> => {
+    const payload = await getUserPermissionsPayload(explicitOrgId);
     if (!payload) return false;
 
-    const { isOwner, rolePermissions, memberOverrides } = payload;
+    const { isOwner, rolePermissions, memberOverrides, effectivePermissions } = payload;
 
     // Wildcard Owner Access
     if (isOwner) return true;
-    if (rolePermissions['all'] === true || memberOverrides['all'] === true) return true;
+    if (effectivePermissions['all'] === true || rolePermissions['all'] === true || memberOverrides['all'] === true) return true;
 
     // Explicit Member Override (supports both granting true and revoking false)
     if (typeof memberOverrides[permission] === 'boolean') {
@@ -200,8 +279,18 @@ export const hasPermission = async (permission: PermissionString): Promise<boole
     // Role Default Permission Check
     if (rolePermissions[permission] === true || rolePermissions.features?.[permission] === true) return true;
 
+    // Effective Permissions Check
+    if (effectivePermissions[permission] === true || effectivePermissions.features?.[permission] === true) return true;
+
     return false;
 };
+
+export async function requirePermission(permission: PermissionString, explicitOrgId?: string): Promise<void> {
+    const allowed = await hasPermission(permission, explicitOrgId);
+    if (!allowed) {
+        throw new Error(`Acceso denegado: Se requiere el permiso "${permission}".`);
+    }
+}
 
 /**
  * Create or Update a Custom Role

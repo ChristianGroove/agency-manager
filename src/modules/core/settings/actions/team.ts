@@ -7,7 +7,7 @@ import { requireOrgRole } from "@/modules/core/iam/services/org-roles"
 import { getDefaultRoles } from "@/modules/core/iam/services/default-roles"
 import { normalizeRoleRecord, sanitizeBrokenUtf8, PERMISSIONS } from "@/modules/core/iam/actions/permissions"
 import { MemberPermissions } from "@/modules/core/iam/permissions/types"
-import { hasPermission } from "@/modules/core/iam/services/role-service"
+import { hasPermission, requirePermission, getUserPermissionsPayload } from "@/modules/core/iam/services/role-service"
 import { revalidatePath } from "next/cache"
 import { cache as reactCache } from "react"
 
@@ -938,57 +938,13 @@ export async function getMemberPermissions(userId: string) {
  * Internal: Fetch user permissions using client (Cacheable)
  */
 async function _getUserPermissionsInternal(userId: string, orgId: string) {
-    const { data: member } = await supabaseAdmin
-        .from('organization_members')
-        .select(`
-            role,
-            status,
-            permissions,
-            role_data:organization_roles (
-                name,
-                is_system_role,
-                permissions,
-                hierarchy_level
-            )
-        `)
-        .match({ organization_id: orgId, user_id: userId })
-        .single()
-
-    if (!member || member.status === 'blocked') return null
-
-    const rawRoleData = (member.role_data as any) || null
-    const normalizedRoleData = rawRoleData ? normalizeRoleRecord(rawRoleData) : null
-    let rolePermissions = normalizedRoleData?.permissions || {}
-    const memberOverrides = (member.permissions as any) || {}
-    const legacyRoleNormalized = sanitizeBrokenUtf8(member.role).toLowerCase()
-
-    // Fallback for legacy owner/admin/member without role_id
-    if (Object.keys(rolePermissions).length === 0) {
-        if (legacyRoleNormalized === 'owner' || legacyRoleNormalized === 'dueño') {
-            rolePermissions = { all: true }
-        } else if (legacyRoleNormalized === 'admin' || legacyRoleNormalized === 'administrador') {
-            const defaultAdmin = getDefaultRoles().find(r => r.name === 'Administrador')
-            if (defaultAdmin) rolePermissions = { ...defaultAdmin.permissions }
-        } else if (legacyRoleNormalized === 'member' || legacyRoleNormalized === 'miembro') {
-            const defaultMember = getDefaultRoles().find(r => r.name === 'Miembro')
-            if (defaultMember) rolePermissions = { ...defaultMember.permissions }
-        }
-    }
-    
-    const effectivePermissions = {
-        ...rolePermissions,
-        ...memberOverrides,
-        modules: { ...(rawRoleData?.permissions?.modules || {}), ...memberOverrides.modules },
-        features: { ...(rawRoleData?.permissions?.features || {}), ...memberOverrides.features },
-    }
-
-    const roleName = sanitizeBrokenUtf8(normalizedRoleData?.name || member.role)
-    const hierarchy = normalizedRoleData?.hierarchy_level || (legacyRoleNormalized === 'owner' ? 100 : legacyRoleNormalized === 'admin' ? 50 : 10)
+    const payload = await getUserPermissionsPayload(orgId, userId)
+    if (!payload) return null
 
     return {
-        role: roleName.toLowerCase(),
-        hierarchy: hierarchy,
-        permissions: effectivePermissions
+        role: payload.roleName.toLowerCase(),
+        hierarchy: payload.hierarchyLevel,
+        permissions: payload.effectivePermissions,
     }
 }
 

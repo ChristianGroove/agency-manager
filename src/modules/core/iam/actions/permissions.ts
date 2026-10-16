@@ -66,7 +66,41 @@ export const PERMISSIONS = {
         MANAGE_SETTINGS: 'org.settings.manage',
         MANAGE_INTEGRATIONS: 'org.integrations.manage',
         VIEW_AUDIT_LOGS: 'org.audit.view',
-    }
+    },
+
+    // 7. Rentals (Inmobiliaria)
+    RENTALS: {
+        VIEW: 'rentals.view',
+        MANAGE_PROPERTIES: 'rentals.properties.manage',
+        MANAGE_CONTRACTS: 'rentals.contracts.manage',
+        MANAGE_SETTLEMENTS: 'rentals.settlements.manage',
+    },
+
+    // 8. Quotes & Presupuestos
+    QUOTES: {
+        VIEW: 'quotes.view',
+        MANAGE: 'quotes.manage',
+        CONVERT: 'quotes.convert',
+    },
+
+    // 9. Work Orders & Limpieza Operativa
+    WORK_ORDERS: {
+        VIEW: 'work_orders.view',
+        MANAGE: 'work_orders.manage',
+    },
+
+    // 10. Payroll & Liquidaciones
+    PAYROLL: {
+        VIEW: 'payroll.view',
+        PROCESS: 'payroll.process',
+        PAY: 'payroll.pay',
+    },
+
+    // 11. Data Vault & Backups
+    VAULT: {
+        MANAGE: 'vault.backup.manage',
+        RESTORE: 'vault.backup.restore',
+    },
 } as const;
 
 // Helper type to extract all permission strings
@@ -151,6 +185,7 @@ export const PERMISSION_GROUPS = [
         permissions: [
             { id: PERMISSIONS.AUTOMATION.VIEW, label: 'Ver Flujos', description: 'Puede visualizar automatizaciones existentes' },
             { id: PERMISSIONS.AUTOMATION.EDIT, label: 'Editar Flujos', description: 'Crear y modificar nodos de automatización' },
+            { id: PERMISSIONS.AUTOMATION.EXECUTE, label: 'Ejecutar Flujos', description: 'Disparar y ejecutar flujos y agentes manualmente' },
         ]
     },
     {
@@ -165,6 +200,7 @@ export const PERMISSION_GROUPS = [
             { id: PERMISSIONS.ORG.MANAGE_SETTINGS, label: 'Gestionar Configuración', description: 'Acceso general al portal de configuración de la organización' },
             { id: PERMISSIONS.ORG.MANAGE_INTEGRATIONS, label: 'Gestionar Integraciones', description: 'Instalar, configurar y revocar integraciones externas' },
             { id: PERMISSIONS.OPERATIONS.BRANDING_MANAGE, label: 'Gestionar Marca Blanca', description: 'Configurar logotipos y colores corporativos' },
+            { id: PERMISSIONS.ORG.VIEW_AUDIT_LOGS, label: 'Ver Registros de Auditoría', description: 'Consultar el historial y logs de auditoría de la organización' },
         ]
     },
     {
@@ -235,6 +271,60 @@ export const PERMISSION_GROUPS = [
         permissions: [
             { id: PERMISSIONS.OPERATIONS.TASKS_VIEW, label: 'Ver Proyectos y Tareas', description: 'Visualizar tableros Kanban, listas y métricas' },
             { id: PERMISSIONS.OPERATIONS.TASKS_MANAGE, label: 'Gestionar Tareas y Proyectos', description: 'Crear proyectos, tickets, asignar colaboradores y editar estados' },
+        ]
+    },
+    {
+        id: 'rentals',
+        moduleKey: 'module_rentals',
+        label: 'Arriendos e Inmuebles',
+        description: 'Administración de propiedades, contratos de arrendamiento y liquidaciones.',
+        permissions: [
+            { id: PERMISSIONS.RENTALS.VIEW, label: 'Ver Arriendos', description: 'Visualizar propiedades, contratos e inquilinos' },
+            { id: PERMISSIONS.RENTALS.MANAGE_PROPERTIES, label: 'Gestionar Inmuebles', description: 'Crear y editar propiedades e inventario inmobiliario' },
+            { id: PERMISSIONS.RENTALS.MANAGE_CONTRACTS, label: 'Gestionar Contratos', description: 'Crear, renovar y finalizar contratos de arriendo' },
+            { id: PERMISSIONS.RENTALS.MANAGE_SETTLEMENTS, label: 'Gestionar Liquidaciones', description: 'Liquidar cobros y dispersiones a propietarios' },
+        ]
+    },
+    {
+        id: 'quotes',
+        moduleKey: 'module_quotes',
+        label: 'Cotizaciones',
+        description: 'Generación, edición y conversión de cotizaciones y presupuestos.',
+        permissions: [
+            { id: PERMISSIONS.QUOTES.VIEW, label: 'Ver Cotizaciones', description: 'Visualizar cotizaciones y propuestas comerciales' },
+            { id: PERMISSIONS.QUOTES.MANAGE, label: 'Gestionar Cotizaciones', description: 'Crear, editar y enviar cotizaciones' },
+            { id: PERMISSIONS.QUOTES.CONVERT, label: 'Convertir Cotizaciones', description: 'Aprobar y convertir cotizaciones a facturas u órdenes' },
+        ]
+    },
+    {
+        id: 'work_orders',
+        moduleKey: 'module_cleaning',
+        label: 'Órdenes de Trabajo',
+        description: 'Gestión operativa de órdenes de servicio, limpieza y mantenimiento.',
+        permissions: [
+            { id: PERMISSIONS.WORK_ORDERS.VIEW, label: 'Ver Órdenes de Trabajo', description: 'Visualizar listado y estados de órdenes operativas' },
+            { id: PERMISSIONS.WORK_ORDERS.MANAGE, label: 'Gestionar Órdenes de Trabajo', description: 'Crear, asignar y finalizar órdenes de servicio' },
+        ]
+    },
+    {
+        id: 'payroll',
+        moduleKey: 'module_attendance',
+        label: 'Nómina y Liquidaciones',
+        description: 'Procesamiento de salarios, liquidaciones y pagos a colaboradores.',
+        permissions: [
+            { id: PERMISSIONS.PAYROLL.VIEW, label: 'Ver Nómina', description: 'Visualizar períodos de nómina y comprobantes de liquidación' },
+            { id: PERMISSIONS.PAYROLL.PROCESS, label: 'Procesar Nómina', description: 'Calcular conceptos salariales y generar liquidaciones' },
+            { id: PERMISSIONS.PAYROLL.PAY, label: 'Pagar Nómina', description: 'Aprobar pagos salariales y registrar desembolsos' },
+        ]
+    },
+    {
+        id: 'vault',
+        moduleKey: 'core_settings',
+        label: 'Bóveda de Datos (Backups)',
+        description: 'Gestión de respaldos, snapshots y restauración segura de la información.',
+        permissions: [
+            { id: PERMISSIONS.VAULT.MANAGE, label: 'Gestionar Bóveda', description: 'Crear y programar respaldos y snapshots de la organización' },
+            { id: PERMISSIONS.VAULT.RESTORE, label: 'Restaurar Bóveda', description: 'Restaurar copias de seguridad de datos de la organización' },
         ]
     }
 ];
@@ -378,6 +468,7 @@ export function getDefaultBaseRolePermissions(kind: 'owner' | 'admin' | 'member'
             [PERMISSIONS.INVOICING.EXPORT]: true,
             [PERMISSIONS.AUTOMATION.VIEW]: true,
             [PERMISSIONS.AUTOMATION.EDIT]: true,
+            [PERMISSIONS.AUTOMATION.EXECUTE]: true,
             [PERMISSIONS.OPERATIONS.CATALOG_MANAGE]: true,
             [PERMISSIONS.OPERATIONS.BRIEFINGS_MANAGE]: true,
             [PERMISSIONS.OPERATIONS.BRANDING_MANAGE]: true,
@@ -395,6 +486,30 @@ export function getDefaultBaseRolePermissions(kind: 'owner' | 'admin' | 'member'
             [PERMISSIONS.OPERATIONS.RESTO_MENU_MANAGE]: true,
             [PERMISSIONS.OPERATIONS.RESTO_STAFF_VIEW]: true,
             [PERMISSIONS.OPERATIONS.RESTO_STAFF_MANAGE]: true,
+
+            // Rentals
+            [PERMISSIONS.RENTALS.VIEW]: true,
+            [PERMISSIONS.RENTALS.MANAGE_PROPERTIES]: true,
+            [PERMISSIONS.RENTALS.MANAGE_CONTRACTS]: true,
+            [PERMISSIONS.RENTALS.MANAGE_SETTLEMENTS]: true,
+
+            // Quotes
+            [PERMISSIONS.QUOTES.VIEW]: true,
+            [PERMISSIONS.QUOTES.MANAGE]: true,
+            [PERMISSIONS.QUOTES.CONVERT]: true,
+
+            // Work Orders
+            [PERMISSIONS.WORK_ORDERS.VIEW]: true,
+            [PERMISSIONS.WORK_ORDERS.MANAGE]: true,
+
+            // Payroll
+            [PERMISSIONS.PAYROLL.VIEW]: true,
+            [PERMISSIONS.PAYROLL.PROCESS]: true,
+            [PERMISSIONS.PAYROLL.PAY]: true,
+
+            // Vault
+            [PERMISSIONS.VAULT.MANAGE]: true,
+            [PERMISSIONS.VAULT.RESTORE]: true,
         };
     }
     return {
@@ -412,6 +527,11 @@ export function getDefaultBaseRolePermissions(kind: 'owner' | 'admin' | 'member'
         [PERMISSIONS.OPERATIONS.RESTO_VIEW]: true,
         [PERMISSIONS.OPERATIONS.RESTO_ORDERS_VIEW]: true,
         [PERMISSIONS.OPERATIONS.RESTO_MENU_VIEW]: true,
+
+        // Member read access to operational domains
+        [PERMISSIONS.RENTALS.VIEW]: true,
+        [PERMISSIONS.QUOTES.VIEW]: true,
+        [PERMISSIONS.WORK_ORDERS.VIEW]: true,
     };
 }
 

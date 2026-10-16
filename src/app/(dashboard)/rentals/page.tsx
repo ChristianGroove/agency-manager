@@ -2,6 +2,8 @@ import { Suspense } from "react";
 import { redirect } from "next/navigation";
 import { createClient } from "@/modules/core/database/supabase-server";
 import { requireOrgRole, getCurrentOrgRole } from "@/modules/core/iam/services/org-roles";
+import { hasPermission } from "@/modules/core/iam/services/role-service";
+import { PERMISSIONS } from "@/modules/core/iam/actions/permissions";
 import {
   getCurrentOrganizationId,
   getCurrentOrgName,
@@ -79,6 +81,11 @@ export default async function RentalsPage({
   const spaceCategory = await getOrgSpaceCategory(orgId);
   if (spaceCategory !== "real_estate") {
     redirect("/dashboard?error=module_restricted");
+  }
+
+  // 4.1. IAM V2 check: require rentals.view
+  if (!await hasPermission(PERMISSIONS.RENTALS.VIEW, orgId)) {
+    redirect("/dashboard?error=unauthorized");
   }
 
   // 5. Resolve search params tab if provided

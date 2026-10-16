@@ -8,6 +8,9 @@ import { getLocations } from "@/modules/features/locations/actions"
 import { AttendanceDashboard } from "@/modules/features/attendance/components/admin/attendance-dashboard"
 import { GlobalLoader } from "@/components/ui/global-loader"
 
+import { hasPermission } from "@/modules/core/iam/services/role-service"
+import { PERMISSIONS } from "@/modules/core/iam/actions/permissions"
+
 export const metadata: Metadata = {
     title: "Control de Asistencia | Pixy",
     description: "Gestión y auditoría de asistencia de colaboradores.",
@@ -20,6 +23,10 @@ export default async function AttendanceAdminPage() {
 
     const orgId = await getCurrentOrganizationId()
     if (!orgId) redirect("/setup/wizard")
+
+    if (!await hasPermission(PERMISSIONS.OPERATIONS.ATTENDANCE_VIEW, orgId)) {
+        redirect("/dashboard?error=unauthorized")
+    }
 
     // Parallel fetch for speed
     const [logsRes, staffRes, locationsRes, shiftsRes] = await Promise.all([

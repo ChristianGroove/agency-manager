@@ -9,6 +9,8 @@ import {
 import { getSprints } from "@/modules/features/tasks/actions/task-sprint-actions"
 import { getOrganizationBranding } from "@/modules/core/settings/actions/branding"
 import { TaskManagerView } from "@/modules/features/tasks/components/task-manager-view"
+import { hasPermission } from "@/modules/core/iam/services/role-service"
+import { PERMISSIONS } from "@/modules/core/iam/actions/permissions"
 import { redirect } from "next/navigation"
 
 export const metadata: Metadata = {
@@ -20,6 +22,10 @@ export default async function TasksPage() {
   const orgId = await getCurrentOrganizationId()
   if (!orgId) {
     redirect("/dashboard")
+  }
+
+  if (!await hasPermission(PERMISSIONS.OPERATIONS.TASKS_VIEW, orgId)) {
+    redirect("/dashboard?error=unauthorized")
   }
 
   const [tasks, collaborators, branding, sprints] = await Promise.all([

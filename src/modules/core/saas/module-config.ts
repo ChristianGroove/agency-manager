@@ -112,7 +112,7 @@ export const MODULE_ROUTES: ModuleRoute[] = [
         category: 'crm',
         parentModule: 'core_crm',
         access: {
-            requiredPermission: 'crm.leads.edit'
+            requiredPermission: 'marketing.campaigns.view'
         }
     },
     {
@@ -323,6 +323,18 @@ export const MODULE_ROUTES: ModuleRoute[] = [
         category: 'operations',
         access: {
             allowedRoles: ['owner', 'admin']
+        }
+    },
+    {
+        key: 'module_work_orders',
+        label: 'Órdenes de Trabajo',
+        href: '/operations/work-orders',
+        icon: Wrench,
+        category: 'operations',
+        parentModule: 'module_cleaning',
+        description: 'Gestión y asignación de órdenes de trabajo de campo',
+        access: {
+            requiredPermission: 'work_orders.view'
         }
     },
     // CUSTOM: MANIFIESTOS IMEI (Activated via Manual Override)
@@ -590,63 +602,229 @@ export const MODULE_METADATA: Record<string, ModuleMetadata> = {
         key: 'core_crm',
         name: 'CRM Core',
         description: 'Gestión centralizada de contactos, embudos y tratos comerciales',
-        category: 'crm'
+        category: 'crm',
+        icon: Kanban
     },
     core_clients: {
         key: 'core_clients',
         name: 'Contactos & Clientes',
         description: 'Directorio centralizado de clientes y prospectos',
-        category: 'crm'
+        category: 'crm',
+        icon: UserSquare
     },
     module_messaging: {
         key: 'module_messaging',
         name: 'Mensajería & WhatsApp',
         description: 'Bandeja omnicanal e integraciones de mensajería',
-        category: 'crm'
+        category: 'crm',
+        icon: Inbox
+    },
+    module_meta_ads: {
+        key: 'module_meta_ads',
+        name: 'Meta Ads Monitor',
+        description: 'Monitoreo de campañas publicitarias y métricas de Meta Ads',
+        category: 'crm',
+        icon: BarChart3
+    },
+    module_crm_reports: {
+        key: 'module_crm_reports',
+        name: 'Reportes CRM',
+        description: 'Analítica comercial, tasas de conversión y reportes de ventas',
+        category: 'crm',
+        icon: BarChart3
     },
     module_quotes: {
         key: 'module_quotes',
         name: 'Cotizaciones',
-        description: 'Generación y envío de propuestas comerciales',
-        category: 'operations'
+        description: 'Generación, edición y conversión de propuestas comerciales',
+        category: 'operations',
+        icon: FileText
     },
     module_catalog: {
         key: 'module_catalog',
         name: 'Catálogo de Servicios / Inmuebles',
         description: 'Gestión de inventario de productos, servicios e inmuebles',
-        category: 'operations'
+        category: 'operations',
+        icon: Store
     },
     module_automation: {
         key: 'module_automation',
         name: 'Automatizaciones & Flujos',
         description: 'Workflows automáticos y triggers basados en eventos',
-        category: 'operations'
+        category: 'operations',
+        icon: Workflow
     },
     core_locations: {
         key: 'core_locations',
         name: 'Sedes & Ubicaciones',
         description: 'Gestión de sucursales y ubicaciones físicas',
-        category: 'operations'
+        category: 'operations',
+        icon: Store
     },
-    module_invoicing: {
-        key: 'module_invoicing',
-        name: 'Facturación',
-        description: 'Centro de facturación y cobros electrónicos',
-        category: 'finance'
+    module_attendance: {
+        key: 'module_attendance',
+        name: 'Control de Asistencia',
+        description: 'Monitoreo de entradas, salidas y turnos de colaboradores',
+        category: 'operations',
+        icon: ScanFace
     },
-    module_payments: {
-        key: 'module_payments',
-        name: 'Pagos',
-        description: 'Pasarelas de pago y conciliación bancaria',
-        category: 'finance'
+    module_resto_orders: {
+        key: 'module_resto_orders',
+        name: 'Gestor de Pedidos (KDS)',
+        description: 'Sistema de comandas, cocina y pedidos para restaurantes',
+        category: 'operations',
+        icon: ClipboardList,
+        allowedSpaces: ['resto']
+    },
+    module_resto_menu: {
+        key: 'module_resto_menu',
+        name: 'Menú Digital',
+        description: 'Edición de carta digital, platos, categorías y modificadores',
+        category: 'operations',
+        icon: Utensils,
+        allowedSpaces: ['resto']
+    },
+    module_tasks: {
+        key: 'module_tasks',
+        name: 'Proyectos & Tareas (TaskFlow)',
+        description: 'Gestión ágil de proyectos, tableros Kanban y tareas de equipo',
+        category: 'operations',
+        icon: Kanban
+    },
+    module_whitelabel: {
+        key: 'module_whitelabel',
+        name: 'Marca Blanca',
+        description: 'Personalización de logotipos, colores corporativos y dominios',
+        category: 'config',
+        icon: Sparkles
+    },
+    module_briefings: {
+        key: 'module_briefings',
+        name: 'Formularios & Briefings',
+        description: 'Formularios dinámicos y recopilación estructurada de datos',
+        category: 'operations',
+        icon: Briefcase
     },
     module_rentals: {
         key: 'module_rentals',
         name: 'Gestión de Arriendos',
-        description: 'Administración de contratos de arrendamiento, cobranza y liquidaciones a propietarios',
+        description: 'Administración de propiedades, contratos de arrendamiento y liquidaciones',
         category: 'operations',
         icon: KeyRound,
         allowedSpaces: ['real_estate']
+    },
+    module_contracts: {
+        key: 'module_contracts',
+        name: 'Contratos',
+        description: 'Gestión y seguimiento de contratos comerciales',
+        category: 'operations',
+        icon: FileText
+    },
+    module_hosting: {
+        key: 'module_hosting',
+        name: 'Hosting Web',
+        description: 'Administración de servidores, cuentas de hosting y DNS',
+        category: 'operations',
+        icon: Server
+    },
+    module_cleaning: {
+        key: 'module_cleaning',
+        name: 'Limpieza & Servicios Operativos',
+        description: 'Gestión de cuadrillas y servicios de limpieza o mantenimiento',
+        category: 'operations',
+        icon: Sparkles,
+        allowedSpaces: ['cleaning']
+    },
+    module_work_orders: {
+        key: 'module_work_orders',
+        name: 'Órdenes de Trabajo',
+        description: 'Creación, programación, despacho y seguimiento de órdenes operativas',
+        category: 'operations',
+        icon: Wrench
+    },
+    module_manifests: {
+        key: 'module_manifests',
+        name: 'Manifiestos IMEI',
+        description: 'Registro de manifiestos aduaneros y validación masiva de terminales',
+        category: 'tools',
+        icon: FileText
+    },
+    core_knowledge: {
+        key: 'core_knowledge',
+        name: 'Base de Conocimiento',
+        description: 'Repositorio central de guías, artículos y preguntas frecuentes',
+        category: 'config',
+        icon: BrainCircuit
+    },
+    core_integrations: {
+        key: 'core_integrations',
+        name: 'Integraciones',
+        description: 'Conectores con pasarelas, plataformas cloud y webhooks',
+        category: 'config',
+        icon: Link2
+    },
+    module_contract_generator: {
+        key: 'module_contract_generator',
+        name: 'Generador de Contratos',
+        description: 'Generación automatizada y cifrado de contratos en formato PDF',
+        category: 'tools',
+        icon: Sparkles
+    },
+    tool_email_engine: {
+        key: 'tool_email_engine',
+        name: 'Motor de Correos',
+        description: 'Servicio de entrega SMTP y gestión de plantillas de correo',
+        category: 'tools',
+        icon: Mail
+    },
+    module_invoicing: {
+        key: 'module_invoicing',
+        name: 'Centro de Facturación',
+        description: 'Emisión de facturas, recibos y cobros electrónicos',
+        category: 'finance',
+        icon: FileText
+    },
+    module_payments: {
+        key: 'module_payments',
+        name: 'Pagos & Pasarelas',
+        description: 'Pasarelas de cobro, transacciones y conciliación financiera',
+        category: 'finance',
+        icon: CreditCard
+    },
+    module_payroll: {
+        key: 'module_payroll',
+        name: 'Nómina y Liquidaciones',
+        description: 'Liquidación periódica de sueldos, comisiones y dispersión de pagos',
+        category: 'finance',
+        icon: CreditCard
+    },
+    core_adn: {
+        key: 'core_adn',
+        name: 'ADN del Negocio',
+        description: 'Definición de directrices, tono y lineamientos estratégicos del negocio',
+        category: 'config',
+        icon: ScanFace
+    },
+    core_settings: {
+        key: 'core_settings',
+        name: 'Configuración de Empresa',
+        description: 'Control de organización, miembros, suscripción y ajustes globales',
+        category: 'config',
+        icon: Settings
+    },
+    reseller_tenants: {
+        key: 'reseller_tenants',
+        name: 'Organizaciones Revendedor',
+        description: 'Panel de control de cuentas y organizaciones para revendedores',
+        category: 'core',
+        icon: Building2
+    },
+    data_vault: {
+        key: 'data_vault',
+        name: 'Bóveda de Datos (Backups)',
+        description: 'Copias de seguridad automáticas, cifrado y restauración de snapshots',
+        category: 'config',
+        icon: Settings
     }
 };
 

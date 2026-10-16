@@ -2,6 +2,9 @@ import { createClient } from "@/modules/core/database/supabase-server"
 import { AutomationsView } from "@/modules/features/automation/components/automations-view"
 import { getWorkflowStats, getExecutionHistory } from "@/modules/features/automation/actions"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
+import { hasPermission } from "@/modules/core/iam/services/role-service"
+import { PERMISSIONS } from "@/modules/core/iam/actions/permissions"
+import { redirect } from "next/navigation"
 
 export const metadata = {
     title: "Automatizaciones | CRM",
@@ -11,6 +14,11 @@ export const metadata = {
 export default async function CRMAutomationsPage() {
     const supabase = await createClient()
     const orgId = await getCurrentOrganizationId()
+    if (!orgId) redirect("/dashboard")
+
+    if (!await hasPermission(PERMISSIONS.AUTOMATION.VIEW, orgId)) {
+        redirect("/dashboard?error=unauthorized")
+    }
 
     const [workflowsResult, stats, executions] = await Promise.all([
         supabase

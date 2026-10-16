@@ -28,6 +28,11 @@ export async function validateTableQR(orgId: string, qrToken: string): Promise<D
             return { success: false, error: 'Mesa no encontrada o QR inválido.' };
         }
 
+        // 1.5. Si está en limpieza, rechazar antes de intentar iniciar sesión
+        if (table.status === 'cleaning') {
+            return { success: false, error: 'La mesa se está limpiando, por favor espera un momento.' };
+        }
+
         // 2. Si la mesa está disponible, iniciar sesión
         if (table.status === 'available' || !table.current_session_id) {
             // Resolve primary waiter for this table's zone

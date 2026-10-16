@@ -121,3 +121,22 @@ export async function getLeaseByIdAction(
     return { success: false, error: err?.message || "Error al consultar el contrato" };
   }
 }
+
+/**
+ * Server action to update property rental status
+ */
+export async function updatePropertyRentalStatusAction(
+  propertyId: string,
+  rentalStatus: 'available' | 'rented' | 'reserved'
+): Promise<ActionResponse<{ propertyId: string; rentalStatus: string }>> {
+  try {
+    if (!propertyId) {
+      return { success: false, error: "ID de propiedad requerido" };
+    }
+    return await RentalsService.updatePropertyRentalStatusAction(propertyId, rentalStatus);
+  } catch (err: any) {
+    console.error("[ACTION:updatePropertyRentalStatusAction] Error:", err);
+    return { success: false, error: err?.message || "Error al actualizar el estado de arriendo" };
+  }
+}
+

@@ -10,6 +10,9 @@ import { sendInvoiceEmail } from "./services/send-invoice-email"
 import { getAuditLogs as getAuditLogsService } from "./services/get-audit-logs"
 import { getFiscalDocuments } from "./services/get-fiscal-documents"
 import { Invoice, InvoiceItem } from "@/types"
+import { requirePermission } from "@/modules/core/iam/services/role-service"
+import { PERMISSIONS } from "@/modules/core/iam/actions/permissions"
+import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 
 const PUBLIC_DELETE_INVOICES_ERROR = "No se pudieron eliminar las facturas"
 const PUBLIC_EMITTERS_ACTION_ERROR = "No se pudieron cargar los emisores"
@@ -40,16 +43,24 @@ function billingActionErrorMessage(error: unknown, publicMessage: string) {
 // ============================================
 
 export async function createInvoiceAction(data: any) {
+    const orgId = data?.organization_id || await getCurrentOrganizationId()
+    await requirePermission(PERMISSIONS.INVOICING.MANAGE, orgId || undefined)
     const result = await BillingService.createInvoice(data)
-    if (result.success) revalidatePath('/billing')
+    if (result?.success) revalidatePath('/billing')
     return result
 }
 
 export async function getInvoices() {
+    const orgId = await getCurrentOrganizationId()
+    await requirePermission(PERMISSIONS.INVOICING.VIEW, orgId || undefined)
     return await BillingService.getInvoices()
 }
 
+export const getInvoicesAction = getInvoices
+
 export async function deleteInvoicesAction(ids: string[]) {
+    const orgId = await getCurrentOrganizationId()
+    await requirePermission(PERMISSIONS.INVOICING.MANAGE, orgId || undefined)
     const { createClient } = await import("@/modules/core/database/supabase-server")
     const supabase = await createClient()
     const { error } = await supabase.from('invoices').update({ deleted_at: new Date().toISOString() }).in('id', ids)
@@ -108,19 +119,25 @@ export async function getContactOptionsAction() {
 // ============================================
 
 export async function registerServiceAction(data: any) {
+    const orgId = await getCurrentOrganizationId()
+    await requirePermission(PERMISSIONS.INVOICING.MANAGE, orgId || undefined)
     const result = await BillingService.registerService(data)
-    if (result.success) revalidatePath('/billing')
+    if (result?.success) revalidatePath('/billing')
     return result
 }
 
 export async function toggleServiceStatusAction(id: string, status: 'active' | 'paused' | 'cancelled') {
+    const orgId = await getCurrentOrganizationId()
+    await requirePermission(PERMISSIONS.INVOICING.MANAGE, orgId || undefined)
     const result = await BillingService.toggleServiceStatus(id, status)
-    if (result.success) revalidatePath('/billing')
+    if (result?.success) revalidatePath('/billing')
     return result
 }
 
 export async function deleteServicesAction(ids: string[]) {
     // Basic common implementation if not specialized
+    const orgId = await getCurrentOrganizationId()
+    await requirePermission(PERMISSIONS.INVOICING.MANAGE, orgId || undefined)
     const { createClient } = await import("@/modules/core/database/supabase-server")
     const supabase = await createClient()
     const { error } = await supabase.from('services').delete().in('id', ids)
@@ -134,8 +151,10 @@ export async function deleteServicesAction(ids: string[]) {
 // ============================================
 
 export async function registerPaymentAction(invoiceId: string, amount: number, notes?: string) {
+    const orgId = await getCurrentOrganizationId()
+    await requirePermission(PERMISSIONS.INVOICING.MANAGE, orgId || undefined)
     const result = await PaymentService.registerPayment(invoiceId, amount, notes)
-    if (result.success) revalidatePath('/billing')
+    if (result?.success) revalidatePath('/billing')
     return result
 }
 

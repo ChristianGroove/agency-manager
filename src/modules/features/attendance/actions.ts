@@ -6,7 +6,8 @@ import { revalidatePath } from "next/cache"
 import { z } from "zod"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 import { trackStorageUpload, validateStorageLimit } from "@/modules/infrastructure/storage/storage-actions"
-import { requireOrgRole } from "@/modules/core/iam/services/org-roles"
+import { requirePermission } from "@/modules/core/iam/services/role-service"
+import { PERMISSIONS } from "@/modules/core/iam/actions/permissions"
 import { calculateDistanceInMeters } from "@/modules/infrastructure/utils/utils"
 
 // Helper global para restar 5 minutos a un formato HH:mm
@@ -299,11 +300,7 @@ export async function uploadStaffPhoto(formData: FormData) {
         if (!orgId) throw new Error("No organization context found")
 
         // 1. Verify Authorization
-        try {
-            await requireOrgRole('admin')
-        } catch (e) {
-            throw new Error("Unauthorized: Solo administradores pueden subir archivos.")
-        }
+        await requirePermission(PERMISSIONS.OPERATIONS.ATTENDANCE_MANAGE, orgId)
 
         const file = formData.get("file") as File
         if (!file) throw new Error("No se ha seleccionado ningún archivo")
@@ -371,6 +368,7 @@ export async function uploadStaffPhoto(formData: FormData) {
  */
 export async function getAttendanceLogs(organizationId: string, limit = 100) {
     try {
+        await requirePermission(PERMISSIONS.OPERATIONS.ATTENDANCE_VIEW, organizationId)
         const supabase = await createClient()
 
         const { data, error } = await supabase
@@ -403,6 +401,7 @@ export async function getStaff() {
     try {
         const currentOrgId = await getCurrentOrganizationId()
         if (!currentOrgId) return { success: false, data: [] }
+        await requirePermission(PERMISSIONS.OPERATIONS.ATTENDANCE_VIEW, currentOrgId)
 
         const supabase = await createClient()
         const { data, error } = await supabase
@@ -429,6 +428,7 @@ export async function createStaff(payload: Partial<Staff>) {
     try {
         const currentOrgId = await getCurrentOrganizationId()
         if (!currentOrgId) return { success: false, error: 'Unauthorized' }
+        await requirePermission(PERMISSIONS.OPERATIONS.ATTENDANCE_MANAGE, currentOrgId)
 
         const supabase = await createClient()
 
@@ -467,6 +467,7 @@ export async function updateStaff(id: string, payload: Partial<Staff>) {
     try {
         const currentOrgId = await getCurrentOrganizationId()
         if (!currentOrgId) return { success: false, error: 'Unauthorized' }
+        await requirePermission(PERMISSIONS.OPERATIONS.ATTENDANCE_MANAGE, currentOrgId)
 
         const supabase = await createClient()
 
@@ -510,6 +511,7 @@ export async function deleteStaff(id: string) {
     try {
         const currentOrgId = await getCurrentOrganizationId()
         if (!currentOrgId) return { success: false, error: 'Unauthorized' }
+        await requirePermission(PERMISSIONS.OPERATIONS.ATTENDANCE_MANAGE, currentOrgId)
 
         const supabase = await createClient()
 

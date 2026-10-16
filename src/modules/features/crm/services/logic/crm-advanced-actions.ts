@@ -6,6 +6,8 @@ import { getCurrentOrganizationId } from "@/modules/core/organizations/organizat
 import { revalidatePath } from "next/cache"
 import { ContactService } from "../contact-service"
 import { CRMAdvancedService } from "./services/crm-advanced.service"
+import { requirePermission } from "@/modules/core/iam/services/role-service"
+import { PERMISSIONS } from "@/modules/core/iam/actions/permissions"
 
 import type {
     UpdateLeadInput,
@@ -82,6 +84,8 @@ export async function updateLead(leadId: string, input: UpdateLeadInput): Promis
         const orgId = await getCurrentOrganizationId()
         const { data: { user } } = await supabase.auth.getUser()
         if (!orgId || !user) throw new Error("Unauthorized")
+
+        await requirePermission(PERMISSIONS.CRM.EDIT_LEADS, orgId)
 
         const service = new ContactService(supabase, orgId, user.id)
         const data = await service.updateProfile(leadId, input)

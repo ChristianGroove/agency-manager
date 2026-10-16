@@ -3,6 +3,9 @@ import { getQuotes } from "@/modules/features/quotes/quotes-actions"
 import { getActiveEmitters } from "@/modules/core/settings/emitters-actions" // Secure import
 import { createClient } from "@/modules/core/database/supabase-server"
 import { QuotesView } from "@/modules/features/quotes/components/quotes-view"
+import { hasPermission } from "@/modules/core/iam/services/role-service"
+import { PERMISSIONS } from "@/modules/core/iam/actions/permissions"
+import { redirect } from "next/navigation"
 import { Suspense } from "react"
 
 export const metadata = {
@@ -14,6 +17,9 @@ export const metadata = {
 
 
 export default async function QuotesPage() {
+    if (!await hasPermission(PERMISSIONS.QUOTES.VIEW)) {
+        redirect('/dashboard?error=unauthorized')
+    }
     // Parallel fetching for performance
     const [quotes, emitters] = await Promise.all([
         getQuotes(),

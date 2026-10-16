@@ -316,19 +316,20 @@ describe('role service safeguards', () => {
         const manifestsKeys = manifestsOnlyGroups.map(g => g.id)
         expect(manifestsKeys).toContain('crm')
         expect(manifestsKeys).toContain('org')
+        expect(manifestsKeys).toContain('vault')
         expect(manifestsKeys).not.toContain('resto')
         expect(manifestsKeys).not.toContain('tasks')
         expect(manifestsKeys).not.toContain('marketing')
 
-        // Messaging + custom override includes inbox, crm (core_clients), and org (core_settings)
+        // Messaging + custom override includes inbox, crm (core_clients), and org/vault (core_settings)
         const messagingGroups = getVisiblePermissionGroups(['module_messaging', 'module_manifests'])
         const messagingKeys = messagingGroups.map(g => g.id)
-        expect(messagingKeys).toEqual(['crm', 'inbox', 'org'])
+        expect(messagingKeys).toEqual(['crm', 'inbox', 'org', 'vault'])
 
         // Empty array strictly returns ONLY core modules, never falling back to all modules
         const coreOnlyGroups = getVisiblePermissionGroups([])
         const coreOnlyKeys = coreOnlyGroups.map(g => g.id)
-        expect(coreOnlyKeys).toEqual(['crm', 'org'])
+        expect(coreOnlyKeys).toEqual(['crm', 'org', 'vault'])
         expect(coreOnlyKeys).not.toContain('resto')
         expect(coreOnlyKeys).not.toContain('inbox')
     })
@@ -424,6 +425,267 @@ describe('role service safeguards', () => {
         expect(insertedPayload.permissions[PERMISSIONS.CRM.VIEW_LEADS]).toBe(true)
         expect(insertedPayload.permissions[PERMISSIONS.ORG.MANAGE_ROLES]).toBe(true)
         expect(insertedPayload.permissions[PERMISSIONS.MARKETING.VIEW]).toBe(true)
+        expect(insertedPayload.permissions[PERMISSIONS.RENTALS.VIEW]).toBe(true)
+        expect(insertedPayload.permissions[PERMISSIONS.VAULT.MANAGE]).toBe(true)
+    })
+
+    describe('requirePermission canonical primitive', () => {
+        it('resolves cleanly when the user possesses the required permission', async () => {
+            mocks.getCurrentOrganizationId.mockResolvedValue('org-current')
+            mocks.createClient.mockResolvedValue({
+                auth: {
+                    getUser: vi.fn(async () => ({ data: { user: { id: 'owner-user' } } })),
+                },
+                from: vi.fn(() =>
+                    memberQuery({
+                        role: 'owner',
+                        role_id: null,
+                        status: 'active',
+                        permissions: { all: true },
+                    })
+                ),
+            })
+
+            const { requirePermission } = await import('./role-service')
+            await expect(requirePermission('crm.leads.view')).resolves.toBeUndefined()
+        })
+
+        it('throws exact canonical Spanish error when the permission is missing', async () => {
+            mocks.getCurrentOrganizationId.mockResolvedValue('org-current')
+            mocks.createClient.mockResolvedValue({
+                auth: {
+                    getUser: vi.fn(async () => ({ data: { user: { id: 'basic-member' } } })),
+                },
+                from: vi.fn((table: string) => {
+                    if (table === 'organization_roles') {
+                        return selectEqSingleQuery({
+                            data: { permissions: { 'crm.leads.view': true } },
+                            error: null,
+                        })
+                    }
+                    return memberQuery({
+                        role: 'member',
+                        role_id: 'role-restricted',
+                        status: 'active',
+                        permissions: { 'org.members.manage': false },
+                    })
+                }),
+            })
+
+            const { requirePermission } = await import('./role-service')
+            await expect(requirePermission('org.members.manage')).rejects.toThrow(
+                'Acceso denegado: Se requiere el permiso "org.members.manage".'
+            )
+        })
+
+        it('respects explicitOrgId parameter over cookie/header context', async () => {
+            mocks.getCurrentOrganizationId.mockResolvedValue('org-cookie')
+            const memberFromOrgParam = vi.fn(() =>
+                memberQuery({
+                    role: 'owner',
+                    role_id: null,
+                    status: 'active',
+                    permissions: { all: true },
+                })
+            )
+            mocks.createClient.mockResolvedValue({
+                auth: {
+                    getUser: vi.fn(async () => ({ data: { user: { id: 'owner-user' } } })),
+                },
+                from: memberFromOrgParam,
+            })
+
+            const { requirePermission } = await import('./role-service')
+            await expect(requirePermission('rentals.view', 'org-explicit-123')).resolves.toBeUndefined()
+        })
+
+        it('deduplicates database queries across multiple permission checks via request cache', async () => {
+            mocks.getCurrentOrganizationId.mockResolvedValue('org-cache-test')
+            const memberLookup = vi.fn(() =>
+                memberQuery({
+                    role: 'member',
+                    role_id: null,
+                    status: 'active',
+                    permissions: { 'crm.leads.view': true, 'rentals.view': true },
+                })
+            )
+            mocks.createClient.mockResolvedValue({
+                auth: {
+                    getUser: vi.fn(async () => ({ data: { user: { id: 'cache-member' } } })),
+                },
+                from: memberLookup,
+            })
+
+            const { hasPermission } = await import('./role-service')
+            const check1 = await hasPermission('crm.leads.view')
+            const check2 = await hasPermission('rentals.view')
+            const check3 = await hasPermission('vault.backup.manage')
+
+            expect(check1).toBe(true)
+            expect(check2).toBe(true)
+            expect(check3).toBe(false)
+            // Even though hasPermission was called 3 times, the member row was only queried once from DB
+            expect(memberLookup).toHaveBeenCalledTimes(1)
+        })
+
+        it('hydrates default permissions for legacy owner without role_id in getUserPermissionsPayload', async () => {
+            mocks.getCurrentOrganizationId.mockResolvedValue('org-owner-test')
+            mocks.createClient.mockResolvedValue({
+                auth: {
+                    getUser: vi.fn(async () => ({ data: { user: { id: 'legacy-owner' } } })),
+                },
+                from: vi.fn(() =>
+                    memberQuery({
+                        role: 'Dueño',
+                        role_id: null,
+                        status: 'active',
+                        permissions: {},
+                    })
+                ),
+            })
+
+            const { getUserPermissionsPayload } = await import('./role-service')
+            const payload = await getUserPermissionsPayload()
+
+            expect(payload).not.toBeNull()
+            expect(payload?.isOwner).toBe(true)
+            expect(payload?.hierarchyLevel).toBe(100)
+            expect(payload?.effectivePermissions.all).toBe(true)
+            // Default role permissions must be populated, not an empty object
+            expect(Object.keys(payload?.rolePermissions || {}).length).toBeGreaterThan(0)
+            expect(payload?.rolePermissions['rentals.view']).toBe(true)
+        })
+
+        it('resolves explicitOrgId and explicitUserId without requiring auth or current org cookies', async () => {
+            const memberLookup = vi.fn(() =>
+                memberQuery({
+                    role: 'admin',
+                    role_id: null,
+                    status: 'active',
+                    permissions: {},
+                })
+            )
+            mocks.createClient.mockResolvedValue({
+                auth: {
+                    getUser: vi.fn(), // Should not be called
+                },
+                from: memberLookup,
+            })
+
+            const { getUserPermissionsPayload } = await import('./role-service')
+            const payload = await getUserPermissionsPayload('org-explicit-456', 'user-explicit-789')
+
+            expect(payload).not.toBeNull()
+            expect(payload?.roleName.toLowerCase()).toBe('admin')
+            expect(payload?.hierarchyLevel).toBe(50)
+            expect(memberLookup).toHaveBeenCalledWith('organization_members')
+        })
+    })
+
+    describe('IAM V2 Catalog Completeness & Orphan Sanitation', () => {
+        it('includes all newly required permission domains in PERMISSIONS', async () => {
+            const { PERMISSIONS } = await import('../actions/permissions')
+
+            // RENTALS
+            expect(PERMISSIONS.RENTALS.VIEW).toBe('rentals.view')
+            expect(PERMISSIONS.RENTALS.MANAGE_PROPERTIES).toBe('rentals.properties.manage')
+            expect(PERMISSIONS.RENTALS.MANAGE_CONTRACTS).toBe('rentals.contracts.manage')
+            expect(PERMISSIONS.RENTALS.MANAGE_SETTLEMENTS).toBe('rentals.settlements.manage')
+
+            // QUOTES
+            expect(PERMISSIONS.QUOTES.VIEW).toBe('quotes.view')
+            expect(PERMISSIONS.QUOTES.MANAGE).toBe('quotes.manage')
+            expect(PERMISSIONS.QUOTES.CONVERT).toBe('quotes.convert')
+
+            // WORK_ORDERS
+            expect(PERMISSIONS.WORK_ORDERS.VIEW).toBe('work_orders.view')
+            expect(PERMISSIONS.WORK_ORDERS.MANAGE).toBe('work_orders.manage')
+
+            // PAYROLL
+            expect(PERMISSIONS.PAYROLL.VIEW).toBe('payroll.view')
+            expect(PERMISSIONS.PAYROLL.PROCESS).toBe('payroll.process')
+            expect(PERMISSIONS.PAYROLL.PAY).toBe('payroll.pay')
+
+            // VAULT
+            expect(PERMISSIONS.VAULT.MANAGE).toBe('vault.backup.manage')
+            expect(PERMISSIONS.VAULT.RESTORE).toBe('vault.backup.restore')
+        })
+
+        it('sanitizes orphaned permissions in PERMISSION_GROUPS (automation.execute and org.audit.view)', async () => {
+            const { PERMISSION_GROUPS, PERMISSIONS } = await import('../actions/permissions')
+
+            const automationGroup = PERMISSION_GROUPS.find(g => g.id === 'automation')
+            expect(automationGroup).toBeDefined()
+            const autoPermIds = automationGroup!.permissions.map(p => p.id)
+            expect(autoPermIds).toContain(PERMISSIONS.AUTOMATION.EXECUTE)
+
+            const orgGroup = PERMISSION_GROUPS.find(g => g.id === 'org')
+            expect(orgGroup).toBeDefined()
+            const orgPermIds = orgGroup!.permissions.map(p => p.id)
+            expect(orgPermIds).toContain(PERMISSIONS.ORG.VIEW_AUDIT_LOGS)
+        })
+
+        it('defines accordion UI metadata in PERMISSION_GROUPS for all new domains', async () => {
+            const { PERMISSION_GROUPS } = await import('../actions/permissions')
+
+            const groupIds = PERMISSION_GROUPS.map(g => g.id)
+            expect(groupIds).toContain('rentals')
+            expect(groupIds).toContain('quotes')
+            expect(groupIds).toContain('work_orders')
+            expect(groupIds).toContain('payroll')
+            expect(groupIds).toContain('vault')
+
+            const rentals = PERMISSION_GROUPS.find(g => g.id === 'rentals')!
+            expect(rentals.moduleKey).toBe('module_rentals')
+            expect(rentals.label).toBe('Arriendos e Inmuebles')
+
+            const quotes = PERMISSION_GROUPS.find(g => g.id === 'quotes')!
+            expect(quotes.moduleKey).toBe('module_quotes')
+            expect(quotes.label).toBe('Cotizaciones')
+
+            const workOrders = PERMISSION_GROUPS.find(g => g.id === 'work_orders')!
+            expect(workOrders.moduleKey).toBe('module_cleaning')
+            expect(workOrders.label).toBe('Órdenes de Trabajo')
+
+            const payroll = PERMISSION_GROUPS.find(g => g.id === 'payroll')!
+            expect(payroll.moduleKey).toBe('module_attendance')
+            expect(payroll.label).toBe('Nómina y Liquidaciones')
+
+            const vault = PERMISSION_GROUPS.find(g => g.id === 'vault')!
+            expect(vault.moduleKey).toBe('core_settings')
+            expect(vault.label).toBe('Bóveda de Datos (Backups)')
+        })
+
+        it('includes default permissions in DEFAULT_ROLES for Dueño, Administrador, and Miembro', async () => {
+            const { DEFAULT_ROLES } = await import('./default-roles')
+            const { PERMISSIONS } = await import('../actions/permissions')
+
+            const owner = DEFAULT_ROLES.find(r => r.name === 'Dueño')!
+            const admin = DEFAULT_ROLES.find(r => r.name === 'Administrador')!
+            const member = DEFAULT_ROLES.find(r => r.name === 'Miembro')!
+
+            // Dueño has wildcard and granular
+            expect(owner.permissions.all).toBe(true)
+            expect(owner.permissions[PERMISSIONS.RENTALS.VIEW]).toBe(true)
+            expect(owner.permissions[PERMISSIONS.QUOTES.VIEW]).toBe(true)
+            expect(owner.permissions[PERMISSIONS.WORK_ORDERS.VIEW]).toBe(true)
+            expect(owner.permissions[PERMISSIONS.PAYROLL.VIEW]).toBe(true)
+            expect(owner.permissions[PERMISSIONS.VAULT.MANAGE]).toBe(true)
+
+            // Administrador has full operational & administrative control
+            expect(admin.permissions[PERMISSIONS.AUTOMATION.EXECUTE]).toBe(true)
+            expect(admin.permissions[PERMISSIONS.RENTALS.MANAGE_PROPERTIES]).toBe(true)
+            expect(admin.permissions[PERMISSIONS.QUOTES.MANAGE]).toBe(true)
+            expect(admin.permissions[PERMISSIONS.WORK_ORDERS.MANAGE]).toBe(true)
+            expect(admin.permissions[PERMISSIONS.PAYROLL.PROCESS]).toBe(true)
+            expect(admin.permissions[PERMISSIONS.VAULT.MANAGE]).toBe(true)
+
+            // Miembro has read-level permissions for assigned modules
+            expect(member.permissions[PERMISSIONS.RENTALS.VIEW]).toBe(true)
+            expect(member.permissions[PERMISSIONS.QUOTES.VIEW]).toBe(true)
+            expect(member.permissions[PERMISSIONS.WORK_ORDERS.VIEW]).toBe(true)
+            expect(member.permissions[PERMISSIONS.VAULT.MANAGE]).toBeUndefined()
+        })
     })
 })
 

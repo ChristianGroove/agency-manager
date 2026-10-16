@@ -1,6 +1,9 @@
 import { Suspense } from "react"
 import { CRMDashboard } from "@/modules/features/crm/components/crm-dashboard"
 import { getPipelineViewDataAction } from "@/modules/features/crm/crm-actions"
+import { hasPermission } from "@/modules/core/iam/services/role-service"
+import { PERMISSIONS } from "@/modules/core/iam/actions/permissions"
+import { redirect } from "next/navigation"
 
 export const metadata = {
     title: "Pipeline | CRM",
@@ -12,6 +15,10 @@ export const dynamic = 'force-dynamic'
 export default async function CRMPipelinePage(props: {
     searchParams: Promise<{ [key: string]: string | undefined }>
 }) {
+    if (!await hasPermission(PERMISSIONS.CRM.VIEW_LEADS)) {
+        redirect("/dashboard?error=unauthorized")
+    }
+
     const params = await props.searchParams
     const channelId = params.channel || null
 

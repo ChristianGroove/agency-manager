@@ -5,6 +5,7 @@ const mocks = vi.hoisted(() => ({
     supabaseAdminFrom: vi.fn(),
     getCurrentOrganizationId: vi.fn(),
     requireOrgRole: vi.fn(),
+    requirePermission: vi.fn().mockResolvedValue(undefined),
     revalidatePath: vi.fn(),
     getAdapter: vi.fn(),
     checkConnectionStatus: vi.fn(),
@@ -26,6 +27,10 @@ vi.mock('@/modules/core/organizations/organization-actions', () => ({
 
 vi.mock('@/modules/core/iam/services/org-roles', () => ({
     requireOrgRole: mocks.requireOrgRole,
+}))
+
+vi.mock('@/modules/core/iam/services/role-service', () => ({
+    requirePermission: mocks.requirePermission,
 }))
 
 vi.mock('next/cache', () => ({
@@ -87,6 +92,8 @@ describe('channel actions', () => {
         mocks.supabaseAdminFrom.mockReset()
         mocks.getCurrentOrganizationId.mockReset()
         mocks.requireOrgRole.mockReset()
+        mocks.requirePermission.mockReset()
+        mocks.requirePermission.mockResolvedValue(undefined)
         mocks.revalidatePath.mockReset()
         mocks.getAdapter.mockReset()
         mocks.checkConnectionStatus.mockReset()

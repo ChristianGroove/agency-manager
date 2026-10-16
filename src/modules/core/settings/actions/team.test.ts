@@ -27,6 +27,7 @@ const mocks = vi.hoisted(() => {
         revalidateTag: vi.fn(),
         headers: vi.fn(),
         hasPermission: vi.fn().mockResolvedValue(false),
+        getUserPermissionsPayload: vi.fn(),
         dbClient,
     }
 })
@@ -37,6 +38,8 @@ vi.mock('@/modules/core/database/supabase-server', () => ({
 
 vi.mock('@/modules/core/iam/services/role-service', () => ({
     hasPermission: mocks.hasPermission,
+    requirePermission: vi.fn(),
+    getUserPermissionsPayload: mocks.getUserPermissionsPayload,
 }))
 
 vi.mock('@/modules/core/database/supabase-admin', () => ({
@@ -177,6 +180,7 @@ afterEach(() => {
     mocks.dbClient.auth.getUser.mockReset()
     mocks.dbClient.from.mockReset()
     mocks.hasPermission.mockReset()
+    mocks.getUserPermissionsPayload.mockReset()
 })
 
 async function importTeamActions() {
@@ -1675,6 +1679,63 @@ describe('team settings actions', () => {
                     error: 'No tienes suficiente jerarquía para modificar a este miembro',
                 })
             })
+        })
+    })
+
+    describe('unified permission resolution (IAM V2 integration)', () => {
+        it('delegates getCurrentUserPermissions to getUserPermissionsPayload and formats correctly', async () => {
+            const { getCurrentUserPermissions } = await importTeamActions()
+            mocks.getCurrentOrganizationId.mockResolvedValue('org-unified-test')
+            mocks.createClient.mockResolvedValue(currentUser('user-unified-123'))
+            mocks.getUserPermissionsPayload.mockResolvedValue({
+                isOwner: false,
+                hierarchyLevel: 50,
+                roleName: 'Administrador',
+                rolePermissions: { 'crm.leads.view': true },
+                memberOverrides: { 'crm.leads.delete': false },
+                effectivePermissions: { 'crm.leads.view': true, 'crm.leads.delete': false },
+            })
+
+            const result = await getCurrentUserPermissions()
+
+            expect(result).toEqual({
+                role: 'administrador',
+                hierarchy: 50,
+                permissions: { 'crm.leads.view': true, 'crm.leads.delete': false },
+            })
+            expect(mocks.getUserPermissionsPayload).toHaveBeenCalledWith('org-unified-test', 'user-unified-123')
+        })
+
+        it('returns null from getCurrentUserPermissions when getUserPermissionsPayload returns null', async () => {
+            const { getCurrentUserPermissions } = await importTeamActions()
+            mocks.getCurrentOrganizationId.mockResolvedValue('org-blocked-test')
+            mocks.createClient.mockResolvedValue(currentUser('user-blocked-123'))
+            mocks.getUserPermissionsPayload.mockResolvedValue(null)
+
+            const result = await getCurrentUserPermissions()
+
+            expect(result).toBeNull()
+        })
+
+        it('delegates getCachedUserPermissions to getUserPermissionsPayload with explicit org and user', async () => {
+            const { getCachedUserPermissions } = await importTeamActions()
+            mocks.getUserPermissionsPayload.mockResolvedValue({
+                isOwner: true,
+                hierarchyLevel: 100,
+                roleName: 'Dueño',
+                rolePermissions: { all: true },
+                memberOverrides: {},
+                effectivePermissions: { all: true },
+            })
+
+            const result = await getCachedUserPermissions('user-owner-1', 'org-custom-1')
+
+            expect(result).toEqual({
+                role: 'dueño',
+                hierarchy: 100,
+                permissions: { all: true },
+            })
+            expect(mocks.getUserPermissionsPayload).toHaveBeenCalledWith('org-custom-1', 'user-owner-1')
         })
     })
 })

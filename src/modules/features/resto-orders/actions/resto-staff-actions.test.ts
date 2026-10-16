@@ -2,12 +2,17 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 const mocks = vi.hoisted(() => ({
     from: vi.fn(),
+    requirePermission: vi.fn().mockResolvedValue(undefined),
 }))
 
 vi.mock('@/modules/core/database/supabase-admin', () => ({
     supabaseAdmin: {
         from: mocks.from,
     }
+}))
+
+vi.mock('@/modules/core/iam/services/role-service', () => ({
+    requirePermission: mocks.requirePermission,
 }))
 
 function createQueryChain(result: { data?: any; error?: any; count?: number | null }) {
@@ -46,6 +51,8 @@ afterEach(() => {
     vi.restoreAllMocks()
     vi.resetModules()
     mocks.from.mockReset()
+    mocks.requirePermission.mockReset()
+    mocks.requirePermission.mockResolvedValue(undefined)
 })
 
 describe('Resto Staff Operational Flows', () => {
@@ -296,4 +303,49 @@ describe('Resto Staff Operational Flows', () => {
             expect(updateTokenQuery.eq).toHaveBeenCalledWith('organization_id', ORG_ID)
         })
     })
+
+    describe('IAM V2 Permission Enforcement', () => {
+        it('enforces RESTO_STAFF_VIEW on getStaffWithZoneAssignments', async () => {
+            const staffQuery = createQueryChain({ data: [], error: null })
+            const assignQuery = createQueryChain({ data: [], error: null })
+            useTableQueues({
+                organization_staff: [staffQuery],
+                resto_staff_zone_assignments: [assignQuery],
+            })
+
+            const { getStaffWithZoneAssignments } = await import('./resto-staff-actions')
+            await getStaffWithZoneAssignments(ORG_ID)
+
+            expect(mocks.requirePermission).toHaveBeenCalledWith('operations.resto_staff.view', ORG_ID)
+        })
+
+        it('enforces RESTO_STAFF_MANAGE on deleteStaffMember, updateStaffPin, and toggleStaffActiveStatus', async () => {
+            const delQuery = createQueryChain({ data: null, error: null })
+            useTableQueues({
+                organization_staff: [delQuery],
+            })
+
+            const { deleteStaffMember, updateStaffPin, toggleStaffActiveStatus } = await import('./resto-staff-actions')
+            await deleteStaffMember(ORG_ID, STAFF_ID)
+            expect(mocks.requirePermission).toHaveBeenCalledWith('operations.resto_staff.manage', ORG_ID)
+
+            mocks.requirePermission.mockClear()
+            const checkPinQuery = createQueryChain({ data: null, error: null })
+            const updatePinQuery = createQueryChain({ data: null, error: null })
+            useTableQueues({
+                organization_staff: [checkPinQuery, updatePinQuery],
+            })
+            await updateStaffPin(ORG_ID, STAFF_ID, '9876')
+            expect(mocks.requirePermission).toHaveBeenCalledWith('operations.resto_staff.manage', ORG_ID)
+
+            mocks.requirePermission.mockClear()
+            const toggleQuery = createQueryChain({ data: null, error: null })
+            useTableQueues({
+                organization_staff: [toggleQuery],
+            })
+            await toggleStaffActiveStatus(ORG_ID, STAFF_ID, true)
+            expect(mocks.requirePermission).toHaveBeenCalledWith('operations.resto_staff.manage', ORG_ID)
+        })
+    })
 })
+
