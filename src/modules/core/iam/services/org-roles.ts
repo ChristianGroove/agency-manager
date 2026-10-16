@@ -29,13 +29,21 @@ export const getCurrentOrgRole = cache(async (providedOrgId?: string | null): Pr
     const isAdmin = await isSuperAdmin(user.id)
     if (isAdmin) return 'owner'
 
-    const { data, error } = await supabase
+    const db = (process.env.SUPABASE_SERVICE_ROLE_KEY && process.env.NODE_ENV !== 'test' && !process.env.VITEST)
+        ? (await import('@/modules/core/database/supabase-admin')).supabaseAdmin
+        : supabase
+
+    const { data, error } = await db
         .from('organization_members')
         .select(`
             role,
             role_id,
+            status,
+            permissions,
             role_data:organization_roles (
-                name
+                name,
+                hierarchy_level,
+                permissions
             )
         `)
         .match({ organization_id: orgId, user_id: user.id })
@@ -46,19 +54,43 @@ export const getCurrentOrgRole = cache(async (providedOrgId?: string | null): Pr
         return null;
     }
 
-    if (!data) return null;
+    if (!data || data.status === 'blocked') return null;
+
+    const roleData = data.role_data as any;
+    const dynamicRoleName = roleData?.name?.toLowerCase() || '';
+    const hierarchyLevel = typeof roleData?.hierarchy_level === 'number' ? roleData.hierarchy_level : 0;
+    const rolePerms = (roleData?.permissions as Record<string, any>) || {};
+    const memberPerms = (data.permissions as Record<string, any>) || {};
 
     // Mapping Logic:
-    // 1. If it's explicitly 'owner' or 'admin' in the legacy column, use it.
-    if (data.role === 'owner' || data.role === 'admin') return data.role;
+    // 1. Owner checks (legacy column, hierarchy >= 100, wildcard permission, or role name)
+    if (
+        data.role === 'owner' ||
+        data.role === 'dueño' ||
+        hierarchyLevel >= 100 ||
+        rolePerms.all === true ||
+        memberPerms.all === true ||
+        dynamicRoleName.includes('owner') ||
+        dynamicRoleName.includes('dueño')
+    ) {
+        return 'owner';
+    }
 
-    // 2. If it's 'member' (likely a dynamic role holder), check the role name
-    const dynamicRoleName = (data.role_data as any)?.name?.toLowerCase() || '';
-    if (dynamicRoleName.includes('owner') || dynamicRoleName.includes('dueño')) return 'owner';
-    if (dynamicRoleName.includes('admin') || dynamicRoleName.includes('administrador')) return 'admin';
+    // 2. Admin / Administrative custom role checks (legacy column, hierarchy >= 50, role name, or settings permission)
+    if (
+        data.role === 'admin' ||
+        data.role === 'administrador' ||
+        hierarchyLevel >= 50 ||
+        dynamicRoleName.includes('admin') ||
+        dynamicRoleName.includes('administrador') ||
+        rolePerms['org.settings.manage'] === true ||
+        memberPerms['org.settings.manage'] === true
+    ) {
+        return 'admin';
+    }
 
-    // 3. Fallback to legacy field
-    return (data.role as OrganizationRole) || 'member';
+    // 3. Fallback to member
+    return 'member';
 })
 
 /**

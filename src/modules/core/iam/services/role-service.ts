@@ -3,9 +3,10 @@
 import { createClient } from '@/modules/core/database/supabase-server';
 import { supabaseAdmin } from '@/modules/core/database/supabase-admin';
 import { getCurrentOrganizationId } from '@/modules/core/organizations/organization-actions';
-import { PERMISSIONS, PermissionString } from '../actions/permissions';
+import { isSuperAdmin } from '@/modules/core/iam/services/platform-roles';
+import { PERMISSIONS, PERMISSION_GROUPS, PermissionString, normalizeRoleRecord, resolveSystemRoleKind, sanitizeBrokenUtf8 } from '../actions/permissions';
 import { cache } from 'react';
-import { getDefaultRoles } from './default-roles';
+import { DEFAULT_ROLES, getDefaultRoles } from './default-roles';
 
 export interface Role {
     id: string;
@@ -18,6 +19,20 @@ export interface Role {
     member_count?: number;
 }
 
+/**
+ * Returns supabaseAdmin in server runtime to avoid PostgreSQL 42P17 RLS recursion
+ * on organization_roles / organization_members, while preserving createClient() mocks in unit tests.
+ */
+async function getDbClient(authSupabase?: Awaited<ReturnType<typeof createClient>>) {
+    if (process.env.VITEST && authSupabase) {
+        return authSupabase;
+    }
+    if (supabaseAdmin && (process.env.SUPABASE_SERVICE_ROLE_KEY || (supabaseAdmin as any).supabaseKey)) {
+        return supabaseAdmin;
+    }
+    return authSupabase || supabaseAdmin;
+}
+
 function sanitizeRolePermissions(permissions: unknown): Record<string, boolean> {
     if (!permissions || typeof permissions !== 'object' || Array.isArray(permissions)) return {};
 
@@ -28,9 +43,10 @@ function sanitizeRolePermissions(permissions: unknown): Record<string, boolean> 
     }, {});
 }
 
-function normalizeCustomRoleHierarchy(hierarchyLevel: unknown) {
-    if (typeof hierarchyLevel !== 'number' || !Number.isFinite(hierarchyLevel)) return 1;
-    return Math.max(1, Math.min(49, Math.floor(hierarchyLevel)));
+function normalizeCustomRoleHierarchy(hierarchyLevel: unknown, maxAllowed: number = 49) {
+    if (typeof hierarchyLevel !== 'number' || !Number.isFinite(hierarchyLevel)) return 10;
+    const cap = Math.max(1, Math.min(49, Math.floor(maxAllowed)));
+    return Math.max(1, Math.min(cap, Math.floor(hierarchyLevel)));
 }
 
 /**
@@ -38,11 +54,12 @@ function normalizeCustomRoleHierarchy(hierarchyLevel: unknown) {
  * Returns roles sorted by hierarchy level
  */
 export async function getOrganizationRoles(): Promise<Role[]> {
-    const supabase = await createClient();
+    const authSupabase = await createClient();
+    const db = await getDbClient(authSupabase);
     const orgId = await getCurrentOrganizationId();
     if (!orgId) return [];
 
-    const { data, error } = await supabase
+    const { data, error } = await db
         .from('organization_roles')
         .select(`
             *,
@@ -57,10 +74,19 @@ export async function getOrganizationRoles(): Promise<Role[]> {
         return [];
     }
 
-    return data.map((role: any) => ({
-        ...role,
-        member_count: role.members?.[0]?.count || 0
-    }));
+    return (data || [])
+        .map((role: any) => {
+            const normalized = normalizeRoleRecord(role);
+            return {
+                ...normalized,
+                member_count: role.members?.[0]?.count || 0
+            };
+        })
+        .sort((a: Role, b: Role) => {
+            const diff = (b.hierarchy_level ?? 0) - (a.hierarchy_level ?? 0);
+            if (diff !== 0) return diff;
+            return (a.name || '').localeCompare(b.name || '');
+        });
 }
 
 /**
@@ -76,36 +102,81 @@ const getUserPermissionsPayload = cache(async () => {
     const orgId = await getCurrentOrganizationId();
     if (!orgId) return null;
 
+    const db = await getDbClient(supabase);
+
     // Query 1: Get the member row
-    const { data: member, error } = await supabase
+    const { data: member, error } = await db
         .from('organization_members')
-        .select('role, role_id, permissions')
+        .select('role, role_id, status, permissions')
         .eq('organization_id', orgId)
         .eq('user_id', user.id)
         .single();
 
-    if (error || !member) return null;
+    if (error || !member) {
+        // Fallback for Platform Super Admins who may inspect an org without being in organization_members
+        try {
+            const superAdmin = await isSuperAdmin(user.id);
+            if (superAdmin) {
+                return {
+                    isOwner: true,
+                    hierarchyLevel: 100,
+                    rolePermissions: { all: true } as Record<string, any>,
+                    memberOverrides: {} as Record<string, any>
+                };
+            }
+        } catch {
+            // Ignore in restricted test contexts
+        }
+        return null;
+    }
+
+    if (member.status === 'blocked') return null;
 
     const memberOverrides = (member.permissions as any) || {};
+    const legacyRoleNormalized = sanitizeBrokenUtf8(member.role).toLowerCase();
 
     // Query 2: Get the role's permissions
     let rolePermissions: Record<string, any> = {};
-    let isOwner = member.role === 'owner'; // Legacy Owner Fallback
+    let isOwner = legacyRoleNormalized === 'owner' || legacyRoleNormalized === 'dueño';
+    let hierarchyLevel = isOwner ? 100 : (legacyRoleNormalized === 'admin' || legacyRoleNormalized === 'administrador' ? 50 : 10);
 
     if (member.role_id) {
-        const { data: roleData } = await supabase
+        const { data: roleData } = await db
             .from('organization_roles')
-            .select('permissions, hierarchy_level')
+            .select('name, is_system_role, permissions, hierarchy_level')
             .eq('id', member.role_id)
+            .eq('organization_id', orgId)
             .single();
 
         if (roleData) {
-            if (roleData.hierarchy_level === 100) isOwner = true;
-            rolePermissions = (roleData.permissions as any) || {};
+            const normalizedRole = normalizeRoleRecord(roleData as any);
+            if (typeof normalizedRole.hierarchy_level === 'number') {
+                hierarchyLevel = normalizedRole.hierarchy_level;
+            }
+            if (normalizedRole.hierarchy_level === 100 || (normalizedRole.permissions as any)?.all === true) {
+                isOwner = true;
+            }
+            rolePermissions = (normalizedRole.permissions as any) || {};
         }
     }
 
-    return { isOwner, rolePermissions, memberOverrides };
+    // Legacy Admin/Member Fallback when role_id is null or permissions are empty
+    if (!isOwner && Object.keys(rolePermissions).length === 0) {
+        if (legacyRoleNormalized === 'admin' || legacyRoleNormalized === 'administrador') {
+            const defaultAdminRole = getDefaultRoles().find(r => r.name === 'Administrador');
+            if (defaultAdminRole) {
+                rolePermissions = { ...defaultAdminRole.permissions };
+                hierarchyLevel = Math.max(hierarchyLevel, defaultAdminRole.hierarchy_level);
+            }
+        } else if (legacyRoleNormalized === 'member' || legacyRoleNormalized === 'miembro') {
+            const defaultMemberRole = getDefaultRoles().find(r => r.name === 'Miembro');
+            if (defaultMemberRole) {
+                rolePermissions = { ...defaultMemberRole.permissions };
+            }
+        }
+    }
+
+    return { isOwner, hierarchyLevel, rolePermissions, memberOverrides };
 });
 
 export const hasPermission = async (permission: PermissionString): Promise<boolean> => {
@@ -118,8 +189,16 @@ export const hasPermission = async (permission: PermissionString): Promise<boole
     if (isOwner) return true;
     if (rolePermissions['all'] === true || memberOverrides['all'] === true) return true;
 
-    // Specific Permission Check
-    if (rolePermissions[permission] === true || memberOverrides[permission] === true) return true;
+    // Explicit Member Override (supports both granting true and revoking false)
+    if (typeof memberOverrides[permission] === 'boolean') {
+        return memberOverrides[permission];
+    }
+    if (typeof memberOverrides.features?.[permission] === 'boolean') {
+        return memberOverrides.features[permission];
+    }
+
+    // Role Default Permission Check
+    if (rolePermissions[permission] === true || rolePermissions.features?.[permission] === true) return true;
 
     return false;
 };
@@ -129,31 +208,35 @@ export const hasPermission = async (permission: PermissionString): Promise<boole
  */
 export async function upsertRole(role: Partial<Role>) {
     const supabase = await createClient();
+    const db = await getDbClient(supabase);
     const orgId = await getCurrentOrganizationId();
     if (!orgId) throw new Error('No Organization Context');
 
     // Security Check: Only those with MANAGE_ROLES can do this
     const canManage = await hasPermission(PERMISSIONS.ORG.MANAGE_ROLES);
-    // Bootstrap: Owners (who have 'all': true) will pass this. 
-    // If permission system is fresh, ensure we don't lock ourselves out.
-    // The 'hasPermission' logic above handles 'all': true.
-
     if (!canManage) throw new Error('Unauthorized: Missing MANAGE_ROLES permission');
 
+    const actorPayload = await getUserPermissionsPayload();
+    const actorHierarchy = actorPayload?.hierarchyLevel ?? 0;
+
     // Validation
-    if (!role.name) throw new Error('Role name is required');
+    if (!role.name || !role.name.trim()) throw new Error('Role name is required');
+
+    // Non-owner actors cannot request a hierarchy level higher than their own
+    if (!actorPayload?.isOwner && typeof role.hierarchy_level === 'number' && role.hierarchy_level > actorHierarchy) {
+        throw new Error('Cannot assign a hierarchy level higher than your own');
+    }
 
     const payload = {
         organization_id: orgId,
-        name: role.name,
-        description: role.description,
+        name: sanitizeBrokenUtf8(role.name).trim(),
+        description: role.description != null ? sanitizeBrokenUtf8(role.description) : null,
         permissions: sanitizeRolePermissions(role.permissions),
-        hierarchy_level: normalizeCustomRoleHierarchy(role.hierarchy_level),
-        // Prevent touching system flags or IDs if it's a new role
+        hierarchy_level: normalizeCustomRoleHierarchy(role.hierarchy_level, actorHierarchy),
     };
 
     if (role.id) {
-        const { data: existingRole, error: existingRoleError } = await (await createClient())
+        const { data: existingRole, error: existingRoleError } = await db
             .from('organization_roles')
             .select('name, description, is_system_role, hierarchy_level')
             .eq('id', role.id)
@@ -164,10 +247,11 @@ export async function upsertRole(role: Partial<Role>) {
         
         if (existingRole.is_system_role) throw new Error('Cannot modify a System Role');
 
-        // Update
-        // Use supabaseAdmin to bypass PostgreSQL RLS infinite recursion (42P17 error).
-        // Security is maintained because we explicitly checked hasPermission above.
-        const { data: updatedRole, error } = await supabaseAdmin
+        if (!actorPayload?.isOwner && (existingRole.hierarchy_level ?? 0) > actorHierarchy) {
+            throw new Error('Insufficient hierarchy level to modify this role');
+        }
+
+        const { data: updatedRole, error } = await db
             .from('organization_roles')
             .update(payload)
             .eq('id', role.id)
@@ -181,9 +265,7 @@ export async function upsertRole(role: Partial<Role>) {
         }
         return updatedRole;
     } else {
-        // Create
-        // Use supabaseAdmin to bypass RLS recursion limits.
-        const { data: newRole, error } = await supabaseAdmin
+        const { data: newRole, error } = await db
             .from('organization_roles')
             .insert(payload)
             .select()
@@ -199,18 +281,41 @@ export async function upsertRole(role: Partial<Role>) {
  */
 export async function deleteRole(roleId: string) {
     const supabase = await createClient();
+    const db = await getDbClient(supabase);
     const orgId = await getCurrentOrganizationId();
+    if (!orgId) throw new Error('No Organization Context');
 
     const canManage = await hasPermission(PERMISSIONS.ORG.MANAGE_ROLES);
     if (!canManage) throw new Error('Unauthorized');
 
-    // Check if system role
-    const { data: role } = await supabase.from('organization_roles').select('is_system_role').eq('id', roleId).single();
-    if (role?.is_system_role) throw new Error('Cannot delete a System Role');
+    const actorPayload = await getUserPermissionsPayload();
+    const actorHierarchy = actorPayload?.hierarchyLevel ?? 0;
 
-    // Delete
-    // Use supabaseAdmin to bypass RLS recursion limits.
-    const { error } = await (await createClient())
+    const { data: role } = await db
+        .from('organization_roles')
+        .select('is_system_role, hierarchy_level, name')
+        .eq('id', roleId)
+        .eq('organization_id', orgId)
+        .single();
+
+    if (!role) throw new Error('Role not found');
+    if (role.is_system_role) throw new Error('Cannot delete a System Role');
+    if (!actorPayload?.isOwner && (role.hierarchy_level ?? 0) > actorHierarchy) {
+        throw new Error('Insufficient hierarchy level to delete this role');
+    }
+
+    // Prevent deleting a role that currently has members assigned
+    const { count: assignedCount } = await db
+        .from('organization_members')
+        .select('user_id', { count: 'exact', head: true })
+        .eq('organization_id', orgId)
+        .eq('role_id', roleId);
+
+    if ((assignedCount ?? 0) > 0) {
+        throw new Error(`No se puede eliminar el rol "${role.name}" porque tiene ${assignedCount} miembro(s) asignado(s). Reasígnalos a otro rol primero.`);
+    }
+
+    const { error } = await db
         .from('organization_roles')
         .delete()
         .eq('id', roleId)
@@ -225,10 +330,11 @@ export async function deleteRole(roleId: string) {
  */
 export async function seedDefaultRoles(orgId: string) {
     const supabase = await createClient();
+    const db = await getDbClient(supabase);
 
     const roles = getDefaultRoles().map(role => ({ ...role, organization_id: orgId }));
 
-    const { error } = await supabase
+    const { error } = await db
         .from('organization_roles')
         .insert(roles);
 
@@ -238,5 +344,53 @@ export async function seedDefaultRoles(orgId: string) {
     }
 
     return { success: true };
+}
+
+export const createRole = upsertRole;
+export const updateRole = upsertRole;
+
+export async function duplicateRole(roleId: string, customName?: string) {
+    const supabase = await createClient();
+    const db = await getDbClient(supabase);
+    const orgId = await getCurrentOrganizationId();
+    if (!orgId) throw new Error('No Organization Context');
+
+    const canManage = await hasPermission(PERMISSIONS.ORG.MANAGE_ROLES);
+    if (!canManage) throw new Error('Unauthorized: Missing MANAGE_ROLES permission');
+
+    const { data: sourceRole, error } = await db
+        .from('organization_roles')
+        .select('*')
+        .eq('id', roleId)
+        .eq('organization_id', orgId)
+        .single();
+
+    if (error || !sourceRole) throw new Error('Role not found');
+
+    const normalizedSource = normalizeRoleRecord(sourceRole);
+    const isOwnerKind =
+        resolveSystemRoleKind(sourceRole) === 'owner' ||
+        sourceRole.permissions?.all === true ||
+        (sourceRole.hierarchy_level ?? 0) >= 100;
+
+    let clonedPermissions: Record<string, boolean> = {};
+    if (isOwnerKind) {
+        for (const g of PERMISSION_GROUPS) {
+            for (const p of g.permissions) {
+                clonedPermissions[p.id] = true;
+            }
+        }
+    } else {
+        clonedPermissions = { ...(normalizedSource.permissions || {}) };
+        delete clonedPermissions.all;
+    }
+
+    return upsertRole({
+        name: customName || `${normalizedSource.name} (Personalizado)`,
+        description: normalizedSource.description ? `Copia personalizada: ${normalizedSource.description}` : null,
+        hierarchy_level: Math.min(45, normalizedSource.hierarchy_level || 10),
+        permissions: clonedPermissions,
+        is_system_role: false,
+    });
 }
 

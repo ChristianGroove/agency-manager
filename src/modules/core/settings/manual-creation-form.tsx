@@ -5,7 +5,7 @@ import { Label } from "@/components/ui/label"
 import { RolePicker } from "@/modules/core/iam/components/role-picker"
 import { createUserManually } from "./actions/team"
 import { toast } from "sonner"
-import { Eye, EyeOff, Lock, User, Mail, CheckCircle, Loader2 } from "lucide-react"
+import { Eye, EyeOff, Lock, User, Mail, CheckCircle, Loader2, Sparkles } from "lucide-react"
 
 export function ManualCreationForm({ onSuccess }: { onSuccess: () => void }) {
     const [email, setEmail] = useState("")
@@ -15,9 +15,28 @@ export function ManualCreationForm({ onSuccess }: { onSuccess: () => void }) {
     const [showPassword, setShowPassword] = useState(false)
     const [isLoading, setIsLoading] = useState(false)
 
+    const generateSecurePassword = () => {
+        const chars = "ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz23456789!@#$%&*"
+        let generated = ""
+        for (let i = 0; i < 12; i++) {
+            generated += chars.charAt(Math.floor(Math.random() * chars.length))
+        }
+        setPassword(generated)
+        setShowPassword(true)
+        navigator.clipboard?.writeText(generated).catch(() => {})
+        toast.success("Contraseña segura generada y copiada al portapapeles")
+    }
+
     const handleSubmit = async () => {
-        if (!name || !email || !password || !role) {
+        const cleanName = name.trim()
+        const cleanEmail = email.trim().toLowerCase()
+
+        if (!cleanName || !cleanEmail || !password || !role) {
             toast.error("Por favor completa todos los campos")
+            return
+        }
+        if (cleanName.length < 2) {
+            toast.error("El nombre completo debe tener al menos 2 caracteres")
             return
         }
         if (password.length < 6) {
@@ -26,18 +45,17 @@ export function ManualCreationForm({ onSuccess }: { onSuccess: () => void }) {
         }
 
         setIsLoading(true)
-        console.log('[ManualCreationForm] Submitting:', { name, email, role })
 
         try {
             const result = await createUserManually({
-                email,
+                email: cleanEmail,
                 password,
-                fullName: name,
+                fullName: cleanName,
                 role
             })
 
             if (result.success) {
-                toast.success("Usuario creado exitosamente")
+                toast.success("Usuario creado y activado exitosamente")
                 onSuccess()
             } else {
                 toast.error("Error: " + result.error)
@@ -83,7 +101,17 @@ export function ManualCreationForm({ onSuccess }: { onSuccess: () => void }) {
             </div>
 
             <div className="space-y-2">
-                <Label htmlFor="create-password">Contraseña</Label>
+                <div className="flex items-center justify-between">
+                    <Label htmlFor="create-password">Contraseña Inicial</Label>
+                    <button
+                        type="button"
+                        onClick={generateSecurePassword}
+                        className="inline-flex items-center gap-1 text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:underline"
+                    >
+                        <Sparkles className="h-3 w-3" />
+                        Generar contraseña segura
+                    </button>
+                </div>
                 <div className="relative">
                     <Lock className="absolute left-3 top-3 h-4 w-4 text-zinc-400" />
                     <Input
@@ -113,17 +141,17 @@ export function ManualCreationForm({ onSuccess }: { onSuccess: () => void }) {
             </div>
 
             <div className="space-y-2">
-                <Label htmlFor="create-role">Rol</Label>
+                <Label htmlFor="create-role">Rol IAM</Label>
                 <RolePicker
                     value={role}
                     onValueChange={setRole}
                 />
             </div>
 
-            <div className="flex items-start gap-2 p-3 bg-amber-50 text-amber-800 rounded-md text-xs border border-amber-100">
-                <CheckCircle className="h-4 w-4 mt-0.5 shrink-0 text-amber-600" />
+            <div className="flex items-start gap-2 p-3 bg-amber-50 dark:bg-amber-500/10 text-amber-800 dark:text-amber-300 rounded-xl text-xs border border-amber-200/70 dark:border-amber-500/20">
+                <CheckCircle className="h-4 w-4 mt-0.5 shrink-0 text-amber-600 dark:text-amber-400" />
                 <p>
-                    <strong>Nota Importante:</strong> El usuario será creado y confirmado inmediatamente. 
+                    <strong>Nota Importante:</strong> El usuario será creado y confirmado inmediatamente.
                     Tú eres responsable de comunicarle sus credenciales de acceso de forma segura.
                 </p>
             </div>
@@ -135,3 +163,4 @@ export function ManualCreationForm({ onSuccess }: { onSuccess: () => void }) {
         </div>
     )
 }
+

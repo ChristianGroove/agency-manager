@@ -124,4 +124,46 @@ describe('transfer service logging', () => {
         expect(logText).toContain('connectionIdPresent')
         expect(logText).toContain('42501')
     })
+
+    it('rejects transfers to blocked members even if they hold owner role', async () => {
+        mocks.supabaseAdminFrom
+            .mockReturnValueOnce(singleQuery({
+                data: {
+                    assigned_to: 'from-agent',
+                    channel: 'whatsapp',
+                    connection_id: 'conn-1',
+                    organization_id: 'org-1',
+                },
+                error: null,
+            }))
+            .mockReturnValueOnce(singleQuery({
+                data: {
+                    current_load: 0,
+                    max_capacity: 10,
+                    status: 'online',
+                },
+                error: null,
+            }))
+            .mockReturnValueOnce(singleQuery({
+                data: {
+                    role: 'owner',
+                    status: 'blocked',
+                    permissions: { all: true },
+                    role_data: { hierarchy_level: 100, permissions: { all: true } },
+                },
+                error: null,
+            }))
+            .mockReturnValueOnce(singleQuery({
+                data: { role: 'agent' },
+                error: null,
+            }))
+
+        const { transferConversation } = await import('./transfer-service')
+        const result = await transferConversation('conv-1', 'from-agent', 'blocked-owner')
+        expect(result).toEqual({
+            success: false,
+            error: 'Target agent is suspended',
+        })
+    })
 })
+

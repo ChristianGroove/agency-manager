@@ -14,8 +14,9 @@ import {
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
-import { LockKeyhole, ShieldCheck, Eye, EyeOff } from "lucide-react"
+import { ShieldCheck, Eye, EyeOff, User } from "lucide-react"
 import { toast } from "sonner"
+import { syncCurrentUserFullName } from "@/modules/core/settings/actions/team"
 
 export function SetPasswordModal() {
     const searchParams = useSearchParams()
@@ -25,6 +26,7 @@ export function SetPasswordModal() {
     const [loading, setLoading] = useState(false)
     const [showPassword, setShowPassword] = useState(false)
 
+    const [fullName, setFullName] = useState("")
     const [password, setPassword] = useState("")
     const [confirmPassword, setConfirmPassword] = useState("")
 
@@ -36,28 +38,27 @@ export function SetPasswordModal() {
     useEffect(() => {
         if (searchParams.get("promptPassword") === "true") {
             setOpen(true)
+            supabase.auth.getUser().then(({ data: { user } }) => {
+                const metaName = user?.user_metadata?.full_name
+                if (metaName && typeof metaName === "string" && metaName.toLowerCase() !== "unknown") {
+                    setFullName(metaName)
+                }
+            })
         }
     }, [searchParams])
 
     const handleClose = (openState: boolean) => {
-        // Prevent closing if we want to FORCE. 
-        // But user might already have password? We don't know easily. 
-        // Let's allow simple close but maybe warn? 
-        // The user asked to "avoid asking for magic links again", implying forcing is good.
-        // I will disable closing via outside click/esc.
-        // Only close via 'Skip' button or Success.
         if (!openState) {
-            // Do nothing, enforce explicit action
             return
         }
         setOpen(openState)
     }
 
     const handleSkip = () => {
-        // Remove query param
         const params = new URLSearchParams(searchParams)
         params.delete("promptPassword")
-        router.replace(`${pathname}?${params.toString()}`)
+        const queryString = params.toString()
+        router.replace(queryString ? `${pathname}?${queryString}` : pathname)
         setOpen(false)
     }
 
@@ -74,13 +75,41 @@ export function SetPasswordModal() {
             return
         }
 
+        const cleanName = fullName.trim()
+
         setLoading(true)
         try {
-            const { error } = await supabase.auth.updateUser({ password: password })
+            const { data: updateData, error } = await supabase.auth.updateUser({
+                password: password,
+                data: {
+                    password_configured: true,
+                    ...(cleanName ? { full_name: cleanName } : {})
+                }
+            })
             if (error) throw error
 
-            toast.success("¡Contraseña establecida correctamente!")
-            handleSkip() // Close and clean URL
+            const user = updateData?.user
+            const effectiveName = cleanName || user?.user_metadata?.full_name
+            if (user?.id && effectiveName && effectiveName.toLowerCase() !== "unknown") {
+                // Update client-side tables if RLS permits, plus server-side admin sync for organization_members
+                await Promise.allSettled([
+                    supabase
+                        .from("profiles")
+                        .update({ full_name: effectiveName, updated_at: new Date().toISOString() })
+                        .eq("id", user.id),
+                    supabase
+                        .from("organization_members")
+                        .update({ full_name: effectiveName })
+                        .eq("user_id", user.id),
+                    syncCurrentUserFullName(effectiveName)
+                ])
+            } else {
+                await syncCurrentUserFullName()
+            }
+
+            toast.success("¡Cuenta y contraseña configuradas correctamente!")
+            handleSkip()
+            router.refresh()
         } catch (error: any) {
             toast.error(error.message || "Error al actualizar contraseña")
         } finally {
@@ -95,15 +124,29 @@ export function SetPasswordModal() {
                     <div className="mx-auto bg-primary/10 p-3 rounded-full mb-4 w-fit">
                         <ShieldCheck className="w-8 h-8 text-primary" />
                     </div>
-                    <DialogTitle className="text-center text-xl">Protege tu Cuenta</DialogTitle>
+                    <DialogTitle className="text-center text-xl">Completa tu Cuenta</DialogTitle>
                     <DialogDescription className="text-center pt-2">
-                        Has iniciado sesión con un enlace temporal.
+                        Has iniciado sesión con un enlace de invitación.
                         <br />
-                        Configura una contraseña segura para evitar depender del email la próxima vez.
+                        Confirma tu nombre y configura una contraseña segura para futuros ingresos.
                     </DialogDescription>
                 </DialogHeader>
 
                 <form onSubmit={handleSubmit} className="grid gap-4 py-4">
+                    <div className="grid gap-2">
+                        <Label htmlFor="fullName">Tu Nombre Completo</Label>
+                        <div className="relative">
+                            <User className="w-4 h-4 text-muted-foreground absolute left-3 top-3" />
+                            <Input
+                                id="fullName"
+                                type="text"
+                                value={fullName}
+                                onChange={(e) => setFullName(e.target.value)}
+                                className="pl-9"
+                                placeholder="Ej: Ana García"
+                            />
+                        </div>
+                    </div>
                     <div className="grid gap-2">
                         <Label htmlFor="password">Nueva Contraseña</Label>
                         <div className="relative">
@@ -139,7 +182,7 @@ export function SetPasswordModal() {
 
                     <DialogFooter className="flex-col gap-2 sm:gap-0 mt-4">
                         <Button type="submit" disabled={loading} className="w-full">
-                            {loading ? "Guardando..." : "Establecer Contraseña"}
+                            {loading ? "Guardando..." : "Guardar y Continuar"}
                         </Button>
                         <div className="flex justify-center mt-2">
                             <Button

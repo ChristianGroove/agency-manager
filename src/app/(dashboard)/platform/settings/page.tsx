@@ -6,15 +6,13 @@ import { getCurrentBrandingTier } from "@/modules/core/branding/tier-actions"
 import { getOrganizationModules, getCurrentOrganizationId, getOrganizationCardDetails } from "@/modules/core/organizations/organization-actions"
 import { getSubscriptionApp } from "@/modules/features/catalog/actions"
 import { getCurrentOrgRole } from "@/modules/core/iam/services/org-roles"
+import { getOrganizationRoles } from "@/modules/core/iam/services/role-service"
 import { Loader2 } from "lucide-react"
 
 export const metadata = {
     title: "Configuración",
     description: "Gestiona la configuración de tu organización",
 }
-
-
-import { getSnapshots, getVaultConfig } from "@/modules/infrastructure/data-vault/data-vault-actions"
 
 export default async function SettingsPage() {
     const orgId = await getCurrentOrganizationId()
@@ -23,16 +21,24 @@ export default async function SettingsPage() {
         return <div>Error: Organización no encontrada</div>
     }
 
-    const [settings, activeModules, subscriptionApp, brandingSettings, userRole, tierData, snapshots, vaultConfig, organization] = await Promise.all([
+    const [
+        settings,
+        activeModules,
+        subscriptionApp,
+        brandingSettings,
+        userRole,
+        tierData,
+        organization,
+        initialRoles
+    ] = await Promise.all([
         getSettings(),
         getOrganizationModules(orgId),
         getSubscriptionApp(),
         getEffectiveBranding(orgId),
         getCurrentOrgRole(orgId),
         getCurrentBrandingTier(),
-        getSnapshots(),
-        getVaultConfig(),
-        getOrganizationCardDetails(orgId)
+        getOrganizationCardDetails(orgId),
+        getOrganizationRoles()
     ])
 
     const tierFeatures = tierData?.tier?.features || {}
@@ -48,10 +54,9 @@ export default async function SettingsPage() {
                     subscriptionApp={subscriptionApp}
                     userRole={userRole || 'member'}
                     tierFeatures={tierFeatures}
-                    snapshots={snapshots}
-                    vaultConfig={vaultConfig || { enabled: false, frequency: 'weekly' }}
                     organizationId={orgId}
                     isReseller={isReseller}
+                    initialRoles={initialRoles}
                     billingStatus={{
                         allowDirectBilling: organization?.allowDirectBilling
                     }}
@@ -61,7 +66,6 @@ export default async function SettingsPage() {
     )
 }
 
-
 function SettingsLoading() {
     return (
         <div className="flex h-[50vh] items-center justify-center">
@@ -69,6 +73,3 @@ function SettingsLoading() {
         </div>
     )
 }
-
-
-

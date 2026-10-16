@@ -429,7 +429,8 @@ export const MODULE_ROUTES: ModuleRoute[] = [
         isCore: true,
         category: 'config',
         access: {
-            allowedRoles: ['owner', 'admin']
+            allowedRoles: ['owner', 'dueño', 'admin', 'administrador'],
+            requiredPermission: 'org.settings.manage'
         }
     },
     // --- RESELLER MANAGEMENT ---
@@ -443,7 +444,7 @@ export const MODULE_ROUTES: ModuleRoute[] = [
         isCore: true, // Fix: Always core, but protected by access rules (excluded for clients)
         access: {
             excludedOrgTypes: ['client'],
-            allowedRoles: ['owner', 'admin']
+            allowedRoles: ['owner', 'dueño', 'admin', 'administrador']
         }
     }
 ]
@@ -476,7 +477,10 @@ export function filterRoutesByModules(
     vertical?: string,
     capabilities: Record<string, boolean> | string[] = {}
 ): ModuleRoute[] {
-    const normalizedRole = userRole?.toLowerCase()
+    const rawRole = userRole?.toLowerCase()?.trim()
+    const normalizedRole = rawRole === 'administrador' ? 'admin'
+                         : rawRole === 'dueño' ? 'owner'
+                         : rawRole
     
     // Resolve capability check function
     const hasCap = (cap: string) => {
@@ -485,8 +489,14 @@ export function filterRoutesByModules(
     }
 
     const isOwner = normalizedRole === 'owner' || 
-                   normalizedRole === 'dueño' || 
+                   rawRole === 'dueño' || 
                    hasCap('all');
+
+    const matchesAllowedRole = (allowedRoles?: string[]) => {
+        if (!allowedRoles || !rawRole) return false
+        const allowedNormalized = allowedRoles.map(r => r.toLowerCase())
+        return allowedNormalized.includes(rawRole) || (normalizedRole ? allowedNormalized.includes(normalizedRole) : false)
+    }
 
     return MODULE_ROUTES.filter(route => {
         const { access, isCore, key, parentModule } = route
@@ -511,9 +521,8 @@ export function filterRoutesByModules(
             if (isOwner) return true
 
             // Role check for non-owners
-            if (access.allowedRoles && normalizedRole) {
-                const allowedNormalized = access.allowedRoles.map(r => r.toLowerCase())
-                if (allowedNormalized.includes(normalizedRole)) return true
+            if (matchesAllowedRole(access.allowedRoles)) {
+                return true
             }
             
             // Permission check (IAM V2)
@@ -539,9 +548,8 @@ export function filterRoutesByModules(
         if (isOwner) return true
 
         // Role check for non-owners
-        if (access.allowedRoles && normalizedRole) {
-            const allowedNormalized = access.allowedRoles.map(r => r.toLowerCase())
-            if (allowedNormalized.includes(normalizedRole)) return true
+        if (matchesAllowedRole(access.allowedRoles)) {
+            return true
         }
 
         // Permission check (IAM V2)

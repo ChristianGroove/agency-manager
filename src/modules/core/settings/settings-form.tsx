@@ -1,40 +1,35 @@
 "use client"
 
-import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { useState, useEffect, useMemo } from "react"
+import { useRouter, useSearchParams, usePathname } from "next/navigation"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Button } from "@/components/ui/button"
 import { Textarea } from "@/components/ui/textarea"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { Switch } from "@/components/ui/switch"
-import { Badge } from "@/components/ui/badge"
-import { Loader2, Save, CreditCard, FileText, Layout, Palette, Eye, MessageSquare, Users, AlertTriangle, Lock, Shield, DollarSign, ShieldAlert, Bell, Bot, Settings, Globe } from "lucide-react"
+import { Loader2, Save, CreditCard, FileText, Palette, Users, DollarSign, Bell, Settings, ShieldCheck } from "lucide-react"
+import { toast } from "sonner"
 
 import { PaymentMethodsManager } from "./payment-methods-manager"
 import { EmittersSettings } from "./emitters-settings"
 import { TeamSettingsTab } from "./team-settings-tab"
 import { EmailLogsTable } from "@/modules/features/notifications/components/email-logs-table"
 import { SubscriptionSettingsTab } from "./subscription-settings-tab"
-import { VaultSettingsTab } from "@/modules/infrastructure/data-vault/components/vault-settings-tab"
-import { AuditLogsTable } from "@/modules/infrastructure/audit/audit-logs-table"
 import { ResellerDashboard } from "@/modules/billing/platform/revenue/components/reseller-dashboard"
 import { BrandCenterSheet } from "@/modules/core/branding/components/brand-center-sheet"
-import { BiometricButton } from "@/modules/core/auth/components/biometric-button"
+import { RoleManager } from "@/modules/core/iam/components/role-manager"
 import { SectionHeader } from "@/components/layout/section-header"
-import { SplitText } from "@/components/ui/split-text"
 
-import { isEmittersModuleEnabled } from "@/modules/core/saas/flags"
 import { useTranslation } from "@/modules/core/i18n/use-translation"
 import { useRegisterView } from "@/modules/features/caa/context/view-context"
-import { getSettings, updateSettings } from "./actions/crud"
-import { COMMUNICATION_VARIABLES, DEFAULT_TEMPLATES } from "@/modules/features/messaging/communication-utils"
+import { updateSettings } from "./actions/crud"
 
 import { BrandingConfig } from "@/types/branding"
 import { OrganizationRole } from "@/modules/core/iam/services/org-roles"
 import { DataSnapshot, VaultConfig } from "@/modules/infrastructure/data-vault/types"
+import { Role } from "@/modules/core/iam/services/role-service"
 import { SaasApp } from "@/types/saas"
 
 interface SettingsFormProps {
@@ -44,10 +39,11 @@ interface SettingsFormProps {
     brandingSettings?: BrandingConfig
     tierFeatures?: Record<string, any>
     userRole: OrganizationRole
-    snapshots: DataSnapshot[]
-    vaultConfig: VaultConfig
+    snapshots?: DataSnapshot[]
+    vaultConfig?: VaultConfig
     organizationId: string
     isReseller?: boolean
+    initialRoles?: Role[]
     billingStatus?: { allowDirectBilling?: boolean }
 }
 
@@ -64,6 +60,8 @@ interface SettingsTab {
     customCheck?: (modules: string[]) => boolean
 }
 
+const FORM_EDITABLE_TABS = new Set(['notifications', 'billing', 'payments'])
+
 export function SettingsForm({
     initialSettings,
     activeModules,
@@ -71,16 +69,18 @@ export function SettingsForm({
     brandingSettings,
     tierFeatures = {},
     userRole,
-    snapshots,
-    vaultConfig,
     organizationId,
     isReseller = false,
+    initialRoles = [],
     billingStatus
 }: SettingsFormProps) {
     const router = useRouter()
+    const pathname = usePathname()
+    const searchParams = useSearchParams()
     const { t } = useTranslation()
     const [isLoading, setIsLoading] = useState(false)
     const [formData, setFormData] = useState(initialSettings || {})
+    const [showBrandCenter, setShowBrandCenter] = useState(false)
 
     // CAA Registration
     useRegisterView({
@@ -89,59 +89,18 @@ export function SettingsForm({
         actions: [
             { id: "save-settings", label: "Guardar Cambios", type: "function", target: "submit_form", icon: Save, description: "Guardar la configuración actual" },
             { id: "view-billing", label: "Facturación y Planes", type: "route", target: "/platform/settings?tab=subscription", icon: CreditCard, description: "Gestionar plan y métodos de pago" },
-            { id: "manage-team", label: "Gestionar Equipo", type: "route", target: "/platform/settings?tab=team", icon: Users, description: "Invitar o eliminar miembros" }
+            { id: "manage-team", label: "Gestionar Equipo", type: "route", target: "/platform/settings?tab=team", icon: Users, description: "Invitar o eliminar miembros" },
+            { id: "manage-roles", label: "Roles y Permisos", type: "route", target: "/platform/settings?tab=roles", icon: ShieldCheck, description: "Configurar roles y permisos IAM" }
         ]
     })
-
-    // Local UI Settings State
-    const [showMarqueeLocal, setShowMarqueeLocal] = useState(false)
-    const [showBrandCenter, setShowBrandCenter] = useState(false)
-
-    useEffect(() => {
-        // Load local setting on mount
-        const stored = localStorage.getItem("ui_settings_tools_marquee")
-        if (stored !== null) {
-            setShowMarqueeLocal(stored === "true")
-        }
-    }, [])
-
-    const handleMarqueeChange = (checked: boolean) => {
-        setShowMarqueeLocal(checked)
-        localStorage.setItem("ui_settings_tools_marquee", String(checked))
-        window.dispatchEvent(new Event("ui-settings-changed"))
-    }
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
         const { name, value } = e.target
         setFormData((prev: any) => ({ ...prev, [name]: value }))
     }
 
-    const handleSelectChange = (name: string, value: string) => {
-        setFormData((prev: any) => ({ ...prev, [name]: value }))
-    }
-
     const handleSwitchChange = (name: string, checked: boolean) => {
         setFormData((prev: any) => ({ ...prev, [name]: checked }))
-    }
-
-    const handleModuleChange = (key: string, checked: boolean) => {
-        setFormData((prev: any) => ({
-            ...prev,
-            portal_modules: {
-                ...(prev.portal_modules || {}),
-                [key]: checked
-            }
-        }))
-    }
-
-    const handleTemplateChange = (key: string, value: string) => {
-        setFormData((prev: any) => ({
-            ...prev,
-            comm_templates: {
-                ...(prev.comm_templates || {}),
-                [key]: value
-            }
-        }))
     }
 
     const handleSubmit = async (e: React.FormEvent) => {
@@ -151,20 +110,20 @@ export function SettingsForm({
         try {
             const result = await updateSettings(formData)
             if (result.error) {
-                alert("Error al guardar: " + result.error)
+                toast.error("Error al guardar: " + result.error)
             } else {
-                alert("Configuración guardada correctamente")
+                toast.success("Configuración guardada correctamente")
                 router.refresh()
             }
         } catch (error) {
             console.error(error)
-            alert("Ocurrió un error inesperado")
+            toast.error("Ocurrió un error inesperado al guardar")
         } finally {
             setIsLoading(false)
         }
     }
 
-    const TABS_CONFIG: SettingsTab[] = [
+    const TABS_CONFIG: SettingsTab[] = useMemo(() => [
         {
             id: 'subscription',
             label: t('settings.tabs.subscription'),
@@ -173,23 +132,17 @@ export function SettingsForm({
             isCore: true
         },
         {
-            id: 'vault',
-            label: t('settings.tabs.security'),
-            icon: Shield,
-            minRole: 'owner',
-            isCore: true
-        },
-        {
-            id: 'audit',
-            label: "Auditoría",
-            icon: ShieldAlert,
-            minRole: 'admin',
-            isCore: true
-        },
-        {
             id: 'team',
             label: t('settings.tabs.team'),
             icon: Users,
+            requiredModule: null,
+            isCore: true,
+            minRole: 'admin'
+        },
+        {
+            id: 'roles',
+            label: 'Roles y Permisos',
+            icon: ShieldCheck,
             requiredModule: null,
             isCore: true,
             minRole: 'admin'
@@ -206,26 +159,18 @@ export function SettingsForm({
             id: 'billing',
             label: t('settings.tabs.billing'),
             icon: FileText,
-            requiredModule: null, // Enabled for everyone (Resellers & Clients)
+            requiredModules: ['core_billing', 'module_invoicing'],
+            matchAny: true,
             minRole: 'admin'
         },
         {
             id: 'payments',
             label: t('settings.tabs.payments'),
             icon: CreditCard,
-            requiredModule: null, // Enabled for everyone
-            requiredModules: undefined,
-            matchAny: false,
+            requiredModules: ['module_payments', 'core_billing', 'module_invoicing'],
+            matchAny: true,
             minRole: 'admin'
         },
-        {
-            id: 'portal',
-            label: t('settings.tabs.portal'),
-            icon: Layout,
-            requiredModule: null,
-            customCheck: (modules: string[]) => modules.some(m => m.startsWith('module_') || m.startsWith('core_'))
-        },
-
         {
             id: 'revenue',
             label: 'Comisiones',
@@ -235,9 +180,9 @@ export function SettingsForm({
             minRole: 'owner',
             customCheck: () => isReseller
         }
-    ]
+    ], [t, isReseller])
 
-    const getVisibleTabs = (activeModules: string[]) => {
+    const visibleTabs = useMemo(() => {
         return TABS_CONFIG.filter(tab => {
             if (tab.minRole) {
                 if (tab.minRole === 'admin' && userRole === 'member') return false
@@ -253,9 +198,33 @@ export function SettingsForm({
             }
             return true
         })
+    }, [TABS_CONFIG, activeModules, userRole])
+
+    const requestedTab = searchParams.get('tab')
+    const defaultTabId = visibleTabs[0]?.id || 'subscription'
+    const [activeTab, setActiveTab] = useState<string>(() => {
+        if (requestedTab && visibleTabs.some(t => t.id === requestedTab)) {
+            return requestedTab
+        }
+        return defaultTabId
+    })
+
+    useEffect(() => {
+        if (requestedTab && visibleTabs.some(t => t.id === requestedTab)) {
+            setActiveTab(requestedTab)
+        } else if (!visibleTabs.some(t => t.id === activeTab)) {
+            setActiveTab(defaultTabId)
+        }
+    }, [requestedTab, visibleTabs, activeTab, defaultTabId])
+
+    const handleTabChange = (nextTab: string) => {
+        setActiveTab(nextTab)
+        const params = new URLSearchParams(searchParams.toString())
+        params.set('tab', nextTab)
+        router.replace(`${pathname}?${params.toString()}`, { scroll: false })
     }
 
-    const visibleTabs = getVisibleTabs(activeModules)
+    const showGlobalSaveButton = userRole !== 'member' && FORM_EDITABLE_TABS.has(activeTab)
 
     return (
         <div className="space-y-6">
@@ -272,15 +241,15 @@ export function SettingsForm({
                 title={t('settings.title')}
                 subtitle={t('settings.description')}
                 icon={Settings}
-                action={userRole !== 'member' && (
+                action={showGlobalSaveButton ? (
                     <Button onClick={handleSubmit} disabled={isLoading} className="bg-brand-pink hover:bg-brand-pink/90">
                         {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
                         {t('common.save')}
                     </Button>
-                )}
+                ) : undefined}
             />
 
-            <Tabs defaultValue={visibleTabs[0]?.id || 'team'} className="w-full" suppressHydrationWarning>
+            <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full" suppressHydrationWarning>
                 <TabsList
                     className="flex w-full overflow-x-auto bg-zinc-100/50 dark:bg-white/5 p-1 backdrop-blur-sm border border-zinc-200/50 dark:border-white/10 no-scrollbar rounded-xl"
                     suppressHydrationWarning
@@ -305,28 +274,13 @@ export function SettingsForm({
                     <SubscriptionSettingsTab app={subscriptionApp} allowDirectBilling={billingStatus?.allowDirectBilling} />
                 </TabsContent>
 
-                <TabsContent value="vault" className="space-y-4 mt-4" suppressHydrationWarning>
-                    <VaultSettingsTab snapshots={snapshots || []} initialConfig={vaultConfig!} />
-                </TabsContent>
-
-                <TabsContent value="audit" className="space-y-4 mt-4" suppressHydrationWarning>
-                    <Card className="glass-card rounded-2xl relative overflow-hidden">
-                        <CardHeader>
-                            <CardTitle>Registro de Auditoría</CardTitle>
-                            <CardDescription>
-                                Historial inmutable de acciones críticas de seguridad y cambios en la organización.
-                            </CardDescription>
-                        </CardHeader>
-                        <CardContent>
-                            <AuditLogsTable />
-                        </CardContent>
-                    </Card>
-                </TabsContent>
-
                 <TabsContent value="team" className="space-y-4 mt-4" suppressHydrationWarning>
-                    <TeamSettingsTab />
+                    <TeamSettingsTab activeModules={activeModules} onNavigateToRoles={() => handleTabChange('roles')} />
                 </TabsContent>
 
+                <TabsContent value="roles" className="space-y-4 mt-4" suppressHydrationWarning>
+                    <RoleManager initialRoles={initialRoles} activeModules={activeModules} />
+                </TabsContent>
 
                 <TabsContent value="notifications" className="space-y-4 mt-4" suppressHydrationWarning>
                     <Card className="glass-card rounded-2xl relative overflow-hidden">
@@ -342,7 +296,7 @@ export function SettingsForm({
                                     </div>
                                     <h3 className="font-medium">Diseño y Plantillas</h3>
                                     <p className="text-xs text-muted-foreground mb-2">Personaliza el aspecto de tus correos.</p>
-                                    <Button variant="outline" size="sm" onClick={() => router.push('/platform/settings/email')}>
+                                    <Button variant="outline" size="sm" onClick={() => router.push('/tools/email-engine')}>
                                         Gestionar Plantillas
                                     </Button>
                                 </div>
@@ -495,78 +449,6 @@ export function SettingsForm({
                         </CardContent>
                     </Card>
                 </TabsContent>
-
-                <TabsContent value="portal" className="space-y-4 mt-4" suppressHydrationWarning>
-                    <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                        <div className="lg:col-span-2 space-y-4">
-                            <Card className="glass-card rounded-2xl relative overflow-hidden">
-                                <CardHeader>
-                                    <CardTitle className="flex items-center gap-2"><Globe className="h-4 w-4" /> General</CardTitle>
-                                    <CardDescription>Configuración básica del portal.</CardDescription>
-                                </CardHeader>
-                                <CardContent className="space-y-4">
-                                    <div className="flex items-center justify-between p-4 border dark:border-white/10 rounded-lg bg-muted/20 dark:bg-white/5">
-                                        <div className="space-y-0.5">
-                                            <Label className="text-base">Habilitar Portal</Label>
-                                            <p className="text-sm text-muted-foreground">Si se desactiva, los clientes verán mantenimiento.</p>
-                                        </div>
-                                        <Switch checked={formData.portal_enabled !== false} onCheckedChange={(checked) => handleSwitchChange('portal_enabled', checked)} />
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                        <Input id="portal_subdomain" name="portal_subdomain" value={formData.portal_subdomain || ''} onChange={handleChange} placeholder="mi-negocio" className="max-w-[200px]" />
-                                        <span className="text-muted-foreground text-sm">.pixy.com.co</span>
-                                    </div>
-                                </CardContent>
-                            </Card>
-                            <div className="glass-card rounded-2xl bg-blue-50 dark:bg-blue-500/10 border border-blue-100 dark:border-blue-500/20 p-6 text-center mt-6">
-                                <div className="mx-auto bg-blue-100 dark:bg-blue-500/20 rounded-full w-10 h-10 flex items-center justify-center mb-3">
-                                    <Palette className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-                                </div>
-                                <h3 className="text-base font-semibold text-blue-900 dark:text-blue-100 mb-1">El Branding del Portal cambió de lugar</h3>
-                                <p className="text-sm text-blue-700 dark:text-blue-300 mb-4 max-w-sm mx-auto">Personaliza colores y logos en el Centro de Marca.</p>
-                                {userRole !== 'member' && (
-                                    <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white" onClick={() => setShowBrandCenter(true)}>
-                                        Abrir Centro de Marca
-                                    </Button>
-                                )}
-                            </div>
-                        </div>
-                        <div className="space-y-4">
-                            <Card className="glass-card rounded-2xl relative overflow-hidden">
-                                <CardHeader>
-                                    <CardTitle className="flex items-center gap-2"><Eye className="h-4 w-4" /> Visibilidad</CardTitle>
-                                    <CardDescription>Controla qué módulos ven tus clientes.</CardDescription>
-                                </CardHeader>
-                                <CardContent className="space-y-6">
-                                    <div className="flex items-center justify-between">
-                                        <div className="space-y-0.5">
-                                            <Label className="text-base">Facturas</Label>
-                                            <p className="text-xs text-muted-foreground">Historial y pendientes.</p>
-                                        </div>
-                                        <Switch checked={formData.portal_modules?.invoices !== false} onCheckedChange={(checked) => handleModuleChange('invoices', checked)} />
-                                    </div>
-                                    <div className="flex items-center justify-between">
-                                        <div className="space-y-0.5">
-                                            <Label className="text-base">Cotizaciones</Label>
-                                            <p className="text-xs text-muted-foreground">Aprobar o rechazar.</p>
-                                        </div>
-                                        <Switch checked={formData.portal_modules?.quotes !== false} onCheckedChange={(checked) => handleModuleChange('quotes', checked)} />
-                                    </div>
-                                    <div className="flex items-center justify-between">
-                                        <div className="space-y-0.5">
-                                            <Label className="text-base">Proyectos</Label>
-                                            <p className="text-xs text-muted-foreground">Avance y tareas.</p>
-                                        </div>
-                                        <Switch checked={formData.portal_modules?.projects !== false} onCheckedChange={(checked) => handleModuleChange('projects', checked)} />
-                                    </div>
-                                </CardContent>
-                            </Card>
-                        </div>
-                    </div>
-                </TabsContent>
-
-
-
 
                 {isReseller && (
                     <TabsContent value="revenue" className="space-y-6 mt-4" suppressHydrationWarning>

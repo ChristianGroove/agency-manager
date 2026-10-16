@@ -7,6 +7,26 @@ import { Loader2, CheckCircle2, AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 
+function resolveTargetRedirect(rawNext: string | null, type: string | null, hash: string): string {
+    const isRecovery = type === 'recovery' || hash.includes('type=recovery')
+    const isInvite = type === 'invite' || hash.includes('type=invite')
+
+    if (rawNext && rawNext.startsWith('/') && !rawNext.startsWith('//')) {
+        // If recovery flow was pointed to generic /platform or /dashboard, ensure user lands on /update-password
+        if (isRecovery && (rawNext === '/platform' || rawNext === '/dashboard')) {
+            return '/update-password'
+        }
+        if (isInvite && rawNext === '/dashboard') {
+            return '/dashboard?promptPassword=true'
+        }
+        return rawNext
+    }
+
+    if (isRecovery) return '/update-password'
+    if (isInvite) return '/dashboard?promptPassword=true'
+    return '/dashboard'
+}
+
 function ConfirmContent() {
     const [status, setStatus] = useState<'idle' | 'loading' | 'success' | 'error'>('idle')
     const [errorMessage, setErrorMessage] = useState<string | null>(null)
@@ -16,7 +36,7 @@ function ConfirmContent() {
     const token_hash = searchParams.get('token_hash')
     const type = searchParams.get('type') as any
     const code = searchParams.get('code')
-    const next = searchParams.get('next') ?? '/dashboard'
+    const rawNext = searchParams.get('next')
 
     const supabase = createBrowserClient(
         process.env.NEXT_PUBLIC_SUPABASE_URL!,
@@ -30,9 +50,9 @@ function ConfirmContent() {
             setStatus('error')
             const params = new URLSearchParams(hash.replace('#', ''))
             const desc = params.get('error_description')
-            const code = params.get('error_code')
+            const errCode = params.get('error_code')
             
-            if (code === 'otp_expired') {
+            if (errCode === 'otp_expired') {
                 setErrorMessage('El enlace ha expirado o ya fue utilizado. Por seguridad, los enlaces de acceso son de un solo uso.')
             } else {
                 setErrorMessage(desc ? decodeURIComponent(desc).replace(/\+/g, ' ') : 'Error de autenticación')
@@ -42,6 +62,8 @@ function ConfirmContent() {
 
     const handleVerify = async () => {
         setStatus('loading')
+        const hash = typeof window !== 'undefined' ? window.location.hash : ''
+        const nextUrl = resolveTargetRedirect(rawNext, type, hash)
         
         // Case 1: Token Hash (OTP/Confirm)
         if (token_hash && type) {
@@ -53,7 +75,7 @@ function ConfirmContent() {
 
                 if (!error) {
                     setStatus('success')
-                    setTimeout(() => router.push(next), 1500)
+                    setTimeout(() => router.push(nextUrl), 1200)
                 } else {
                     throw error
                 }
@@ -71,7 +93,7 @@ function ConfirmContent() {
                 const { error } = await supabase.auth.exchangeCodeForSession(code)
                 if (!error) {
                     setStatus('success')
-                    setTimeout(() => router.push(next), 1500)
+                    setTimeout(() => router.push(nextUrl), 1200)
                 } else {
                     throw error
                 }
@@ -83,26 +105,53 @@ function ConfirmContent() {
             return
         }
 
-        // Case 3: Implicit Flow Tokens in Hash (#access_token=...)
-        const hash = window.location.hash
+        // Case 3: Implicit Flow Tokens in Hash (#access_token=...) or active session
         if (hash.includes('access_token=')) {
             try {
+                const hashParams = new URLSearchParams(hash.substring(1))
+                const access_token = hashParams.get('access_token')
+                const refresh_token = hashParams.get('refresh_token')
+
+                if (access_token && refresh_token) {
+                    const { error } = await supabase.auth.setSession({
+                        access_token,
+                        refresh_token
+                    })
+                    if (error) throw error
+                    setStatus('success')
+                    setTimeout(() => router.push(nextUrl), 1200)
+                    return
+                }
+
                 const { data: { session } } = await supabase.auth.getSession()
                 if (session) {
                     setStatus('success')
-                    setTimeout(() => router.push(next), 1500)
+                    setTimeout(() => router.push(nextUrl), 1200)
                     return
                 }
-            } catch (e) {
+            } catch (e: any) {
                 console.error("Hash session detection error:", e)
+                setStatus('error')
+                setErrorMessage(e?.message || 'Error al recuperar la sesión del enlace')
+                return
             }
         }
 
-        // No valid params
-        if (!token_hash && !code) {
-            setStatus('error')
-            setErrorMessage('No se encontró un token de inicio de sesión. Por favor, asegúrate de hacer clic en el botón del correo oficial.')
+        // Case 4: Already authenticated session (e.g., auto-consumed token)
+        try {
+            const { data: { session } } = await supabase.auth.getSession()
+            if (session) {
+                setStatus('success')
+                setTimeout(() => router.push(nextUrl), 1000)
+                return
+            }
+        } catch {
+            // Fall through to error
         }
+
+        // No valid params
+        setStatus('error')
+        setErrorMessage('No se encontró un token de inicio de sesión. Por favor, asegúrate de hacer clic en el botón del correo oficial.')
     }
 
     return (

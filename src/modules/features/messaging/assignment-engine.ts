@@ -342,21 +342,34 @@ async function roundRobinAssignment(orgId: string, agentPool?: string[], channel
 
     if (activeAgents.length === 0) return null;
 
-    // Filter by Channel Access AND Admin Role
+    // Filter by Channel Access, Member Status, and Global View / Admin / IAM Role
     const [rolesResult, accessResult] = await Promise.all([
-        (await createClient()).from('organization_members').select('user_id, role, permissions').eq('organization_id', orgId).in('user_id', activeAgents.map(a => a.agent_id)),
-        channelType ? (await createClient()).from('agent_channels').select('agent_id').or(`channel_type.eq.${channelType},channel_type.eq.${connectionId}`).eq('is_active', true) : Promise.resolve({ data: [] })
+        (await createClient())
+            .from('organization_members')
+            .select('user_id, role, status, permissions, role_data:organization_roles(permissions, hierarchy_level)')
+            .eq('organization_id', orgId)
+            .in('user_id', activeAgents.map(a => a.agent_id)),
+        channelType
+            ? (await createClient())
+                .from('agent_channels')
+                .select('agent_id')
+                .eq('organization_id', orgId)
+                .or(`channel_type.eq.${channelType},channel_type.eq.${connectionId}`)
+                .eq('is_active', true)
+            : Promise.resolve({ data: [] })
     ]);
 
-    const membersMap = new Map((rolesResult.data || []).map(m => [m.user_id, m]));
+    const membersMap = new Map((rolesResult.data || []).map((m: any) => [m.user_id, m]));
     const authorizedAgentIds = new Set((accessResult.data || []).map(ca => ca.agent_id));
 
     const qualifiedAgents = activeAgents.filter(a => {
-        const member = membersMap.get(a.agent_id);
-        const isAdmin = ['admin', 'owner'].includes(member?.role?.toLowerCase());
-        const hasChannelBinding = authorizedAgentIds.has(a.agent_id);
-        const hasExplicitAccess = (member?.permissions as any)?.inbox_access?.includes(connectionId);
-        return isAdmin || hasChannelBinding || hasExplicitAccess;
+        const member: any = membersMap.get(a.agent_id);
+        return isMemberQualifiedForChannel(
+            member,
+            authorizedAgentIds.has(a.agent_id),
+            channelType,
+            connectionId
+        );
     });
 
     if (qualifiedAgents.length === 0) return null;
@@ -373,6 +386,70 @@ async function roundRobinAssignment(orgId: string, agentPool?: string[], channel
 
     const nextIndex = lastIndex === -1 ? 0 : (lastIndex + 1) % qualifiedAgents.length
     return qualifiedAgents[nextIndex].agent_id
+}
+
+function evaluateGlobalInboxAccess(member: any, inboxAccess: unknown): boolean {
+    const roleName = (member?.role || '').toLowerCase();
+    const roleData = (member?.role_data || member?.organization_roles) as any;
+    const rolePerms = (roleData?.permissions as Record<string, any>) || {};
+    const perms = (member?.permissions as Record<string, any>) || {};
+    const hierarchy = typeof roleData?.hierarchy_level === 'number' ? roleData.hierarchy_level : 0;
+
+    if (
+        roleName === 'owner' ||
+        roleName === 'dueño' ||
+        hierarchy >= 100 ||
+        perms['all'] === true ||
+        rolePerms['all'] === true
+    ) {
+        return true;
+    }
+
+    const explicitGlobalViewOverride =
+        typeof perms['inbox.conversations.global_view'] === 'boolean'
+            ? perms['inbox.conversations.global_view']
+            : typeof perms.features?.['inbox.conversations.global_view'] === 'boolean'
+                ? perms.features['inbox.conversations.global_view']
+                : undefined;
+
+    if (explicitGlobalViewOverride === true) return true;
+    if (explicitGlobalViewOverride === false) return false;
+
+    if (
+        rolePerms['inbox.conversations.global_view'] === true ||
+        rolePerms.features?.['inbox.conversations.global_view'] === true
+    ) {
+        return true;
+    }
+
+    return (
+        (roleName === 'admin' || roleName === 'administrador' || hierarchy >= 50) &&
+        !Array.isArray(inboxAccess)
+    );
+}
+
+function isMemberQualifiedForChannel(
+    member: any,
+    hasChannelBinding: boolean,
+    channelType?: string,
+    connectionId?: string
+): boolean {
+    if (!member || member.status === 'blocked') return false;
+
+    const perms = (member.permissions as Record<string, any>) || {};
+    const inboxAccess = perms.inbox_access ?? perms.modules?.inbox?.inbox_access ?? perms.inbox?.inbox_access;
+    const hasGlobalView = evaluateGlobalInboxAccess(member, inboxAccess);
+
+    if (!channelType || hasGlobalView) return true;
+
+    const hasExplicitAccess = Boolean(
+        Array.isArray(inboxAccess) && (
+            (connectionId && inboxAccess.includes(connectionId)) ||
+            (channelType && inboxAccess.includes(channelType))
+        )
+    );
+
+    return hasChannelBinding || hasExplicitAccess;
 }
 
 async function loadBalanceAssignment(orgId: string, agentPool?: string[], channelType?: string, connectionId?: string): Promise<string | null> {
@@ -431,21 +508,34 @@ async function loadBalanceAssignment(orgId: string, agentPool?: string[], channe
 
     if (activeAgents.length === 0) return null;
 
-    // 2. Filter by Channel Access AND Admin Role
+    // 2. Filter by Channel Access, Member Status, and Global View / Admin / IAM Role
     const [rolesResult, accessResult] = await Promise.all([
-        (await createClient()).from('organization_members').select('user_id, role, permissions').eq('organization_id', orgId).in('user_id', activeAgents.map(a => a.agent_id)),
-        channelType ? (await createClient()).from('agent_channels').select('agent_id').or(`channel_type.eq.${channelType},channel_type.eq.${connectionId}`).eq('is_active', true) : Promise.resolve({ data: [] })
+        (await createClient())
+            .from('organization_members')
+            .select('user_id, role, status, permissions, role_data:organization_roles(permissions, hierarchy_level)')
+            .eq('organization_id', orgId)
+            .in('user_id', activeAgents.map(a => a.agent_id)),
+        channelType
+            ? (await createClient())
+                .from('agent_channels')
+                .select('agent_id')
+                .eq('organization_id', orgId)
+                .or(`channel_type.eq.${channelType},channel_type.eq.${connectionId}`)
+                .eq('is_active', true)
+            : Promise.resolve({ data: [] })
     ]);
 
-    const membersMap = new Map((rolesResult.data || []).map(m => [m.user_id, m]));
+    const membersMap = new Map((rolesResult.data || []).map((m: any) => [m.user_id, m]));
     const authorizedAgentIds = new Set((accessResult.data || []).map(ca => ca.agent_id));
 
     const qualifiedAgents = activeAgents.filter(a => {
-        const member = membersMap.get(a.agent_id);
-        const isAdmin = ['admin', 'owner'].includes(member?.role?.toLowerCase());
-        const hasChannelBinding = authorizedAgentIds.has(a.agent_id);
-        const hasExplicitAccess = (member?.permissions as any)?.inbox_access?.includes(connectionId);
-        return isAdmin || hasChannelBinding || hasExplicitAccess;
+        const member: any = membersMap.get(a.agent_id);
+        return isMemberQualifiedForChannel(
+            member,
+            authorizedAgentIds.has(a.agent_id),
+            channelType,
+            connectionId
+        );
     });
 
     if (qualifiedAgents.length === 0) return null;
@@ -502,31 +592,37 @@ async function skillsBasedAssignment(conv: any, agentPool?: string[], channelTyp
         .sort(([, a], [, b]) => b - a)
         .map(([agentId]) => agentId)
 
-    // Check availability and CHANNEL ACCESS of top agents
-    // Fetch roles for bypass
+    // Check availability and CHANNEL ACCESS of top agents (strictly scoped to orgId)
     const { data: members } = await (await createClient())
         .from('organization_members')
-        .select('user_id, role, permissions')
+        .select('user_id, role, status, permissions, role_data:organization_roles(permissions, hierarchy_level)')
+        .eq('organization_id', orgId)
         .in('user_id', sortedAgents)
 
-    const memberMap = new Map((members || []).map(m => [m.user_id, m]));
+    const memberMap = new Map((members || []).map((m: any) => [m.user_id, m]));
 
     const heartbeatThreshold = new Date(Date.now() - 5 * 60 * 1000).toISOString();
 
     for (const agentId of sortedAgents) {
-        const member = memberMap.get(agentId);
-        const isAdmin = ['admin', 'owner'].includes(member?.role?.toLowerCase());
+        const member: any = memberMap.get(agentId);
+        if (!member || member.status === 'blocked') continue;
 
-        // Validation: Channel Access (Skip if Admin)
-        if (channelType && !isAdmin) {
-            const perms = member?.permissions as any || {};
-            const legacyInboxAccess = perms.inbox_access || perms.modules?.inbox?.inbox_access || perms.inbox?.inbox_access || [];
-            const hasExplicitAccess = legacyInboxAccess.includes(connectionId);
+        const perms = (member.permissions as any) || {};
+        const legacyInboxAccess = perms.inbox_access ?? perms.modules?.inbox?.inbox_access ?? perms.inbox?.inbox_access;
+        const hasGlobalView = evaluateGlobalInboxAccess(member, legacyInboxAccess);
+
+        // Validation: Channel Access (Skip if Global View)
+        if (channelType && !hasGlobalView) {
+            const hasExplicitAccess = Array.isArray(legacyInboxAccess) && (
+                (connectionId && legacyInboxAccess.includes(connectionId)) ||
+                (channelType && legacyInboxAccess.includes(channelType))
+            );
             
             if (!hasExplicitAccess) {
                 const { data: hasAccess } = await (await createClient())
                     .from('agent_channels')
                     .select('agent_id')
+                    .eq('organization_id', orgId)
                     .eq('agent_id', agentId)
                     .or(`channel_type.eq.${channelType},channel_type.eq.${connectionId}`)
                     .eq('is_active', true)
@@ -539,6 +635,7 @@ async function skillsBasedAssignment(conv: any, agentPool?: string[], channelTyp
         const { data: availability } = await (await createClient())
             .from('agent_availability')
             .select('agent_id, current_load, max_capacity, last_seen_at')
+            .eq('organization_id', orgId)
             .eq('agent_id', agentId)
             .eq('status', 'online')
             .eq('auto_assign_enabled', true)

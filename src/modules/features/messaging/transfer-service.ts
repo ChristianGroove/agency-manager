@@ -93,7 +93,7 @@ export async function transferConversation(
             .single(),
         (await createClient())
             .from('organization_members')
-            .select('role')
+            .select('role, status, permissions, role_data:organization_roles(permissions, hierarchy_level)')
             .eq('organization_id', conv.organization_id)
             .eq('user_id', toAgentId)
             .single(),
@@ -108,34 +108,65 @@ export async function transferConversation(
     ])
 
     const agent = agentResult.data
-    const member = memberResult.data
+    const member: any = memberResult.data
     const sourceMember = sourceMemberResult.data
 
     if (fromAgentId && !sourceMember) return { success: false, error: "Transfer source is not a member of this organization" }
     if (!member || !agent) return { success: false, error: "Target agent profile or member record not found" }
+    if (member.status === 'blocked') return { success: false, error: "Target agent is suspended" }
 
     // 2. VALIDATION: Status & Capacity
     if (agent.status === 'offline') return { success: false, error: "Target agent is offline" }
     if (agent.current_load >= agent.max_capacity) return { success: false, error: "Target agent is at maximum capacity" }
 
-    // 3. VALIDATION: Channel Access (with Admin Bypass)
-    const isAdmin = ['admin', 'owner'].includes(member.role?.toLowerCase())
-    if (!isAdmin) {
+    // 3. VALIDATION: Channel Access (with Global View / Admin / IAM Role & inbox_access support)
+    const roleName = (member.role || '').toLowerCase()
+    const roleData = (member.role_data || member.organization_roles) as any
+    const rolePerms = (roleData?.permissions as Record<string, any>) || {}
+    const perms = (member.permissions as Record<string, any>) || {}
+    const hierarchy = typeof roleData?.hierarchy_level === 'number' ? roleData.hierarchy_level : 0
+    const inboxAccess = perms.inbox_access ?? perms.modules?.inbox?.inbox_access ?? perms.inbox?.inbox_access
+
+    const explicitGlobalViewOverride =
+        typeof perms['inbox.conversations.global_view'] === 'boolean'
+            ? perms['inbox.conversations.global_view']
+            : typeof perms.features?.['inbox.conversations.global_view'] === 'boolean'
+                ? perms.features['inbox.conversations.global_view']
+                : undefined
+
+    const hasGlobalView =
+        roleName === 'owner' ||
+        roleName === 'dueño' ||
+        hierarchy >= 100 ||
+        perms['all'] === true ||
+        rolePerms['all'] === true ||
+        explicitGlobalViewOverride === true ||
+        (explicitGlobalViewOverride !== false && (
+            rolePerms['inbox.conversations.global_view'] === true ||
+            rolePerms.features?.['inbox.conversations.global_view'] === true ||
+            ((roleName === 'admin' || roleName === 'administrador' || hierarchy >= 50) && !Array.isArray(inboxAccess))
+        ))
+
+    if (!hasGlobalView) {
         const channelBindings = Array.from(new Set(
             [conv.channel, conv.connection_id].filter((value): value is string => typeof value === 'string' && value.length > 0)
         ))
 
-        const { data: hasAccess } = await (await createClient())
-            .from('agent_channels')
-            .select('agent_id')
-            .eq('organization_id', conv.organization_id)
-            .eq('agent_id', toAgentId)
-            .in('channel_type', channelBindings)
-            .eq('is_active', true)
-            .limit(1)
+        const hasExplicitAccess = Array.isArray(inboxAccess) && channelBindings.some(binding => inboxAccess.includes(binding))
 
-        if (!hasAccess || hasAccess.length === 0) {
-            return { success: false, error: "Target agent does not have access to this channel" }
+        if (!hasExplicitAccess) {
+            const { data: hasAccess } = await (await createClient())
+                .from('agent_channels')
+                .select('agent_id')
+                .eq('organization_id', conv.organization_id)
+                .eq('agent_id', toAgentId)
+                .in('channel_type', channelBindings)
+                .eq('is_active', true)
+                .limit(1)
+
+            if (!hasAccess || hasAccess.length === 0) {
+                return { success: false, error: "Target agent does not have access to this channel" }
+            }
         }
     }
 

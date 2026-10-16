@@ -327,10 +327,10 @@ export async function getTenantContext() {
  * Get active modules for an organization
  */
 export async function getOrganizationModules(organizationId: string): Promise<string[]> {
-    const supabase = await createClient()
-    const { data } = await supabase
+    const { data } = await supabaseAdmin
         .from('organizations')
         .select(`
+            active_app_id,
             manual_module_overrides,
             subscription_product:saas_products!subscription_product_id (
                 modules:saas_product_modules (
@@ -341,10 +341,27 @@ export async function getOrganizationModules(organizationId: string): Promise<st
             )
         `)
         .eq('id', organizationId)
-        .single()
+        .maybeSingle()
 
-    const manualModules = (data?.manual_module_overrides as string[]) || []
+    const manualModules = Array.isArray(data?.manual_module_overrides)
+        ? (data.manual_module_overrides as string[])
+        : []
+    const spaceModules: string[] = []
     const productModules: string[] = []
+
+    if (data?.active_app_id) {
+        const { data: appModules } = await supabaseAdmin
+            .from('saas_app_modules')
+            .select('module_key')
+            .eq('app_id', data.active_app_id)
+            .eq('auto_enable', true)
+
+        if (appModules) {
+            appModules.forEach((m: any) => {
+                if (m?.module_key) spaceModules.push(m.module_key)
+            })
+        }
+    }
 
     if (data?.subscription_product && Array.isArray((data.subscription_product as any).modules)) {
         const modules = (data.subscription_product as any).modules
@@ -355,5 +372,7 @@ export async function getOrganizationModules(organizationId: string): Promise<st
         })
     }
 
-    return Array.from(new Set([...manualModules, ...productModules]))
+    const coreModules = ['core_clients', 'core_settings']
+    return Array.from(new Set([...coreModules, ...spaceModules, ...manualModules, ...productModules]))
 }
+

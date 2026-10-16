@@ -276,4 +276,85 @@ describe('Assignment Fallback Logic (JS Layer)', () => {
         // it should find the next agent alphabetically after B, which is C!
         expect(result).toBe('agent-C')
     })
+
+    it('authorizes custom IAM roles with inbox.conversations.global_view and excludes blocked/non-members in skills-based assignment', async () => {
+        mocks.supabaseRpc.mockResolvedValue({ data: null, error: new Error('RPC Failed') })
+        const recentHeartbeat = new Date(Date.now() - 1 * 60 * 1000).toISOString()
+
+        mocks.supabaseFrom.mockImplementation((table: string) => {
+            if (table === 'conversations') {
+                return supabaseQuery({
+                    data: {
+                        id: 'conv-skills',
+                        organization_id: 'org-123',
+                        channel: 'whatsapp',
+                        connection_id: 'conn-vip',
+                        leads: {},
+                    },
+                    error: null,
+                })
+            }
+            if (table === 'assignment_rules') {
+                return supabaseQuery({
+                    data: [{
+                        id: 'rule-skills',
+                        strategy: 'skills-based',
+                        assign_to: ['agent-blocked', 'agent-custom-supervisor'],
+                        conditions: {},
+                    }],
+                    error: null,
+                })
+            }
+            if (table === 'organization_members') {
+                return supabaseQuery({
+                    data: [
+                        {
+                            user_id: 'agent-blocked',
+                            role: 'owner',
+                            status: 'blocked',
+                            permissions: { all: true },
+                            role_data: { hierarchy_level: 100, permissions: { all: true } },
+                        },
+                        {
+                            user_id: 'agent-custom-supervisor',
+                            role: 'member',
+                            status: 'active',
+                            permissions: {},
+                            role_data: {
+                                hierarchy_level: 30,
+                                permissions: { 'inbox.conversations.global_view': true },
+                            },
+                        },
+                    ],
+                    error: null,
+                })
+            }
+            if (table === 'agent_channels') {
+                return supabaseQuery({ data: [], error: null })
+            }
+            if (table === 'agent_availability') {
+                return supabaseQuery({
+                    data: [
+                        {
+                            agent_id: 'agent-custom-supervisor',
+                            organization_id: 'org-123',
+                            status: 'online',
+                            auto_assign_enabled: true,
+                            current_load: 1,
+                            max_capacity: 10,
+                            last_seen_at: recentHeartbeat,
+                        },
+                    ],
+                    error: null,
+                })
+            }
+            if (table === 'assignment_history') return supabaseQuery({ data: null, error: null })
+            throw new Error(`Unexpected table ${table}`)
+        })
+
+        const { assignConversation } = await import('./assignment-engine')
+        const result = await assignConversation('conv-skills')
+        expect(result).toBe('agent-custom-supervisor')
+    })
 })
+
