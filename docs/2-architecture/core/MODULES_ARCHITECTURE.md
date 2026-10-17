@@ -43,7 +43,29 @@ Para evitar el acoplamiento y la deuda técnica, se han establecido las siguient
 La activación de módulos se realiza dinámicamente mediante el sistema de **Active Modules**:
 1.  Cada organización tiene un `active_app_id` (Space).
 2.  El sistema resuelve la unión de: `Core Modules + App Modules + Subscription Modules + Manual Overrides`.
-3.  La UI utiliza los **Slugs** (ej. `resto`) para habilitar pestañas y secciones.
+3.  La UI utiliza los **Slugs** y el catálogo `MODULE_ROUTES` ([`src/modules/core/saas/module-config.ts`](file:///G:/Pixy/agency-manager-mejorasuxui/src/modules/core/saas/module-config.ts)) para habilitar pestañas, rutas y secciones de acuerdo tanto con los módulos activos como con los permisos IAM V2 del usuario.
 
-> [!TIP]
-> Al añadir un nuevo módulo en `features`, asegúrate de registrarlo en `system_modules` de la base de datos para que el SaaS Engine pueda verlo.
+---
+
+## 4. Gobernanza Obligatoria al Incorporar un Nuevo Módulo o Feature
+
+> [!IMPORTANT]
+> **REGLA DE ORO (DISABLED-BY-DEFAULT + REGISTRO IAM V2)**:
+> Todo módulo nuevo o feature nueva que se registre en el sistema **entra desactivado por defecto** y **debe pedir confirmación explícita** antes de activarse para las organizaciones o roles operativos.
+
+Cuando se añade un nuevo módulo en `src/modules/features/*` o se amplía un módulo existente, es **obligatorio** cumplir los siguientes 5 pasos antes del commit:
+
+1. **Estado Inicial Desactivado (`Disabled-by-Default`)**:
+   - Registrar el módulo en `system_modules` / `saas_app_modules` con `auto_enable = false` para tenants existentes, requiriendo confirmación explícita para su activación.
+2. **Registro en `module-config.ts`**:
+   - Añadir la definición en `MODULE_METADATA` y sus rutas protegidas en `MODULE_ROUTES` dentro de [`src/modules/core/saas/module-config.ts`](file:///G:/Pixy/agency-manager-mejorasuxui/src/modules/core/saas/module-config.ts).
+3. **Registro en el Sistema de Roles y Permisos IAM V2 (`permissions.ts` y `default-roles.ts`)**:
+   - Definir las claves de permisos en `PERMISSIONS.<DOMINIO>` y agruparlas en `PERMISSION_GROUPS` con su respectivo `moduleKey` en [`src/modules/core/iam/actions/permissions.ts`](file:///G:/Pixy/agency-manager-mejorasuxui/src/modules/core/iam/actions/permissions.ts).
+   - Registrar el estado por defecto en [`src/modules/core/iam/services/default-roles.ts`](file:///G:/Pixy/agency-manager-mejorasuxui/src/modules/core/iam/services/default-roles.ts) (en `false` por defecto para el rol `Miembro` y sujeto a activación confirmada desde **SuperAdmin $\rightarrow$ Roles & Permisos IAM**).
+4. **Internacionalización (`es.ts` y `en.ts`)**:
+   - Registrar etiquetas y descripciones en [`es.ts`](file:///G:/Pixy/agency-manager-mejorasuxui/src/modules/core/i18n/dictionaries/es.ts), [`en.ts`](file:///G:/Pixy/agency-manager-mejorasuxui/src/modules/core/i18n/dictionaries/en.ts) y [`use-localized-iam.ts`](file:///G:/Pixy/agency-manager-mejorasuxui/src/modules/core/iam/actions/use-localized-iam.ts).
+5. **Protección con `requirePermission`**:
+   - Proteger todas las Server Actions del módulo invocando `await requirePermission(PERMISSIONS.DOMINIO.ACCION, orgId)` de [`src/modules/core/iam/services/role-service.ts`](file:///G:/Pixy/agency-manager-mejorasuxui/src/modules/core/iam/services/role-service.ts).
+
+Para mayor detalle arquitectónico, consultar [`SECURITY_STANDARDS.md`](file:///G:/Pixy/agency-manager-mejorasuxui/docs/2-architecture/security/SECURITY_STANDARDS.md) y [`settings-and-iam-overhaul.md`](file:///G:/Pixy/agency-manager-mejorasuxui/docs/ui/settings-and-iam-overhaul.md).
+

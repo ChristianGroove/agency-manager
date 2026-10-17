@@ -37,7 +37,7 @@ interface SearchFilterBarProps {
     searchTerm: string
     onSearchChange: (value: string) => void
     searchPlaceholder?: string
-    filters: FilterOption[]
+    filters?: FilterOption[]
     activeFilter?: string
     onFilterChange?: (filterId: string) => void
     defaultShowFilters?: boolean
@@ -48,7 +48,7 @@ export function SearchFilterBar({
     searchTerm,
     onSearchChange,
     searchPlaceholder = "Buscar...",
-    filters,
+    filters = [],
     activeFilter,
     onFilterChange,
     defaultShowFilters = false,
@@ -108,6 +108,15 @@ export function SearchFilterBar({
             <div className="relative flex items-center px-3 gap-2 flex-1 min-w-[120px] sm:min-w-[160px]">
                 <Search className="h-4 w-4 text-zinc-400 shrink-0" />
                 <input
+                    type="search"
+                    name="search_query_no_autofill"
+                    autoComplete="off"
+                    autoCorrect="off"
+                    autoCapitalize="off"
+                    spellCheck="false"
+                    data-lpignore="true"
+                    data-1p-ignore="true"
+                    data-form-type="other"
                     placeholder={searchPlaceholder}
                     className="bg-transparent border-0 focus:ring-0 text-sm w-full outline-none text-zinc-700 dark:text-white placeholder:text-zinc-400 h-9 min-w-0 truncate"
                     value={searchTerm}
@@ -132,13 +141,15 @@ export function SearchFilterBar({
                 )}
             </div>
 
-            {/* Collapsible Filter Pills - Right-justified next to the toggle button */}
-            <div className={cn(
-                "flex items-center justify-end gap-1.5 overflow-x-auto no-scrollbar min-w-0 transition-all duration-300 ease-in-out shrink-0 ml-auto",
-                showFilters
-                    ? "opacity-100 py-0.5"
-                    : "w-0 max-w-0 opacity-0 p-0 pointer-events-none"
-            )}>
+            {filters.length > 0 && (
+                <>
+                    {/* Collapsible Filter Pills - Right-justified next to the toggle button */}
+                    <div className={cn(
+                        "flex items-center justify-end gap-1.5 overflow-x-auto no-scrollbar min-w-0 transition-all duration-300 ease-in-out shrink-0 ml-auto",
+                        showFilters
+                            ? "opacity-100 py-0.5"
+                            : "w-0 max-w-0 opacity-0 p-0 pointer-events-none"
+                    )}>
                 <div className="flex items-center justify-end gap-1.5 shrink-0">
                     {filters.map(filter => {
                         const hasSubOptions = !!filter.subOptions && filter.subOptions.length > 0
@@ -357,6 +368,8 @@ export function SearchFilterBar({
                     <span>{showFilters ? "Ocultar barra de filtros" : "Mostrar barra de filtros"}</span>
                 </TooltipContent>
             </Tooltip>
+                </>
+            )}
         </div>
     )
 }

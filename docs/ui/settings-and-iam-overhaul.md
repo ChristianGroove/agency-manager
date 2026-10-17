@@ -154,17 +154,102 @@ Los Server Components de las rutas principales verifican `hasPermission` y redir
 
 ---
 
-## 9. Procedimientos de Verificación y Compilación
+## 9. Estandarización UI/UX, i18n Completo y Ordenamiento Canónico de Roles
 
-Para certificar la integridad de este módulo antes de cualquier despliegue:
+1. **Rediseño Estandarizado de la Ficha del Miembro (`MemberEditSheet`)**:
+   - Archivo: [`src/modules/core/settings/member-edit-sheet.tsx`](file:///G:/Pixy/agency-manager-mejorasuxui/src/modules/core/settings/member-edit-sheet.tsx).
+   - **Header y Footer Unificados**: Adopta el estándar visual de sheets de plataforma (`/platform/integrations`), eliminando botones duplicados de cierre y consolidando una barra inferior inteligente que habilita **Guardar Cambios** únicamente cuando existen cambios reales (`dirty state`) en la pestaña activa, evitando falsos positivos en la alerta de abandono.
+   - **Depuración de Tab Inbox y Seguridad**:
+     - En la pestaña **Inbox**, se administra exclusivamente la vinculación de canales (`inbox_access` / `agent_channels`). La disponibilidad y capacidad de carga o autoasignación de agentes es autoridad exclusiva de la configuración directa del módulo Inbox para todo el equipo.
+     - En la pestaña **Seguridad**, se eliminaron botones duplicados y bloques redundantes que ya operan desde la tabla principal, además de neutralizar el autocompletado automático del navegador (`autoComplete="new-password"`, `readOnly` hasta foco explícito) en campos de contraseña y barras de búsqueda.
+
+2. **Internacionalización Completa (i18n `es` / `en`) y Orden Canónico de Roles**:
+   - Archivos:
+     - [`src/modules/core/i18n/dictionaries/es.ts`](file:///G:/Pixy/agency-manager-mejorasuxui/src/modules/core/i18n/dictionaries/es.ts) y [`src/modules/core/i18n/dictionaries/en.ts`](file:///G:/Pixy/agency-manager-mejorasuxui/src/modules/core/i18n/dictionaries/en.ts)
+     - [`src/modules/core/iam/actions/use-localized-iam.ts`](file:///G:/Pixy/agency-manager-mejorasuxui/src/modules/core/iam/actions/use-localized-iam.ts)
+   - Todos los tabs de `/platform/settings` (General, Suscripción, Equipo, Roles y Permisos, Facturación, Pagos) y los **13 grupos y 56 permisos** de la matriz IAM cuentan con traducción reactiva 100% libre de textos hardcodeados.
+   - **Orden Canónico (`sortRolesWithSystemBaseFirst`)**: En [`src/modules/core/iam/actions/permissions.ts`](file:///G:/Pixy/agency-manager-mejorasuxui/src/modules/core/iam/actions/permissions.ts), los 3 roles base del sistema se fijan siempre a la izquierda en orden jerárquico (`[Dueño / Owner]`, `[Administrador / Administrator]`, `[Miembro / Member]`), y cualquier rol personalizado creado por la organización se acumula hacia la derecha por orden de creación.
+
+---
+
+## 10. Gobernanza Global IAM V2 en SuperAdmin (`/platform/admin`)
+
+Se implementó el centro de gobierno y auditoría multi-tenant de Roles y Permisos en `/platform/admin` $\rightarrow$ pestaña **Red (Tenants)** $\rightarrow$ sub-pestaña **Roles & Permisos IAM**:
+
+- **Archivos Clave**:
+  - Backend / Server Actions: [`src/modules/core/iam/actions/superadmin-iam-actions.ts`](file:///G:/Pixy/agency-manager-mejorasuxui/src/modules/core/iam/actions/superadmin-iam-actions.ts)
+  - Componente UI SuperAdmin: [`src/app/(dashboard)/platform/admin/_components/superadmin-iam-manager.tsx`](file:///G:/Pixy/agency-manager-mejorasuxui/src/app/(dashboard)/platform/admin/_components/superadmin-iam-manager.tsx)
+  - Integración en Admin Dashboard: [`src/app/(dashboard)/platform/admin/page.tsx`](file:///G:/Pixy/agency-manager-mejorasuxui/src/app/(dashboard)/platform/admin/page.tsx)
+  - Provisioning conectado a plantilla viva: [`src/modules/core/organizations/actions/provisioning.ts`](file:///G:/Pixy/agency-manager-mejorasuxui/src/modules/core/organizations/actions/provisioning.ts)
+  - Suite de pruebas unitarias: [`src/modules/core/iam/actions/superadmin-iam-actions.test.ts`](file:///G:/Pixy/agency-manager-mejorasuxui/src/modules/core/iam/actions/superadmin-iam-actions.test.ts)
+
+### 10.1. Modelo de Precedencia de 3 Capas en Tiempo de Ejecución
+La función `normalizePermissionSet` en [`src/modules/core/iam/services/role-service.ts`](file:///G:/Pixy/agency-manager-mejorasuxui/src/modules/core/iam/services/role-service.ts) evalúa los permisos efectivos de cada miembro con la siguiente jerarquía estricta:
+
+1. **Capa 1 — Wildcard Inmutable de Dueño (`Owner`)**:
+   - Si el miembro es `Owner` (`role === 'owner'`, `hierarchy_level >= 100` o `role.permissions.all === true`), recibe acceso total (`all: true` y los 56 permisos en `true`). Ningún cambio de rol ni override individual puede revocar permisos a un Dueño.
+2. **Capa 2 — Excepción Individual del Usuario (`organization_members.permissions`)**:
+   - Si el miembro posee un booleano explícito en su JSONB de excepciones individuales:
+     - `true`: **Concesión Extra** sobre su rol asignado.
+     - `false`: **Revocación Explícita** aunque su rol asignado tenga el permiso en `true`.
+   - Claves reservadas como `inbox_access` (array de UUIDs de canales) se preservan intactas sin colisionar con claves booleanas.
+3. **Capa 3 — Permiso del Rol Asignado (`organization_roles.permissions`)**:
+   - Si el miembro no tiene excepción individual para una clave, hereda el valor booleano del rol asignado (hidratado con `DEFAULT_ROLES` para roles de sistema).
+
+### 10.2. Políticas de Propagación Global y Resolución de Overrides
+Cuando el SuperAdmin edita la matriz global de un rol base (`Administrador` o `Miembro`) y la publica globalmente mediante `publishGlobalBaseRoleAction`, el sistema ejecuta auto-curación de roles base faltantes, revincula `role_id` huérfanos, limpia overrides redundantes y aplica una de las **3 Políticas de Propagación**:
+
+| Política | Comportamiento sobre `organization_members.permissions` | Caso de Uso Recomendado |
+| :--- | :--- | :--- |
+| **`preserve_overrides`** *(Recomendado)* | Conserva las concesiones (`true`) y revocaciones (`false`) individuales explícitas; solo limpia overrides redundantes que ya coinciden con el nuevo valor del rol base. | Actualizaciones evolutivas de permisos base sin alterar acuerdos particulares de cada agencia. |
+| **`clear_conflicting_overrides`** | Elimina únicamente los overrides individuales en las claves de permisos que cambiaron en esta publicación, forzando que esos permisos adopten el nuevo estándar global. | Cuando se corrige o endurece un permiso específico y ningún usuario con ese rol debe conservar la excepción anterior en esa clave. |
+| **`clear_all_role_overrides`** | Limpia todos los overrides booleanos de los miembros que tienen ese rol base (preservando intacto `inbox_access`), alineándolos al 100% con la plantilla global. | Estandarización total de auditoría sobre el rol base en toda la red de tenants. |
+
+---
+
+## 11. Protocolo Obligatorio para Nuevos Módulos y Features (Disabled-by-Default & IAM V2 Registration)
+
+> [!CAUTION]
+> **REGLA DE ARQUITECTURA INQUEBRANTABLE**:
+> 1. **Desactivado por Defecto (`Disabled-by-Default`)**: Todo módulo nuevo o feature nueva que entre al sistema **DEBE nacer desactivado por defecto** (`false` en roles no-Dueño, `auto_enable = false` para tenants existentes, o feature flag apagado) y **requiere confirmación explícita** del SuperAdmin o del Dueño del Tenant antes de activarse.
+> 2. **Registro Obligatorio en IAM V2**: Ningún módulo, ruta o acción de servidor puede fusionarse en el repositorio sin estar registrado en el catálogo de permisos de Roles y Permisos IAM V2.
+
+### Checklist Paso a Paso al Registrar un Nuevo Módulo o Feature
+
+1. **1. Registro del Módulo en el Motor SaaS (Desactivado por defecto)**:
+   - Si es un módulo comercializable o de Space, registrarlo en `system_modules` / `saas_app_modules` con `auto_enable = false` para organizaciones existentes, exigiendo activación explícita confirmada.
+   - Registrar su metadata en `MODULE_METADATA` y sus rutas protegidas en `MODULE_ROUTES` dentro de [`src/modules/core/saas/module-config.ts`](file:///G:/Pixy/agency-manager-mejorasuxui/src/modules/core/saas/module-config.ts).
+
+2. **2. Registro en el Catálogo Canónico de Permisos (`permissions.ts`)**:
+   - En [`src/modules/core/iam/actions/permissions.ts`](file:///G:/Pixy/agency-manager-mejorasuxui/src/modules/core/iam/actions/permissions.ts):
+     - Añadir las constantes en `PERMISSIONS.<DOMINIO>` usando nomenclatura canónica por puntos (`dominio.recurso.accion`, ej. `'nuevo_modulo.view'`, `'nuevo_modulo.manage'`).
+     - Añadir el grupo o las entradas correspondientes en `PERMISSION_GROUPS` vinculando obligatoriamente su `moduleKey` (ej. `moduleKey: 'module_nuevo'`).
+
+3. **3. Configuración en `DEFAULT_ROLES` (Desactivado por Defecto en Roles Operativos)**:
+   - En [`src/modules/core/iam/services/default-roles.ts`](file:///G:/Pixy/agency-manager-mejorasuxui/src/modules/core/iam/services/default-roles.ts):
+     - Todo permiso de una nueva feature o módulo entra en **`false` por defecto** en el rol `Miembro` (y en `false` en `Administrador` si es una capacidad crítica o sensible), de modo que solo se habilite tras confirmación explícita desde **SuperAdmin $\rightarrow$ Roles & Permisos IAM** o por el **Dueño** de la organización.
+
+4. **4. Traducción Bilingüe (`es.ts` y `en.ts`) y Hook de Localización**:
+   - Registrar las etiquetas y descripciones del grupo y de cada permiso en [`src/modules/core/i18n/dictionaries/es.ts`](file:///G:/Pixy/agency-manager-mejorasuxui/src/modules/core/i18n/dictionaries/es.ts), [`src/modules/core/i18n/dictionaries/en.ts`](file:///G:/Pixy/agency-manager-mejorasuxui/src/modules/core/i18n/dictionaries/en.ts) y mapearlos en [`src/modules/core/iam/actions/use-localized-iam.ts`](file:///G:/Pixy/agency-manager-mejorasuxui/src/modules/core/iam/actions/use-localized-iam.ts).
+
+5. **5. Blindaje en Backend (`requirePermission`) y Frontend (`hasPermission`)**:
+   - **Backend (Server Actions / API)**: Invocar siempre `await requirePermission(PERMISSIONS.DOMINIO.ACCION, orgId)` al inicio de cada acción.
+   - **Frontend (UI / Rutas)**: Filtrar vistas, tabs y botones de mutación con `hasPermission` o `usePermissions`.
+
+---
+
+## 12. Procedimientos de Verificación y Compilación
+
+Para certificar la integridad de este módulo antes de cualquier despliegue o commit:
 
 ```bash
 # 1. Comprobación estricta de tipos de TypeScript (0 errores requeridos)
 npm run check:types
 
-# 2. Ejecución de la suite completa de IAM, Settings y Módulos Operativos (60 suites)
-npx vitest run src/modules/core/iam src/modules/core/settings src/modules/features/billing src/modules/features/crm src/modules/features/tasks src/modules/features/resto-orders src/modules/features/resto/tables src/modules/features/menu src/modules/features/attendance src/modules/features/rentals src/modules/features/work-orders src/modules/features/channels
+# 2. Ejecución de la suite completa de IAM, SuperAdmin IAM, Settings y Módulos Operativos
+npx vitest run src/modules/core/iam src/modules/core/settings src/modules/core/organizations src/modules/features/messaging src/modules/features/billing src/modules/features/crm src/modules/features/tasks src/modules/features/resto-orders src/modules/features/resto/tables src/modules/features/menu src/modules/features/attendance src/modules/features/rentals src/modules/features/work-orders src/modules/features/channels
 
 # 3. Compilación de producción optimizada de Next.js
 npm run check:build
 ```
+

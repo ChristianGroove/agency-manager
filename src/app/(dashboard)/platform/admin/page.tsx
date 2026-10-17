@@ -10,9 +10,10 @@ import {
 } from '@/modules/core/admin/actions'
 import { getAllAppsAdmin } from "@/modules/core/saas/app-management-actions"
 import { requireSuperAdmin } from '@/modules/core/iam/services/platform-roles'
+import { getSuperAdminIamOverview } from '@/modules/core/iam/actions/superadmin-iam-actions'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { LayoutDashboard, Globe, Codepen, ShieldAlert, Activity, Server, Box, Building2, Users, LayoutTemplate, Wallet, Brain } from 'lucide-react'
+import { LayoutDashboard, Globe, Codepen, ShieldAlert, Shield, Activity, Server, Box, Building2, Users, LayoutTemplate, Wallet, Brain } from 'lucide-react'
 import { formatDistanceToNow } from 'date-fns'
 import { es } from 'date-fns/locale'
 import { ScrollArea } from '@/components/ui/scroll-area'
@@ -21,6 +22,7 @@ import { getDictionary } from "@/modules/core/i18n"
 
 // Components
 import { TenantsManager } from './_components/tenants-manager'
+import { SuperAdminIamManager } from './_components/superadmin-iam-manager'
 import { SaasEngineManager } from "./_components/saas-engine-manager"
 import { SecurityCenter } from "./_components/security-center"
 import { DomainsManager } from "./_components/domains-manager"
@@ -41,7 +43,8 @@ export default async function AdminDashboardPage() {
         modules360,
         intelligenceData,
         masterCredentials,
-        tenantsGovernance
+        tenantsGovernance,
+        iamOverview
     ] = await Promise.all([
         getAdminDashboardStats(),
         getActiveBroadcasts(),
@@ -51,7 +54,8 @@ export default async function AdminDashboardPage() {
         getModules360Data(),
         getIntelligenceMetrics(),
         getMasterAICredentials(),
-        getTenantsAIGovernance()
+        getTenantsAIGovernance(),
+        getSuperAdminIamOverview()
     ])
 
     return (
@@ -201,6 +205,10 @@ export default async function AdminDashboardPage() {
                                 <Building2 className="h-4 w-4" />
                                 Organizaciones
                             </TabsTrigger>
+                            <TabsTrigger value="iam-roles" className="gap-2">
+                                <Shield className="h-4 w-4" />
+                                Roles & Permisos IAM
+                            </TabsTrigger>
                             <TabsTrigger value="domains" className="gap-2">
                                 <Globe className="h-4 w-4" />
                                 Dominios & DNS
@@ -213,6 +221,9 @@ export default async function AdminDashboardPage() {
 
                         <TabsContent value="tenants" className="focus-visible:outline-none">
                             <TenantsManager organizations={organizations} allModules={allModules} />
+                        </TabsContent>
+                        <TabsContent value="iam-roles" className="focus-visible:outline-none">
+                            <SuperAdminIamManager initialOverview={iamOverview} />
                         </TabsContent>
                         <TabsContent value="domains" className="focus-visible:outline-none">
                             <DomainsManager initialOrgs={organizations} />

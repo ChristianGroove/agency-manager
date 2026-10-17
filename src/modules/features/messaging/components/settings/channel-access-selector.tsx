@@ -17,6 +17,7 @@ import { Badge } from "@/components/ui/badge"
 import { getChannels } from "@/modules/features/channels/actions"
 import { Channel } from "@/modules/features/channels/types"
 import { getCurrentUserPermissions } from "@/modules/core/settings/actions/team"
+import { useTranslation } from "@/modules/core/i18n/use-translation"
 
 interface ChannelAccessSelectorProps {
     selectedIds: string[]
@@ -25,6 +26,7 @@ interface ChannelAccessSelectorProps {
 }
 
 export function ChannelAccessSelector({ selectedIds, onChange, disabled }: ChannelAccessSelectorProps) {
+    const { t } = useTranslation()
     const [open, setOpen] = useState(false)
     const [channels, setChannels] = useState<Channel[]>([])
     const [loading, setLoading] = useState(true)
@@ -49,12 +51,6 @@ export function ChannelAccessSelector({ selectedIds, onChange, disabled }: Chann
 
             setChannels(finalChannels)
             setLoading(false)
-
-            // Auto-clean orphaned IDs on initial load
-            const validIds = selectedIds.filter(id => finalChannels.some(c => c.id === id));
-            if (validIds.length !== selectedIds.length) {
-                onChange(validIds);
-            }
         }
         fetchChannels()
     }, []) // Only run on mount to avoid loops
@@ -84,18 +80,18 @@ export function ChannelAccessSelector({ selectedIds, onChange, disabled }: Chann
                         <span className="flex items-center gap-2 truncate">
                             <MessageSquare className="h-4 w-4 text-indigo-500" />
                             {validSelectedIds.length === 0
-                                ? "Sin canales autorizados"
-                                : `${validSelectedIds.length} ${validSelectedIds.length === 1 ? 'canal seleccionado' : 'canales seleccionados'}`}
+                                ? t('settings.channel_selector.none_authorized')
+                                : `${validSelectedIds.length} ${validSelectedIds.length === 1 ? t('settings.channel_selector.count_singular') : t('settings.channel_selector.count_plural')}`}
                         </span>
                         <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                     </Button>
                 </PopoverTrigger>
                 <PopoverContent className="w-[var(--radix-popover-trigger-width)] p-0" align="start">
                     <Command className="border-none">
-                        <CommandInput placeholder="Buscar canal..." className="border-none focus:ring-0" />
+                        <CommandInput placeholder={t('settings.channel_selector.search_placeholder')} className="border-none focus:ring-0" />
                         <CommandList>
-                            <CommandEmpty>No se encontraron canales.</CommandEmpty>
-                            <CommandGroup heading="Canales Disponibles">
+                            <CommandEmpty>{t('settings.channel_selector.no_channels')}</CommandEmpty>
+                            <CommandGroup heading={t('settings.channel_selector.available_heading')}>
                                 {channels.map((channel) => (
                                     <CommandItem
                                         key={channel.id}
@@ -146,7 +142,7 @@ export function ChannelAccessSelector({ selectedIds, onChange, disabled }: Chann
             {validSelectedIds.length === 0 && !disabled && (
                 <div className="flex items-center gap-2 px-2 py-1 text-[10px] text-rose-600 bg-rose-50 rounded border border-rose-100 italic">
                     <ShieldAlert className="h-3 w-3" />
-                    Aviso: El agente no verá ningún chat si no autorizas canales.
+                    {t('settings.channel_selector.no_channels_warning')}
                 </div>
             )}
         </div>

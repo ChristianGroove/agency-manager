@@ -48,7 +48,21 @@ export function evaluateInboxPermissions(effectivePermissions: any) {
             []
         );
 
+    // CAN ACCESS INBOX: Master flag to determine if the user has permission to access the Inbox at all.
+    // Owner hierarchy always has access.
+    // For other roles: if explicitly disabled (perms['inbox.view'] === false), access is denied.
+    // Otherwise, access is granted if perms['inbox.view'] is true, or if they have global view or assigned channels.
+    const isOwnerOrSuper =
+        hierarchy === 100 ||
+        role === 'owner' || role === 'dueño' || role === 'propietario' ||
+        perms.all === true;
+
+    const canAccessInbox =
+        isOwnerOrSuper ||
+        (perms['inbox.view'] !== false && (perms['inbox.view'] === true || hasGlobalView || authorizedChannels.length > 0));
+
     return {
+        canAccessInbox,
         hasGlobalView,
         hasViewAll,
         hasTeamView,

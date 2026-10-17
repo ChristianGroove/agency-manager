@@ -2,6 +2,8 @@ import { afterEach, describe, expect, it, vi } from 'vitest'
 
 const mocks = vi.hoisted(() => ({
     getCurrentOrganizationId: vi.fn(),
+    requirePermission: vi.fn(async () => undefined),
+    hasPermission: vi.fn(async () => true),
     rpc: vi.fn(),
     storageFrom: vi.fn(),
     supabaseFrom: vi.fn(),
@@ -9,6 +11,11 @@ const mocks = vi.hoisted(() => ({
 
 vi.mock('@/modules/core/organizations/organization-actions', () => ({
     getCurrentOrganizationId: mocks.getCurrentOrganizationId,
+}))
+
+vi.mock('@/modules/core/iam/services/role-service', () => ({
+    requirePermission: mocks.requirePermission,
+    hasPermission: mocks.hasPermission,
 }))
 
 vi.mock('@/modules/core/database/supabase-server', () => ({

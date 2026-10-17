@@ -378,7 +378,7 @@ export const getTeamMembers = getOrganizationMembers
  * Invite a member to the current organization
  * Uses Admin API to generate link/create user if needed.
  */
-export async function inviteMember(email: string, roleId: string) {
+export async function inviteMember(email: string, roleId: string, inboxAccess: boolean = true) {
     const orgId = await getCurrentOrganizationId()
     if (!orgId) return { success: false, error: "No active organization" }
     if (!roleId || roleId.length < 30) return { success: false, error: "Rol inválido (UUID requerido)" }
@@ -507,6 +507,11 @@ export async function inviteMember(email: string, roleId: string) {
             }
         }
 
+        const initialPermissions: Record<string, any> = {}
+        if (inboxAccess === false) {
+            initialPermissions['inbox.view'] = false
+        }
+
         // 3. Add to Organization Members with accurate legacy role
         const { error: memberError } = await supabaseAdmin
             .from('organization_members')
@@ -515,7 +520,8 @@ export async function inviteMember(email: string, roleId: string) {
                 user_id: userId,
                 role_id: roleId,
                 role: legacyRole,
-                ...(existingName ? { full_name: existingName } : {})
+                ...(existingName ? { full_name: existingName } : {}),
+                ...(Object.keys(initialPermissions).length > 0 ? { permissions: initialPermissions } : {})
             }, { onConflict: 'organization_id,user_id' })
 
         if (memberError) {
@@ -885,6 +891,18 @@ export async function updateMemberPermissions(
             }
         }
 
+        // If inbox access was explicitly disabled, set agent availability to offline
+        if (permissions.overrides?.['inbox.view'] === false) {
+            try {
+                await supabaseAdmin
+                    .from('agent_availability')
+                    .update({ status: 'offline', last_seen_at: new Date().toISOString() })
+                    .match({ organization_id: orgId, agent_id: userId })
+            } catch (availErr) {
+                logTeamActionError("Update Member Availability Warning:", availErr)
+            }
+        }
+
         revalidatePath('/platform/settings')
         return { success: true, permissions: newPermissions }
     } catch (error: any) {
@@ -976,9 +994,10 @@ export async function getCurrentUserPermissions(providedOrgId?: string | null) {
  */
 export async function createUserManually(data: {
     email: string,
-    password: string,
+    password?: string,
     fullName: string,
-    role: string
+    role: string,
+    inboxAccess?: boolean
 }) {
     const orgId = await getCurrentOrganizationId()
     if (!orgId) return { success: false, error: "No active organization" }
@@ -1133,6 +1152,11 @@ export async function createUserManually(data: {
             return { success: false, error: "No puedes asignar un rol con jerarquía igual o superior a la tuya" }
         }
 
+        const initialPermissions: Record<string, any> = {}
+        if (data.inboxAccess === false) {
+            initialPermissions['inbox.view'] = false
+        }
+
         const { error: memberError } = await supabaseAdmin
             .from('organization_members')
             .insert({
@@ -1141,6 +1165,7 @@ export async function createUserManually(data: {
                 role: legacyRole,
                 role_id: data.role,
                 full_name: cleanName,
+                ...(Object.keys(initialPermissions).length > 0 ? { permissions: initialPermissions } : {})
             })
 
         if (memberError) {

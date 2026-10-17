@@ -5,6 +5,7 @@ export const PERMISSIONS = {
         EXECUTE: 'marketing.campaigns.execute',
         IMPORT: 'marketing.campaigns.import',
         EXPORT: 'marketing.campaigns.export',
+        MANAGE_ADS: 'marketing.ads.manage',
     },
     // 1. CRM & Sales
     CRM: {
@@ -12,10 +13,13 @@ export const PERMISSIONS = {
         EDIT_LEADS: 'crm.leads.edit',
         DELETE_LEADS: 'crm.leads.delete',
         EXPORT_DATA: 'crm.data.export',
+        VIEW_REPORTS: 'crm.reports.view',
+        MANAGE_SETTINGS: 'crm.settings.manage',
     },
 
     // 2. Messaging (Inbox)
     INBOX: {
+        VIEW: 'inbox.view',
         GLOBAL_VIEW: 'inbox.conversations.global_view',
         VIEW_ALL: 'inbox.conversations.view_all',
         TEAM_VIEW: 'inbox.team.view',
@@ -121,6 +125,7 @@ export const PERMISSION_GROUPS = [
             { id: PERMISSIONS.MARKETING.EXECUTE, label: 'Activar y pausar', description: 'Controlar los envíos masivos' },
             { id: PERMISSIONS.MARKETING.IMPORT, label: 'Importar contactos', description: 'Importar contactos y registrar evidencia de consentimiento' },
             { id: PERMISSIONS.MARKETING.EXPORT, label: 'Exportar resultados', description: 'Descargar resultados de campañas' },
+            { id: PERMISSIONS.MARKETING.MANAGE_ADS, label: 'Gestionar Meta Ads', description: 'Conectar cuentas publicitarias de Meta y monitorear anuncios' },
         ],
     },
     {
@@ -133,6 +138,8 @@ export const PERMISSION_GROUPS = [
             { id: PERMISSIONS.CRM.EDIT_LEADS, label: 'Editar Leads', description: 'Puede modificar información de leads' },
             { id: PERMISSIONS.CRM.DELETE_LEADS, label: 'Eliminar Leads', description: 'Eliminación permanente de registros' },
             { id: PERMISSIONS.CRM.EXPORT_DATA, label: 'Exportar Datos', description: 'Descargar base de datos en CSV' },
+            { id: PERMISSIONS.CRM.VIEW_REPORTS, label: 'Ver Reportes y Analítica', description: 'Consultar métricas de conversión, rendimiento de agentes y exportar reportes en PDF' },
+            { id: PERMISSIONS.CRM.MANAGE_SETTINGS, label: 'Configuración de CRM y Pipelines', description: 'Crear y reordenar etapas del embudo comercial y reglas del pipeline' },
         ]
     },
     {
@@ -141,6 +148,7 @@ export const PERMISSION_GROUPS = [
         label: 'Bandeja y Mensajería',
         description: 'Control de acceso al inbox, canales y supervisión de equipo.',
         permissions: [
+            { id: PERMISSIONS.INBOX.VIEW, label: 'Acceso a la Bandeja de Entrada', description: 'Permite ver la bandeja de entrada, acceder a conversaciones y operar como agente de mensajería' },
             { id: PERMISSIONS.INBOX.GLOBAL_VIEW, label: 'Vista Global de Canales', description: 'Acceso total: ve todos los canales sin necesidad de autorizarlos individualmente' },
             { id: PERMISSIONS.INBOX.VIEW_ALL, label: 'Ver Todas las Conversaciones', description: 'Ve chats no asignados o de otros agentes dentro de los canales autorizados (modo supervisor)' },
             { id: PERMISSIONS.INBOX.TEAM_VIEW, label: 'Supervisión de Equipo', description: 'Puede ver el filtro de agentes y monitorear la actividad del equipo en el inbox' },
@@ -340,6 +348,10 @@ export const LEGACY_PERMISSION_ALIASES: Record<string, string> = {
     'crm.edit_leads': PERMISSIONS.CRM.EDIT_LEADS,
     'crm.delete_leads': PERMISSIONS.CRM.DELETE_LEADS,
     'crm.export_data': PERMISSIONS.CRM.EXPORT_DATA,
+    'crm.view_reports': PERMISSIONS.CRM.VIEW_REPORTS,
+    'crm.manage_settings': PERMISSIONS.CRM.MANAGE_SETTINGS,
+    'marketing.manage_ads': PERMISSIONS.MARKETING.MANAGE_ADS,
+    'inbox.view': PERMISSIONS.INBOX.VIEW,
     'inbox.view_all': PERMISSIONS.INBOX.VIEW_ALL,
     'inbox.assign_agents': PERMISSIONS.INBOX.ASSIGN_AGENTS,
     'inbox.manage_channels': PERMISSIONS.INBOX.MANAGE_CHANNELS,
@@ -453,11 +465,15 @@ export function getDefaultBaseRolePermissions(kind: 'owner' | 'admin' | 'member'
             [PERMISSIONS.CRM.EDIT_LEADS]: true,
             [PERMISSIONS.CRM.DELETE_LEADS]: true,
             [PERMISSIONS.CRM.EXPORT_DATA]: true,
+            [PERMISSIONS.CRM.VIEW_REPORTS]: true,
+            [PERMISSIONS.CRM.MANAGE_SETTINGS]: true,
             [PERMISSIONS.MARKETING.VIEW]: true,
             [PERMISSIONS.MARKETING.MANAGE]: true,
             [PERMISSIONS.MARKETING.EXECUTE]: true,
             [PERMISSIONS.MARKETING.IMPORT]: true,
             [PERMISSIONS.MARKETING.EXPORT]: true,
+            [PERMISSIONS.MARKETING.MANAGE_ADS]: true,
+            [PERMISSIONS.INBOX.VIEW]: true,
             [PERMISSIONS.INBOX.VIEW_ALL]: true,
             [PERMISSIONS.INBOX.TEAM_VIEW]: true,
             [PERMISSIONS.INBOX.GLOBAL_VIEW]: false,
@@ -515,6 +531,10 @@ export function getDefaultBaseRolePermissions(kind: 'owner' | 'admin' | 'member'
     return {
         [PERMISSIONS.CRM.VIEW_LEADS]: true,
         [PERMISSIONS.CRM.EDIT_LEADS]: true,
+        [PERMISSIONS.CRM.VIEW_REPORTS]: false,
+        [PERMISSIONS.CRM.MANAGE_SETTINGS]: false,
+        [PERMISSIONS.MARKETING.MANAGE_ADS]: false,
+        [PERMISSIONS.INBOX.VIEW]: true,
         [PERMISSIONS.INBOX.VIEW_ALL]: false,
         [PERMISSIONS.INBOX.TEAM_VIEW]: false,
         [PERMISSIONS.INBOX.GLOBAL_VIEW]: false,
@@ -619,15 +639,19 @@ export function normalizeRoleRecord<T extends {
     else if (kind === 'admin' && normalizedLevel < 50) normalizedLevel = 50;
     else if (kind === 'member' && normalizedLevel < 10) normalizedLevel = 10;
 
+    const isSystemRole = Boolean(role.is_system_role) || kind !== null;
+
     return {
         ...role,
         name: cleanedName || role.name,
         description: cleanedDescription,
         hierarchy_level: normalizedLevel,
+        is_system_role: isSystemRole,
         permissions: normalizeRolePermissions({
             ...role,
             name: cleanedName,
             hierarchy_level: normalizedLevel,
+            is_system_role: isSystemRole,
         }),
     };
 }
@@ -648,12 +672,99 @@ export function getVisiblePermissionGroups(activeModules?: string[]) {
         ...activeModules,
     ]);
 
-    if (effectiveSet.has('module_marketing')) effectiveSet.add('core_crm');
-    if (effectiveSet.has('core_crm')) effectiveSet.add('module_marketing');
-    if (effectiveSet.has('module_crm')) effectiveSet.add('core_clients');
+    // Bidirectional aliases across Spaces and legacy DB keys
+    if (effectiveSet.has('module_inbox') || effectiveSet.has('inbox')) {
+        effectiveSet.add('module_messaging');
+    }
+    if (effectiveSet.has('module_messaging') || effectiveSet.has('messaging')) {
+        effectiveSet.add('module_inbox');
+    }
+    if (effectiveSet.has('module_billing')) {
+        effectiveSet.add('module_invoicing');
+        effectiveSet.add('module_payments');
+    }
+    if (effectiveSet.has('module_invoicing') || effectiveSet.has('invoicing')) {
+        effectiveSet.add('module_billing');
+        effectiveSet.add('module_payments');
+    }
+    if (effectiveSet.has('core_crm') || effectiveSet.has('module_crm') || effectiveSet.has('crm')) {
+        effectiveSet.add('core_crm');
+        effectiveSet.add('module_crm');
+        effectiveSet.add('core_clients');
+        effectiveSet.add('module_marketing');
+        effectiveSet.add('module_messaging');
+        effectiveSet.add('module_meta_ads');
+        effectiveSet.add('module_crm_reports');
+    }
+    if (effectiveSet.has('module_marketing') || effectiveSet.has('marketing')) {
+        effectiveSet.add('core_crm');
+        effectiveSet.add('core_clients');
+    }
+    if (effectiveSet.has('module_meta_ads')) {
+        effectiveSet.add('core_crm');
+        effectiveSet.add('module_marketing');
+    }
+    if (effectiveSet.has('module_crm_reports')) {
+        effectiveSet.add('core_crm');
+        effectiveSet.add('core_clients');
+    }
+    if (effectiveSet.has('module_campaigns')) {
+        effectiveSet.add('core_crm');
+        effectiveSet.add('module_marketing');
+    }
+    if (effectiveSet.has('module_cleaning')) {
+        effectiveSet.add('module_tasks');
+    }
 
     return PERMISSION_GROUPS.filter(
         group => !group.moduleKey || effectiveSet.has(group.moduleKey)
     );
+}
+
+/**
+ * Sorts organization roles so that the 3 base system roles always appear first
+ * on the left in strict order: Owner (1st) -> Administrator (2nd) -> Member (3rd).
+ * Custom roles appear after them, accumulating to the right in chronological/creation order.
+ */
+export function sortRolesWithSystemBaseFirst<T extends {
+    name?: string | null;
+    hierarchy_level?: number | null;
+    is_system_role?: boolean | null;
+    permissions?: Record<string, any> | null;
+    created_at?: string | null;
+}>(roles: T[]): T[] {
+    if (!Array.isArray(roles) || roles.length === 0) return [];
+
+    const systemRoles: T[] = [];
+    const customRoles: T[] = [];
+
+    for (const r of roles) {
+        const kind = resolveSystemRoleKind(r);
+        if (Boolean(r.is_system_role) || kind !== null) {
+            systemRoles.push(r);
+        } else {
+            customRoles.push(r);
+        }
+    }
+
+    const rankKind = (role: T): number => {
+        const kind = resolveSystemRoleKind(role);
+        if (kind === 'owner') return 1;
+        if (kind === 'admin') return 2;
+        if (kind === 'member') return 3;
+        return 4;
+    };
+
+    systemRoles.sort((a, b) => rankKind(a) - rankKind(b));
+
+    // Custom roles accumulate to the right (creation order ascending, fallback to stable order)
+    customRoles.sort((a, b) => {
+        if (a.created_at && b.created_at) {
+            return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+        }
+        return 0;
+    });
+
+    return [...systemRoles, ...customRoles];
 }
 

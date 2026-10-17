@@ -2,12 +2,11 @@
 
 import { useState, useEffect } from 'react';
 import { Role, getOrganizationRoles } from '../services/role-service';
-import { getVisiblePermissionGroups, normalizeRoleRecord } from '../actions/permissions';
+import { normalizeRoleRecord, getDefaultBaseRolePermissions, resolveSystemRoleKind, sortRolesWithSystemBaseFirst } from '../actions/permissions';
 import { Button } from '@/components/ui/button';
-import { Plus, Search, Users, Lock, MoreVertical, Trash2, Copy, Loader2 } from 'lucide-react';
+import { Plus, Users, Lock, MoreVertical, Trash2, Copy, Loader2, Pencil, Shield, AlertTriangle } from 'lucide-react';
 import { cn } from '@/modules/infrastructure/utils/utils';
 import { Input } from '@/components/ui/input';
-import { ScrollArea } from '@/components/ui/scroll-area';
 import { RoleEditor } from './role-editor';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -17,8 +16,42 @@ import {
     DropdownMenuSeparator,
     DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+    Dialog,
+    DialogContent,
+    DialogHeader,
+    DialogTitle,
+    DialogDescription,
+} from "@/components/ui/dialog";
+import {
+    Select,
+    SelectContent,
+    SelectItem,
+    SelectTrigger,
+    SelectValue,
+} from "@/components/ui/select";
 import { toast } from 'sonner';
-import { createRole, deleteRole, duplicateRole } from "../actions/role-actions";
+import { createRole, deleteRole, duplicateRole, updateRole } from "../actions/role-actions";
+import { useTranslation } from "@/modules/core/i18n/use-translation";
+import { useLocalizedIam } from "../actions/use-localized-iam";
+
+export function getHierarchyKey(level?: number | null): 'dueño' | 'admin' | 'supervisor' | 'operativo' {
+    const l = typeof level === 'number' ? level : 10;
+    if (l >= 100) return 'dueño';
+    if (l >= 40) return 'admin';
+    if (l >= 20) return 'supervisor';
+    return 'operativo';
+}
+
+export function getHierarchyLabel(level?: number | null): 'Operativo' | 'Supervisor' | 'Administrador' | 'Dueño' {
+    const key = getHierarchyKey(level);
+    switch (key) {
+        case 'dueño': return 'Dueño';
+        case 'admin': return 'Administrador';
+        case 'supervisor': return 'Supervisor';
+        default: return 'Operativo';
+    }
+}
 
 interface RoleManagerProps {
     initialRoles?: Role[];
@@ -26,18 +59,36 @@ interface RoleManagerProps {
 }
 
 export function RoleManager({ initialRoles = [], activeModules }: RoleManagerProps) {
-    const [roles, setRoles] = useState<Role[]>(() => initialRoles.map(normalizeRoleRecord));
+    const { t, getRoleInfo } = useLocalizedIam();
+    const [roles, setRoles] = useState<Role[]>(() => sortRolesWithSystemBaseFirst(initialRoles.map(normalizeRoleRecord)));
     const [selectedRoleId, setSelectedRoleId] = useState<string | null>(initialRoles[0]?.id || null);
-    const [searchQuery, setSearchQuery] = useState('');
-    const [isCreating, setIsCreating] = useState(false);
     const [isLoading, setIsLoading] = useState(initialRoles.length === 0);
+
+    // Modal state for Creating Role
+    const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+    const [isCreating, setIsCreating] = useState(false);
+    const [newRoleName, setNewRoleName] = useState('');
+    const [newRoleType, setNewRoleType] = useState<'operativo' | 'supervisor' | 'admin'>('operativo');
+    const [newRoleTemplate, setNewRoleTemplate] = useState<'member' | 'admin' | 'blank'>('member');
+    const [newRoleDesc, setNewRoleDesc] = useState('');
+
+    // Modal state for Editing Role Info
+    const [editingRole, setEditingRole] = useState<Role | null>(null);
+    const [isSavingEdit, setIsSavingEdit] = useState(false);
+    const [editRoleName, setEditRoleName] = useState('');
+    const [editRoleType, setEditRoleType] = useState<'operativo' | 'supervisor' | 'admin'>('operativo');
+    const [editRoleDesc, setEditRoleDesc] = useState('');
+
+    // Deletion states
+    const [blockedDeleteRole, setBlockedDeleteRole] = useState<Role | null>(null);
+    const [confirmDeleteRole, setConfirmDeleteRole] = useState<Role | null>(null);
 
     useEffect(() => {
         if (initialRoles.length > 0) {
-            const normalizedInitial = initialRoles.map(normalizeRoleRecord);
+            const normalizedInitial = sortRolesWithSystemBaseFirst(initialRoles.map(normalizeRoleRecord));
             setRoles(normalizedInitial);
             if (!selectedRoleId) {
-                setSelectedRoleId(normalizedInitial[0].id);
+                setSelectedRoleId(normalizedInitial[0]?.id || null);
             }
             setIsLoading(false);
             return;
@@ -47,14 +98,14 @@ export function RoleManager({ initialRoles = [], activeModules }: RoleManagerPro
         getOrganizationRoles()
             .then((fetched) => {
                 if (!mounted) return;
-                const normalizedFetched = fetched.map(normalizeRoleRecord);
+                const normalizedFetched = sortRolesWithSystemBaseFirst(fetched.map(normalizeRoleRecord));
                 setRoles(normalizedFetched);
                 if (normalizedFetched.length > 0) {
                     setSelectedRoleId(prev => prev || normalizedFetched[0].id);
                 }
             })
             .catch(() => {
-                if (mounted) toast.error('No se pudieron cargar los roles de la organización');
+                if (mounted) toast.error(t('settings.roles.toasts.load_error'));
             })
             .finally(() => {
                 if (mounted) setIsLoading(false);
@@ -67,193 +118,535 @@ export function RoleManager({ initialRoles = [], activeModules }: RoleManagerPro
 
     const activeRole = roles.find(r => r.id === selectedRoleId);
 
-    const filteredRoles = roles.filter(role =>
-        (role.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
-        (role.description || '').toLowerCase().includes(searchQuery.toLowerCase())
-    );
-
-    const handleCreateRole = async () => {
+    // Handle Create Role from Modal
+    const handleConfirmCreateRole = async () => {
+        if (!newRoleName.trim()) {
+            toast.error(t('settings.roles.toasts.name_required'));
+            return;
+        }
         setIsCreating(true);
         try {
+            let initialPerms: Record<string, boolean> = {};
+            if (newRoleTemplate === 'member' || newRoleTemplate === 'admin') {
+                const liveSystemRole = roles.find(r => resolveSystemRoleKind(r) === newRoleTemplate);
+                if (liveSystemRole?.permissions && Object.keys(liveSystemRole.permissions).length > 0) {
+                    initialPerms = { ...liveSystemRole.permissions };
+                    delete (initialPerms as any).all;
+                } else {
+                    initialPerms = getDefaultBaseRolePermissions(newRoleTemplate);
+                }
+            }
+
+            const hierarchy = newRoleType === 'admin' ? 45 : newRoleType === 'supervisor' ? 25 : 10;
+
             const newRole = await createRole({
-                name: 'Nuevo Rol Personalizado',
-                description: 'Define permisos específicos para este perfil',
-                permissions: {},
-                hierarchy_level: 10
+                name: newRoleName.trim(),
+                description: newRoleDesc.trim() || null,
+                permissions: initialPerms,
+                hierarchy_level: hierarchy
             });
 
             if (newRole) {
                 const roleWithCount: Role = { ...normalizeRoleRecord(newRole), member_count: 0 };
-                setRoles(prev => [...prev, roleWithCount]);
+                setRoles(prev => sortRolesWithSystemBaseFirst([...prev, roleWithCount]));
                 setSelectedRoleId(newRole.id);
-                toast.success('Rol personalizado creado. Configura sus permisos y guarda los cambios.');
+                setIsCreateModalOpen(false);
+                setNewRoleName('');
+                setNewRoleDesc('');
+                setNewRoleType('operativo');
+                setNewRoleTemplate('member');
+                toast.success(t('settings.roles.toasts.created', { name: newRole.name }));
             }
         } catch (error: any) {
-            toast.error(error?.message || 'Error al crear el rol');
+            toast.error(error?.message || t('settings.roles.toasts.save_error'));
         } finally {
             setIsCreating(false);
         }
     };
 
+    // Open Edit Info Modal
+    const handleOpenEditModal = (roleToEdit: Role) => {
+        setEditingRole(roleToEdit);
+        setEditRoleName(roleToEdit.name);
+        const lvl = roleToEdit.hierarchy_level || 10;
+        setEditRoleType(lvl >= 40 ? 'admin' : lvl >= 20 ? 'supervisor' : 'operativo');
+        setEditRoleDesc(roleToEdit.description || '');
+    };
+
+    // Save Edit Info Modal
+    const handleConfirmEditRole = async () => {
+        if (!editingRole) return;
+        if (!editRoleName.trim()) {
+            toast.error(t('settings.roles.toasts.name_required'));
+            return;
+        }
+        setIsSavingEdit(true);
+        try {
+            const hierarchy = editRoleType === 'admin' ? 45 : editRoleType === 'supervisor' ? 25 : 10;
+            const updated = await updateRole({
+                id: editingRole.id,
+                name: editRoleName.trim(),
+                description: editRoleDesc.trim() || null,
+                hierarchy_level: hierarchy,
+                permissions: editingRole.permissions || {},
+                is_system_role: editingRole.is_system_role,
+                organization_id: editingRole.organization_id
+            });
+
+            if (updated) {
+                const normalized: Role = {
+                    ...normalizeRoleRecord(updated),
+                    member_count: editingRole.member_count
+                };
+                setRoles(prev => prev.map(r => r.id === updated.id ? normalized : r));
+                setEditingRole(null);
+                toast.success(t('settings.roles.toasts.info_updated'));
+            }
+        } catch (error: any) {
+            toast.error(error?.message || t('settings.roles.toasts.save_error'));
+        } finally {
+            setIsSavingEdit(false);
+        }
+    };
+
+    // Duplicate Role
     const handleDuplicateRole = async (rawSourceRole: Role) => {
-        setIsCreating(true);
         try {
             const newRole = await duplicateRole(rawSourceRole.id);
             if (newRole) {
                 const roleWithCount: Role = { ...normalizeRoleRecord(newRole), member_count: 0 };
-                setRoles(prev => [...prev, roleWithCount]);
+                setRoles(prev => sortRolesWithSystemBaseFirst([...prev, roleWithCount]));
                 setSelectedRoleId(newRole.id);
-                toast.success(`Rol "${newRole.name}" creado a partir de "${rawSourceRole.name}"`);
+                toast.success(t('settings.roles.toasts.duplicated', { name: newRole.name, source: rawSourceRole.name }));
             }
         } catch (error: any) {
-            toast.error(error?.message || 'Error al duplicar el rol');
-        } finally {
-            setIsCreating(false);
+            toast.error(error?.message || t('settings.roles.toasts.save_error'));
         }
     };
 
-    const handleDeleteRole = async (role: Role) => {
-        if (role.is_system_role) {
-            toast.error('Los roles base del sistema no se pueden eliminar');
+    // Request Delete Role (checks member count)
+    const handleRequestDeleteRole = (roleToDelete: Role) => {
+        if (roleToDelete.is_system_role) {
+            toast.error(t('settings.roles.toasts.protected_role_error'));
             return;
         }
-        if ((role.member_count || 0) > 0) {
-            toast.error(`El rol "${role.name}" tiene ${role.member_count} miembro(s) asignado(s). Reasígnalos desde la pestaña Equipo antes de eliminarlo.`);
+        if ((roleToDelete.member_count || 0) > 0) {
+            setBlockedDeleteRole(roleToDelete);
             return;
         }
-        if (!confirm(`¿Estás seguro de eliminar el rol "${role.name}"? Esta acción no se puede deshacer.`)) return;
+        setConfirmDeleteRole(roleToDelete);
+    };
 
+    // Execute Delete Role
+    const handleExecuteDeleteRole = async (roleToDelete: Role) => {
         try {
-            await deleteRole(role.id);
-            const remaining = roles.filter(r => r.id !== role.id);
+            await deleteRole(roleToDelete.id);
+            const remaining = roles.filter(r => r.id !== roleToDelete.id);
             setRoles(remaining);
-            if (selectedRoleId === role.id) {
+            if (selectedRoleId === roleToDelete.id) {
                 setSelectedRoleId(remaining[0]?.id || null);
             }
-            toast.success(`Rol "${role.name}" eliminado`);
+            setConfirmDeleteRole(null);
+            toast.success(t('settings.roles.toasts.deleted', { name: roleToDelete.name }));
         } catch (error: any) {
-            toast.error(error?.message || 'No se pudo eliminar el rol');
+            toast.error(error?.message || t('settings.roles.toasts.delete_error'));
         }
     };
 
     return (
-        <div className="flex flex-col md:flex-row min-h-[640px] h-[calc(100vh-210px)] w-full overflow-hidden rounded-xl border border-gray-200 dark:border-zinc-800 bg-background shadow-sm">
-            {/* Left Sidebar: Role List */}
-            <div className="w-full md:w-80 border-b md:border-b-0 md:border-r border-gray-200 dark:border-zinc-800 bg-muted/10 flex flex-col shrink-0">
-                <div className="p-4 border-b border-gray-200 dark:border-zinc-800 space-y-3">
-                    <div className="flex items-center justify-between">
-                        <div>
-                            <h2 className="font-semibold text-sm text-gray-900 dark:text-white">Roles de Organización</h2>
-                            <p className="text-[11px] text-muted-foreground">{roles.length} perfiles configurados</p>
-                        </div>
-                        <Button size="sm" variant="default" onClick={handleCreateRole} disabled={isCreating} className="h-8 text-xs">
-                            {isCreating ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Plus className="h-3.5 w-3.5 mr-1" />}
-                            Nuevo Rol
-                        </Button>
-                    </div>
-                    <div className="relative">
-                        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                        <Input
-                            placeholder="Buscar roles..."
-                            className="pl-8 h-9 bg-background text-xs"
-                            value={searchQuery}
-                            onChange={(e) => setSearchQuery(e.target.value)}
-                        />
-                    </div>
-                </div>
-
-                <ScrollArea className="flex-1">
+        <div className="w-full space-y-4">
+            {/* Top Selector Bar: Suelto sin contenedor que corte bordes, con wrap natural */}
+            <div className="flex flex-wrap items-center justify-between gap-3 p-1">
+                <div className="flex flex-wrap items-center gap-2.5 flex-1 min-w-0">
                     {isLoading ? (
-                        <div className="p-8 flex items-center justify-center text-muted-foreground text-xs gap-2">
-                            <Loader2 className="h-4 w-4 animate-spin" />
-                            Cargando roles...
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground py-2 px-3">
+                            <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            {t('settings.roles.loading')}
                         </div>
                     ) : (
-                        <div className="p-2 space-y-1">
-                            {filteredRoles.map(role => (
+                        roles.map(role => {
+                            const isSelected = selectedRoleId === role.id;
+                            const hierarchyText = t(('settings.roles.hierarchy_' + getHierarchyKey(role.hierarchy_level)) as any);
+
+                            return (
                                 <div
                                     key={role.id}
                                     onClick={() => setSelectedRoleId(role.id)}
                                     className={cn(
-                                        "group flex items-center justify-between p-3 rounded-lg cursor-pointer transition-colors text-sm",
-                                        selectedRoleId === role.id
-                                            ? "bg-primary/10 text-primary border border-primary/20"
-                                            : "hover:bg-muted border border-transparent"
+                                        "glass-card group flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs cursor-pointer transition-all border shrink-0 select-none backdrop-blur-xl",
+                                        isSelected
+                                            ? "bg-white/90 dark:bg-zinc-800/80 text-brand-pink border-brand-pink/50 shadow-xs ring-1 ring-brand-pink/50 font-semibold"
+                                            : "bg-white/60 dark:bg-zinc-900/50 text-zinc-700 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white hover:bg-white/80 dark:hover:bg-zinc-800/60 border-zinc-200/80 dark:border-white/10 shadow-2xs font-medium"
                                     )}
                                 >
-                                    <div className="flex flex-col gap-1 overflow-hidden pr-2">
-                                        <div className="flex items-center gap-1.5">
-                                            <span className="font-medium truncate">{role.name}</span>
-                                            {role.is_system_role && <Lock className="h-3 w-3 text-muted-foreground/70 shrink-0" />}
-                                        </div>
-                                        <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
-                                            <span className="inline-flex items-center gap-1">
-                                                <Users className="h-3 w-3" />
-                                                {role.member_count || 0} {role.member_count === 1 ? 'miembro' : 'miembros'}
-                                            </span>
-                                            {role.is_system_role ? (
-                                                <Badge variant="secondary" className="h-4 px-1.5 text-[10px]">Sistema</Badge>
-                                            ) : (
-                                                <Badge variant="outline" className="h-4 px-1.5 text-[10px]">Nivel {role.hierarchy_level}</Badge>
+                                    <span className="font-semibold">{getRoleInfo(role).name}</span>
+                                    {role.is_system_role ? (
+                                        <Lock className={cn("h-3 w-3 shrink-0", isSelected ? "text-brand-pink" : "text-muted-foreground/60")} />
+                                    ) : (
+                                        <Badge
+                                            variant="outline"
+                                            className={cn(
+                                                "text-[10px] px-1.5 py-0 h-4 leading-none shrink-0 font-normal",
+                                                isSelected
+                                                    ? "border-brand-pink/30 text-brand-pink bg-brand-pink/5"
+                                                    : "border-zinc-200/70 dark:border-white/10 text-muted-foreground bg-white/40 dark:bg-white/5"
                                             )}
-                                        </div>
-                                    </div>
+                                        >
+                                            {hierarchyText}
+                                        </Badge>
+                                    )}
+                                    <span className={cn(
+                                        "text-[10px] px-1.5 py-0.5 rounded-full font-mono shrink-0",
+                                        isSelected
+                                            ? "bg-brand-pink/10 text-brand-pink font-semibold"
+                                            : "bg-zinc-100/80 dark:bg-white/5 text-muted-foreground"
+                                    )}>
+                                        {role.member_count || 0}
+                                    </span>
 
-                                    <DropdownMenu>
-                                        <DropdownMenuTrigger asChild>
-                                            <Button
-                                                variant="ghost"
-                                                size="icon"
-                                                className="h-7 w-7 opacity-70 group-hover:opacity-100 transition-opacity shrink-0"
-                                                onClick={(e) => e.stopPropagation()}
-                                            >
-                                                <MoreVertical className="h-3.5 w-3.5" />
-                                            </Button>
-                                        </DropdownMenuTrigger>
-                                        <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
-                                            <DropdownMenuItem onClick={() => handleDuplicateRole(role)}>
-                                                <Copy className="h-3.5 w-3.5 mr-2" />
-                                                Duplicar Rol
-                                            </DropdownMenuItem>
-                                            {!role.is_system_role && (
-                                                <>
-                                                    <DropdownMenuSeparator />
-                                                    <DropdownMenuItem
-                                                        className="text-destructive focus:text-destructive"
-                                                        onClick={() => handleDeleteRole(role)}
-                                                    >
-                                                        <Trash2 className="h-3.5 w-3.5 mr-2" />
-                                                        Eliminar Rol
-                                                    </DropdownMenuItem>
-                                                </>
-                                            )}
-                                        </DropdownMenuContent>
-                                    </DropdownMenu>
+                                    {/* Action Dropdown ONLY for custom roles (base roles have NO dropdown) */}
+                                    {!role.is_system_role && (
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
+                                                <button
+                                                    type="button"
+                                                    className={cn(
+                                                        "h-5 w-5 rounded flex items-center justify-center transition-opacity ml-0.5 -mr-1",
+                                                        isSelected ? "hover:bg-brand-pink/10 text-brand-pink" : "hover:bg-zinc-100 dark:hover:bg-zinc-800 text-muted-foreground opacity-60 group-hover:opacity-100"
+                                                    )}
+                                                >
+                                                    <MoreVertical className="h-3 w-3" />
+                                                </button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end" onClick={(e) => e.stopPropagation()}>
+                                                <DropdownMenuItem onClick={() => handleOpenEditModal(role)}>
+                                                    <Pencil className="h-3.5 w-3.5 mr-2" />
+                                                    {t('settings.roles.actions.edit_info')}
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem onClick={() => handleDuplicateRole(role)}>
+                                                    <Copy className="h-3.5 w-3.5 mr-2" />
+                                                    {t('settings.roles.actions.duplicate')}
+                                                </DropdownMenuItem>
+                                                <DropdownMenuSeparator />
+                                                <DropdownMenuItem
+                                                    className="text-destructive focus:text-destructive"
+                                                    onClick={() => handleRequestDeleteRole(role)}
+                                                >
+                                                    <Trash2 className="h-3.5 w-3.5 mr-2" />
+                                                    {t('settings.roles.actions.delete')}
+                                                </DropdownMenuItem>
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
+                                    )}
                                 </div>
-                            ))}
-                        </div>
+                            );
+                        })
                     )}
-                </ScrollArea>
+                </div>
+
+                {/* Right Action: "+ Nuevo Rol" */}
+                <div className="flex items-center gap-2 shrink-0">
+                    <Button
+                        size="sm"
+                        variant="default"
+                        onClick={() => setIsCreateModalOpen(true)}
+                        className="h-9 text-xs font-semibold px-4 shadow-xs bg-brand-pink hover:bg-brand-pink/90 text-white"
+                    >
+                        <Plus className="h-3.5 w-3.5 mr-1.5" />
+                        {t('settings.roles.new_role_button')}
+                    </Button>
+                </div>
             </div>
 
-            {/* Right Panel: Role Editor */}
-            <div className="flex-1 flex flex-col bg-background overflow-hidden">
-                {activeRole ? (
-                    <RoleEditor
-                        role={activeRole}
-                        key={activeRole.id}
-                        activeModules={activeModules}
-                        onDuplicate={handleDuplicateRole}
-                        onUpdate={(updatedRole: Role) => {
-                            setRoles(prev => prev.map(r => r.id === updatedRole.id ? updatedRole : r));
-                        }}
-                    />
-                ) : (
-                    <div className="flex-1 flex items-center justify-center text-muted-foreground text-sm p-6">
-                        Selecciona un rol de la barra lateral para inspeccionar o editar sus permisos
+            {/* Role Editor: Single unified block underneath */}
+            {activeRole ? (
+                <RoleEditor
+                    role={activeRole}
+                    key={activeRole.id}
+                    activeModules={activeModules}
+                    onDuplicate={handleDuplicateRole}
+                    onEditInfo={() => handleOpenEditModal(activeRole)}
+                    onUpdate={(updatedRole: Role) => {
+                        setRoles(prev => prev.map(r => r.id === updatedRole.id ? updatedRole : r));
+                    }}
+                />
+            ) : (
+                <div className="bg-white dark:bg-zinc-900 border border-gray-200 dark:border-zinc-800 rounded-2xl p-12 text-center text-muted-foreground text-sm">
+                    {t('settings.roles.select_role_prompt')}
+                </div>
+            )}
+
+            {/* Modal: Crear Nuevo Rol */}
+            <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
+                <DialogContent className="sm:max-w-lg">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2 text-base font-bold text-gray-900 dark:text-white">
+                            <Shield className="h-5 w-5 text-brand-pink" />
+                            {t('settings.roles.modals.create_title')}
+                        </DialogTitle>
+                        <DialogDescription className="text-xs text-muted-foreground">
+                            {t('settings.roles.modals.create_desc')}
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="space-y-4 py-2">
+                        <div className="space-y-1.5">
+                            <label className="text-xs font-semibold text-gray-700 dark:text-zinc-300">
+                                {t('settings.roles.modals.name_label')} <span className="text-brand-pink">*</span>
+                            </label>
+                            <Input
+                                value={newRoleName}
+                                onChange={(e) => setNewRoleName(e.target.value)}
+                                placeholder={t('settings.roles.modals.name_placeholder')}
+                                className="text-xs h-9"
+                            />
+                        </div>
+
+                        <div className="space-y-1.5">
+                            <label className="text-xs font-semibold text-gray-700 dark:text-zinc-300">
+                                {t('settings.roles.modals.hierarchy_label')}
+                            </label>
+                            <Select value={newRoleType} onValueChange={(val: any) => setNewRoleType(val)}>
+                                <SelectTrigger className="w-full h-9 text-xs">
+                                    <SelectValue placeholder={t('settings.roles.modals.hierarchy_label')} />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="operativo">
+                                        <div className="flex flex-col text-left py-0.5">
+                                            <span className="font-semibold text-xs">{t('settings.roles.modals.hierarchy_operativo_title')}</span>
+                                            <span className="text-[10px] text-muted-foreground">{t('settings.roles.modals.hierarchy_operativo_desc')}</span>
+                                        </div>
+                                    </SelectItem>
+                                    <SelectItem value="supervisor">
+                                        <div className="flex flex-col text-left py-0.5">
+                                            <span className="font-semibold text-xs">{t('settings.roles.modals.hierarchy_supervisor_title')}</span>
+                                            <span className="text-[10px] text-muted-foreground">{t('settings.roles.modals.hierarchy_supervisor_desc')}</span>
+                                        </div>
+                                    </SelectItem>
+                                    <SelectItem value="admin">
+                                        <div className="flex flex-col text-left py-0.5">
+                                            <span className="font-semibold text-xs">{t('settings.roles.modals.hierarchy_admin_title')}</span>
+                                            <span className="text-[10px] text-muted-foreground">{t('settings.roles.modals.hierarchy_admin_desc')}</span>
+                                        </div>
+                                    </SelectItem>
+                                </SelectContent>
+                            </Select>
+                            <p className="text-[11px] text-muted-foreground">
+                                {t('settings.roles.modals.hierarchy_help')}
+                            </p>
+                        </div>
+
+                        <div className="space-y-1.5">
+                            <label className="text-xs font-semibold text-gray-700 dark:text-zinc-300">
+                                {t('settings.roles.modals.template_label')}
+                            </label>
+                            <Select value={newRoleTemplate} onValueChange={(val: any) => setNewRoleTemplate(val)}>
+                                <SelectTrigger className="w-full h-9 text-xs">
+                                    <SelectValue placeholder={t('settings.roles.modals.template_label')} />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="member">
+                                        <div className="flex flex-col text-left py-0.5">
+                                            <span className="font-semibold text-xs">{t('settings.roles.modals.template_member_title')}</span>
+                                            <span className="text-[10px] text-muted-foreground">{t('settings.roles.modals.template_member_desc')}</span>
+                                        </div>
+                                    </SelectItem>
+                                    <SelectItem value="admin">
+                                        <div className="flex flex-col text-left py-0.5">
+                                            <span className="font-semibold text-xs">{t('settings.roles.modals.template_admin_title')}</span>
+                                            <span className="text-[10px] text-muted-foreground">{t('settings.roles.modals.template_admin_desc')}</span>
+                                        </div>
+                                    </SelectItem>
+                                    <SelectItem value="blank">
+                                        <div className="flex flex-col text-left py-0.5">
+                                            <span className="font-semibold text-xs">{t('settings.roles.modals.template_blank_title')}</span>
+                                            <span className="text-[10px] text-muted-foreground">{t('settings.roles.modals.template_blank_desc')}</span>
+                                        </div>
+                                    </SelectItem>
+                                </SelectContent>
+                            </Select>
+                        </div>
+
+                        <div className="space-y-1.5">
+                            <label className="text-xs font-semibold text-gray-700 dark:text-zinc-300">
+                                {t('settings.roles.modals.desc_label')}
+                            </label>
+                            <Input
+                                value={newRoleDesc}
+                                onChange={(e) => setNewRoleDesc(e.target.value)}
+                                placeholder={t('settings.roles.modals.desc_placeholder')}
+                                className="text-xs h-9"
+                            />
+                        </div>
                     </div>
-                )}
-            </div>
+
+                    <div className="flex justify-end gap-2 pt-3 border-t">
+                        <Button variant="outline" size="sm" onClick={() => setIsCreateModalOpen(false)} className="h-9 text-xs">
+                            {t('settings.roles.modals.cancel_btn')}
+                        </Button>
+                        <Button
+                            size="sm"
+                            onClick={handleConfirmCreateRole}
+                            disabled={isCreating || !newRoleName.trim()}
+                            className="h-9 text-xs font-semibold px-4 bg-brand-pink hover:bg-brand-pink/90 text-white"
+                        >
+                            {isCreating ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : <Plus className="h-3.5 w-3.5 mr-1.5" />}
+                            {t('settings.roles.modals.create_btn')}
+                        </Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* Modal: Editar Información del Rol */}
+            <Dialog open={!!editingRole} onOpenChange={(open) => !open && setEditingRole(null)}>
+                <DialogContent className="sm:max-w-lg">
+                    <DialogHeader>
+                        <DialogTitle className="flex items-center gap-2 text-base font-bold text-gray-900 dark:text-white">
+                            <Pencil className="h-4 w-4 text-brand-pink" />
+                            {t('settings.roles.modals.edit_title')}
+                        </DialogTitle>
+                        <DialogDescription className="text-xs text-muted-foreground">
+                            {t('settings.roles.modals.edit_desc')}
+                        </DialogDescription>
+                    </DialogHeader>
+
+                    <div className="space-y-4 py-2">
+                        <div className="space-y-1.5">
+                            <label className="text-xs font-semibold text-gray-700 dark:text-zinc-300">
+                                {t('settings.roles.modals.name_label')} <span className="text-brand-pink">*</span>
+                            </label>
+                            <Input
+                                value={editRoleName}
+                                onChange={(e) => setEditRoleName(e.target.value)}
+                                className="text-xs h-9"
+                            />
+                        </div>
+
+                        <div className="space-y-1.5">
+                            <label className="text-xs font-semibold text-gray-700 dark:text-zinc-300">
+                                {t('settings.roles.modals.hierarchy_label')}
+                            </label>
+                            <Select value={editRoleType} onValueChange={(val: any) => setEditRoleType(val)}>
+                                <SelectTrigger className="w-full h-9 text-xs">
+                                    <SelectValue placeholder={t('settings.roles.modals.hierarchy_label')} />
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="operativo">
+                                        <div className="flex flex-col text-left py-0.5">
+                                            <span className="font-semibold text-xs">{t('settings.roles.modals.hierarchy_operativo_title')}</span>
+                                            <span className="text-[10px] text-muted-foreground">{t('settings.roles.modals.hierarchy_operativo_desc')}</span>
+                                        </div>
+                                    </SelectItem>
+                                    <SelectItem value="supervisor">
+                                        <div className="flex flex-col text-left py-0.5">
+                                            <span className="font-semibold text-xs">{t('settings.roles.modals.hierarchy_supervisor_title')}</span>
+                                            <span className="text-[10px] text-muted-foreground">{t('settings.roles.modals.hierarchy_supervisor_desc')}</span>
+                                        </div>
+                                    </SelectItem>
+                                    <SelectItem value="admin">
+                                        <div className="flex flex-col text-left py-0.5">
+                                            <span className="font-semibold text-xs">{t('settings.roles.modals.hierarchy_admin_title')}</span>
+                                            <span className="text-[10px] text-muted-foreground">{t('settings.roles.modals.hierarchy_admin_desc')}</span>
+                                        </div>
+                                    </SelectItem>
+                                </SelectContent>
+                            </Select>
+                            <p className="text-[11px] text-muted-foreground">
+                                {t('settings.roles.modals.edit_hierarchy_help')}
+                            </p>
+                        </div>
+
+                        <div className="space-y-1.5">
+                            <label className="text-xs font-semibold text-gray-700 dark:text-zinc-300">
+                                {t('settings.roles.modals.edit_desc_label')}
+                            </label>
+                            <Input
+                                value={editRoleDesc}
+                                onChange={(e) => setEditRoleDesc(e.target.value)}
+                                className="text-xs h-9"
+                            />
+                        </div>
+                    </div>
+
+                    <div className="flex justify-end gap-2 pt-3 border-t">
+                        <Button variant="outline" size="sm" onClick={() => setEditingRole(null)} className="h-9 text-xs">
+                            {t('settings.roles.modals.cancel_btn')}
+                        </Button>
+                        <Button
+                            size="sm"
+                            onClick={handleConfirmEditRole}
+                            disabled={isSavingEdit || !editRoleName.trim()}
+                            className="h-9 text-xs font-semibold px-4 bg-brand-pink hover:bg-brand-pink/90 text-white"
+                        >
+                            {isSavingEdit ? <Loader2 className="h-3.5 w-3.5 mr-1.5 animate-spin" /> : null}
+                            {t('settings.roles.modals.save_btn')}
+                        </Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* Modal de Bloqueo de Eliminación: Cuando el rol tiene miembros asignados */}
+            <Dialog open={!!blockedDeleteRole} onOpenChange={(open) => !open && setBlockedDeleteRole(null)}>
+                <DialogContent className="sm:max-w-md">
+                    <div className="flex items-start gap-3.5 pt-2">
+                        <div className="h-10 w-10 rounded-full bg-amber-100 text-amber-600 flex items-center justify-center shrink-0">
+                            <AlertTriangle className="h-5 w-5" />
+                        </div>
+                        <div className="space-y-2">
+                            <h3 className="font-bold text-base text-gray-900 dark:text-white">
+                                {t('settings.roles.modals.delete_blocked_title')}
+                            </h3>
+                            <p className="text-xs text-muted-foreground leading-relaxed">
+                                {t('settings.roles.modals.delete_blocked_desc', {
+                                    name: blockedDeleteRole?.name || '',
+                                    count: String(blockedDeleteRole?.member_count || 0),
+                                    member_text: blockedDeleteRole?.member_count === 1 ? t('settings.roles.editor.member_singular') : t('settings.roles.editor.member_plural')
+                                })}
+                            </p>
+                            <p className="text-xs text-muted-foreground leading-relaxed">
+                                {t('settings.roles.modals.delete_blocked_help')}
+                            </p>
+                        </div>
+                    </div>
+                    <div className="flex justify-end pt-3 border-t mt-2">
+                        <Button variant="default" onClick={() => setBlockedDeleteRole(null)} className="h-9 text-xs font-medium">
+                            {t('settings.roles.modals.delete_blocked_btn')}
+                        </Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
+
+            {/* Modal de Confirmación de Eliminación: Cuando el rol tiene 0 miembros */}
+            <Dialog open={!!confirmDeleteRole} onOpenChange={(open) => !open && setConfirmDeleteRole(null)}>
+                <DialogContent className="sm:max-w-md">
+                    <div className="flex items-start gap-3.5 pt-2">
+                        <div className="h-10 w-10 rounded-full bg-red-100 text-red-600 flex items-center justify-center shrink-0">
+                            <Trash2 className="h-5 w-5" />
+                        </div>
+                        <div className="space-y-2">
+                            <h3 className="font-bold text-base text-gray-900 dark:text-white">
+                                {t('settings.roles.modals.delete_confirm_title', { name: confirmDeleteRole?.name || '' })}
+                            </h3>
+                            <p className="text-xs text-muted-foreground leading-relaxed">
+                                {t('settings.roles.modals.delete_confirm_desc')}
+                            </p>
+                        </div>
+                    </div>
+                    <div className="flex justify-end gap-2 pt-3 border-t mt-2">
+                        <Button variant="outline" size="sm" onClick={() => setConfirmDeleteRole(null)} className="h-9 text-xs">
+                            {t('settings.roles.modals.cancel_btn')}
+                        </Button>
+                        <Button
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => confirmDeleteRole && handleExecuteDeleteRole(confirmDeleteRole)}
+                            className="h-9 text-xs font-semibold"
+                        >
+                            {t('settings.roles.modals.delete_confirm_btn')}
+                        </Button>
+                    </div>
+                </DialogContent>
+            </Dialog>
         </div>
     );
 }

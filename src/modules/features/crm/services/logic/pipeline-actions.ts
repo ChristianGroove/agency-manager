@@ -4,6 +4,8 @@ import { createClient } from "@/modules/core/database/supabase-server"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 import { revalidatePath } from "next/cache"
 import { PipelineService } from "./services/pipeline.service"
+import { requirePermission } from "@/modules/core/iam/services/role-service"
+import { PERMISSIONS } from "@/modules/core/iam/actions/permissions"
 
 const PUBLIC_PIPELINE_ERROR = "No se pudo completar la accion de pipeline"
 
@@ -91,6 +93,8 @@ export async function createPipelineStage(input: {
     display_order?: number
 }): Promise<ActionResponse<PipelineStage>> {
     try {
+        const orgId = await getCurrentOrganizationId()
+        await requirePermission(PERMISSIONS.CRM.MANAGE_SETTINGS, orgId || undefined)
         const service = await getService()
         const data = await service.createStage(input)
         
@@ -109,6 +113,8 @@ export async function updatePipelineStage(
     updates: Partial<Pick<PipelineStage, 'name' | 'color' | 'icon' | 'display_order'>>
 ): Promise<ActionResponse<PipelineStage>> {
     try {
+        const orgId = await getCurrentOrganizationId()
+        await requirePermission(PERMISSIONS.CRM.MANAGE_SETTINGS, orgId || undefined)
         const service = await getService()
         const data = await service.updateStage(stageId, updates)
 
@@ -124,6 +130,8 @@ export async function updatePipelineStage(
 
 export async function deletePipelineStage(stageId: string): Promise<ActionResponse<null>> {
     try {
+        const orgId = await getCurrentOrganizationId()
+        await requirePermission(PERMISSIONS.CRM.MANAGE_SETTINGS, orgId || undefined)
         const service = await getService()
         
         if (stageId) {
@@ -144,6 +152,8 @@ export async function reorderPipelineStages(
     stageIds: string[]
 ): Promise<ActionResponse<null>> {
     try {
+        const orgId = await getCurrentOrganizationId()
+        await requirePermission(PERMISSIONS.CRM.MANAGE_SETTINGS, orgId || undefined)
         const service = await getService()
         await service.reorderStages(stageIds)
 
@@ -169,6 +179,8 @@ export async function getDefaultPipeline() {
 
 export async function togglePipelineStrictMode(pipelineId: string, enabled: boolean) {
     try {
+        const orgId = await getCurrentOrganizationId()
+        await requirePermission(PERMISSIONS.CRM.MANAGE_SETTINGS, orgId || undefined)
         const service = await getService()
         const data = await service.toggleStrictMode(pipelineId, enabled)
         return { success: true, data }

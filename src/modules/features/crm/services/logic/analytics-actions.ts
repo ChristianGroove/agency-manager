@@ -2,6 +2,8 @@
 
 import { createClient } from '@/modules/core/database/supabase-server'
 import { getCurrentOrganizationId } from '@/modules/core/organizations/organization-actions'
+import { requirePermission } from '@/modules/core/iam/services/role-service'
+import { PERMISSIONS } from '@/modules/core/iam/actions/permissions'
 import { unstable_noStore as noStore } from 'next/cache'
 
 const PUBLIC_ANALYTICS_ERROR = "No se pudieron cargar las metricas de CRM"
@@ -553,6 +555,8 @@ export async function getAdvancedReports(startDate: string, endDate: string, org
             console.error('[REPORTS] No organization ID provided or found')
             return { success: false, error: 'No se pudo determinar la organización activa' }
         }
+
+        await requirePermission(PERMISSIONS.CRM.VIEW_REPORTS, targetOrgId)
 
         const { data, error } = await (await createClient()).rpc('get_advanced_crm_reports', {
             p_org_id: targetOrgId,

@@ -28,25 +28,21 @@ import {
     Eye,
     EyeOff,
     ExternalLink,
-    Trash2,
-    Copy,
-    Sparkles,
-    Activity,
-    AlertTriangle
+    AlertTriangle,
+    X
 } from "lucide-react"
 import { toast } from "sonner"
 import { format } from "date-fns"
-import { es } from "date-fns/locale"
+import { es, enUS } from "date-fns/locale"
+import { useTranslation } from "@/modules/core/i18n/use-translation"
+import { useLocalizedIam } from "@/modules/core/iam/actions/use-localized-iam"
 import {
     updateMemberRole,
     updateMemberPermissions,
     updateMemberProfile,
-    updateMemberAgentConfig,
     sendMemberPasswordReset,
     resendMemberInvitation,
-    setMemberPasswordManually,
-    toggleMemberStatus,
-    removeMember
+    setMemberPasswordManually
 } from "./actions/team"
 import { RolePicker } from "@/modules/core/iam/components/role-picker"
 import { Role } from "@/modules/core/iam/services/role-service"
@@ -107,6 +103,8 @@ export function MemberEditSheet({
     activeModules: propActiveModules
 }: MemberEditSheetProps) {
     const router = useRouter()
+    const { t, locale, getGroupInfo, getPermissionInfo, getRoleInfo } = useLocalizedIam()
+    const dateLocale = locale === 'en' ? enUS : es
     const [activeSection, setActiveSection] = useState<string>("profile")
     const { modules: hookActiveModules } = useActiveModules()
 
@@ -138,10 +136,8 @@ export function MemberEditSheet({
     const [isSavingRole, setIsSavingRole] = useState(false)
 
     // 3. Inbox & Channels state
+    const [isInboxEnabled, setIsInboxEnabled] = useState<boolean>(true)
     const [authorizedChannels, setAuthorizedChannels] = useState<string[]>([])
-    const [agentStatus, setAgentStatus] = useState<'online' | 'away' | 'offline'>('offline')
-    const [maxCapacity, setMaxCapacity] = useState<number>(100)
-    const [autoAssignEnabled, setAutoAssignEnabled] = useState<boolean>(true)
     const [isSavingInbox, setIsSavingInbox] = useState(false)
 
     // 4. Security & Access state
@@ -151,8 +147,6 @@ export function MemberEditSheet({
     const [isSendingReset, setIsSendingReset] = useState(false)
     const [isResendingInvite, setIsResendingInvite] = useState(false)
     const [isSettingPassword, setIsSettingPassword] = useState(false)
-    const [isTogglingStatus, setIsTogglingStatus] = useState(false)
-    const [isRemoving, setIsRemoving] = useState(false)
 
     // Snapshot of loaded values to track unsaved changes per section
     const [initialSnapshot, setInitialSnapshot] = useState<{
@@ -162,9 +156,7 @@ export function MemberEditSheet({
         roleId: string
         overrides: Record<string, boolean | null>
         channels: string[]
-        agentStatus: string
-        maxCapacity: number
-        autoAssignEnabled: boolean
+        isInboxEnabled: boolean
     } | null>(null)
 
     const allKnownPermissionIds = useMemo(
@@ -203,17 +195,16 @@ export function MemberEditSheet({
             setPermissionOverrides(initialOverrides)
 
             const initChannels = rawPerms.inbox_access || []
-            const initStatus = ((member.agent_availability?.configured_status || member.agent_availability?.status) as 'online' | 'away' | 'offline') || 'offline'
-            const initCapacity = member.agent_availability?.max_capacity ?? 100
-            const initAutoAssign = member.agent_availability?.auto_assign_enabled ?? true
+            const overrideInbox = initialOverrides['inbox.view'] ?? (rawPerms['inbox.view'])
+            const initInboxEnabled = overrideInbox !== undefined ? Boolean(overrideInbox) : true
 
             setAuthorizedChannels(initChannels)
-            setAgentStatus(initStatus)
-            setMaxCapacity(initCapacity)
-            setAutoAssignEnabled(initAutoAssign)
+            setIsInboxEnabled(initInboxEnabled)
             setNewPassword("")
             setConfirmPassword("")
-            setActiveSection("profile")
+            if (!initialSnapshot) {
+                setActiveSection("profile")
+            }
 
             setInitialSnapshot({
                 fullName: initFullName,
@@ -222,12 +213,19 @@ export function MemberEditSheet({
                 roleId: initRoleId,
                 overrides: initialOverrides,
                 channels: initChannels,
-                agentStatus: initStatus,
-                maxCapacity: initCapacity,
-                autoAssignEnabled: initAutoAssign
+                isInboxEnabled: initInboxEnabled
             })
         }
     }, [open, member, allKnownPermissionIds])
+
+    useEffect(() => {
+        if (!open) {
+            setInitialSnapshot(null)
+            setActiveSection("profile")
+            setNewPassword("")
+            setConfirmPassword("")
+        }
+    }, [open])
 
     const hasProfileChanges = useMemo(() => {
         if (!initialSnapshot) return false
@@ -238,25 +236,30 @@ export function MemberEditSheet({
 
     const hasRoleChanges = useMemo(() => {
         if (!initialSnapshot) return false
-        if (selectedRoleId !== initialSnapshot.roleId) return true
-        const curKeys = Object.keys(permissionOverrides)
-        const initKeys = Object.keys(initialSnapshot.overrides)
-        if (curKeys.length !== initKeys.length) return true
-        for (const k of curKeys) {
-            if (permissionOverrides[k] !== initialSnapshot.overrides[k]) return true
+        const initRoleId = initialSnapshot.roleId || ""
+        const curRoleId = selectedRoleId || ""
+        if (initRoleId && curRoleId && initRoleId !== curRoleId) {
+            return true
+        }
+        const allKeys = new Set([
+            ...Object.keys(permissionOverrides),
+            ...Object.keys(initialSnapshot.overrides)
+        ])
+        for (const k of allKeys) {
+            const cur = typeof permissionOverrides[k] === 'boolean' ? permissionOverrides[k] : null
+            const init = typeof initialSnapshot.overrides[k] === 'boolean' ? initialSnapshot.overrides[k] : null
+            if (cur !== init) return true
         }
         return false
     }, [initialSnapshot, selectedRoleId, permissionOverrides])
 
     const hasInboxChanges = useMemo(() => {
         if (!initialSnapshot) return false
-        if (agentStatus !== initialSnapshot.agentStatus) return true
-        if (maxCapacity !== initialSnapshot.maxCapacity) return true
-        if (autoAssignEnabled !== initialSnapshot.autoAssignEnabled) return true
-        if (authorizedChannels.length !== initialSnapshot.channels.length) return true
-        const initSet = new Set(initialSnapshot.channels)
-        return authorizedChannels.some(c => !initSet.has(c))
-    }, [initialSnapshot, agentStatus, maxCapacity, autoAssignEnabled, authorizedChannels])
+        if (Boolean(isInboxEnabled) !== Boolean(initialSnapshot.isInboxEnabled)) return true
+        const curChannels = [...authorizedChannels].sort().join(',')
+        const initChannels = [...initialSnapshot.channels].sort().join(',')
+        return curChannels !== initChannels
+    }, [initialSnapshot, isInboxEnabled, authorizedChannels])
 
     const hasSecurityChanges = useMemo(() => {
         return newPassword.length > 0 || confirmPassword.length > 0
@@ -274,6 +277,26 @@ export function MemberEditSheet({
         return Boolean(hasProfileChanges || hasRoleChanges || hasInboxChanges || hasSecurityChanges)
     }, [hasProfileChanges, hasRoleChanges, hasInboxChanges, hasSecurityChanges])
 
+    const isCurrentTabSaving = useMemo(() => {
+        if (activeSection === 'profile') return isSavingProfile
+        if (activeSection === 'role') return isSavingRole
+        if (activeSection === 'inbox') return isSavingInbox
+        if (activeSection === 'security') return isSettingPassword
+        return false
+    }, [activeSection, isSavingProfile, isSavingRole, isSavingInbox, isSettingPassword])
+
+    const handleSaveCurrentTab = async () => {
+        if (activeSection === 'profile') {
+            await handleSaveProfile()
+        } else if (activeSection === 'role') {
+            await handleSaveRole()
+        } else if (activeSection === 'inbox') {
+            await handleSaveInbox()
+        } else if (activeSection === 'security') {
+            await handleSetManualPassword()
+        }
+    }
+
     const isOwner = member?.role === 'owner' || (selectedRoleObj?.hierarchy_level ?? 0) >= 100
     const isSuspended = member?.status === 'blocked'
     const emailConfirmedAt = member?.email_confirmed_at || member?.user?.email_confirmed_at || null
@@ -289,9 +312,14 @@ export function MemberEditSheet({
     const rolePermissionsSummary = useMemo(() => {
         if (!selectedRoleObj) return []
         if (selectedRoleObj.permissions?.all === true || selectedRoleObj.hierarchy_level >= 100) {
-            return [{ id: 'all', label: 'Acceso Total de Dueño', count: 'Todos los permisos' }]
+            return [{
+                id: 'all',
+                label: t('settings.member_sheet.role.owner_total_access'),
+                count: t('settings.member_sheet.role.all_permissions_count')
+            }]
         }
         return visiblePermissionGroups.map(group => {
+            const groupInfo = getGroupInfo(group)
             const enabled = group.permissions.filter(p => {
                 const overrideVal = permissionOverrides[p.id]
                 if (typeof overrideVal === 'boolean') return overrideVal
@@ -299,13 +327,13 @@ export function MemberEditSheet({
             })
             return {
                 id: group.id,
-                label: group.label,
+                label: groupInfo.label,
                 count: `${enabled.length}/${group.permissions.length}`,
                 enabledCount: enabled.length,
-                permissions: enabled.map(p => p.label)
+                permissions: enabled.map(p => getPermissionInfo(p).label)
             }
         }).filter(g => g.enabledCount > 0)
-    }, [selectedRoleObj, permissionOverrides, visiblePermissionGroups])
+    }, [selectedRoleObj, permissionOverrides, visiblePermissionGroups, getGroupInfo, getPermissionInfo, t])
 
     const hasGlobalInboxView = Boolean(
         isOwner ||
@@ -322,6 +350,9 @@ export function MemberEditSheet({
             ...prev,
             [permId]: nextChecked === roleDefault ? null : nextChecked
         }))
+        if (permId === 'inbox.view') {
+            setIsInboxEnabled(nextChecked)
+        }
     }
 
     const handleResetOverridesToRole = () => {
@@ -332,12 +363,14 @@ export function MemberEditSheet({
             }
             return cleared
         })
+        const roleInbox = Boolean(selectedRoleObj?.permissions?.['inbox.view'] === true || selectedRoleObj?.permissions?.all === true)
+        setIsInboxEnabled(roleInbox)
     }
 
     const handleSaveProfile = async () => {
         if (!member) return
         if (!fullName.trim() || fullName.trim().length < 2) {
-            toast.error("Ingresa un nombre válido (mínimo 2 caracteres)")
+            toast.error(t('settings.team.manual_form.validation_name_len'))
             return
         }
         setIsSavingProfile(true)
@@ -348,14 +381,14 @@ export function MemberEditSheet({
                 phone: phone.trim() || null
             })
             if (res.success) {
-                toast.success("Ficha del miembro actualizada")
+                toast.success(t('settings.member_sheet.toasts.profile_saved'))
                 setInitialSnapshot(prev => prev ? ({ ...prev, fullName: fullName.trim(), jobTitle: jobTitle.trim(), phone: phone.trim() }) : null)
                 onSave?.()
             } else {
-                toast.error(res.error || "No se pudo actualizar el perfil")
+                toast.error(res.error || t('settings.member_sheet.toasts.save_error'))
             }
         } catch {
-            toast.error("Error inesperado al actualizar el perfil")
+            toast.error(t('settings.team.toasts.unexpected_error'))
         } finally {
             setIsSavingProfile(false)
         }
@@ -367,7 +400,7 @@ export function MemberEditSheet({
         try {
             const res = await updateMemberRole(member.user_id, selectedRoleId)
             if (!res.success) {
-                toast.error(res.error || "Error al actualizar rol")
+                toast.error(res.error || t('settings.member_sheet.toasts.save_error'))
                 return
             }
 
@@ -376,16 +409,16 @@ export function MemberEditSheet({
                     overrides: permissionOverrides
                 })
                 if (!permRes.success) {
-                    toast.error(permRes.error || "Rol guardado, pero falló la actualización de excepciones")
+                    toast.error(permRes.error || t('settings.member_sheet.toasts.save_error'))
                     return
                 }
             }
 
-            toast.success("Rol IAM y permisos actualizados correctamente")
+            toast.success(t('settings.member_sheet.toasts.role_saved'))
             setInitialSnapshot(prev => prev ? ({ ...prev, roleId: selectedRoleId, overrides: { ...permissionOverrides } }) : null)
             onSave?.()
         } catch {
-            toast.error("Error inesperado al actualizar el rol")
+            toast.error(t('settings.team.toasts.unexpected_error'))
         } finally {
             setIsSavingRole(false)
         }
@@ -397,32 +430,27 @@ export function MemberEditSheet({
         try {
             if (!isOwner) {
                 const permRes = await updateMemberPermissions(member.user_id, {
-                    inbox_access: authorizedChannels
+                    inbox_access: authorizedChannels,
+                    overrides: {
+                        'inbox.view': isInboxEnabled
+                    }
                 })
                 if (!permRes.success) {
-                    toast.error(permRes.error || "Error al guardar canales autorizados")
+                    toast.error(permRes.error || t('settings.member_sheet.toasts.save_error'))
                     setIsSavingInbox(false)
                     return
                 }
             }
 
-            const agentRes = await updateMemberAgentConfig(member.user_id, {
-                status: agentStatus,
-                max_capacity: Number(maxCapacity) || 100,
-                auto_assign_enabled: autoAssignEnabled
-            })
-
-            if (!agentRes.success) {
-                toast.error(agentRes.error || "Error al guardar disponibilidad del agente")
-                setIsSavingInbox(false)
-                return
-            }
-
-            toast.success("Configuración de Agente e Inbox actualizada")
-            setInitialSnapshot(prev => prev ? ({ ...prev, channels: [...authorizedChannels], agentStatus, maxCapacity: Number(maxCapacity) || 100, autoAssignEnabled }) : null)
+            toast.success(t('settings.member_sheet.toasts.inbox_saved'))
+            setInitialSnapshot(prev => prev ? ({
+                ...prev,
+                channels: [...authorizedChannels],
+                isInboxEnabled
+            }) : null)
             onSave?.()
         } catch {
-            toast.error("Error inesperado al guardar configuración de Inbox")
+            toast.error(t('settings.team.toasts.unexpected_error'))
         } finally {
             setIsSavingInbox(false)
         }
@@ -434,12 +462,12 @@ export function MemberEditSheet({
         try {
             const res = await sendMemberPasswordReset(member.user_id)
             if (res.success) {
-                toast.success("Correo de recuperación enviado a " + displayEmail)
+                toast.success(t('settings.member_sheet.toasts.reset_link_sent'))
             } else {
-                toast.error(res.error || "No se pudo enviar el enlace")
+                toast.error(res.error || t('settings.team.toasts.invite_resend_error'))
             }
         } catch {
-            toast.error("Error inesperado al enviar correo de recuperación")
+            toast.error(t('settings.team.toasts.unexpected_error'))
         } finally {
             setIsSendingReset(false)
         }
@@ -451,12 +479,12 @@ export function MemberEditSheet({
         try {
             const res = await resendMemberInvitation(member.user_id)
             if (res.success) {
-                toast.success("Invitación reenviada a " + displayEmail)
+                toast.success(t('settings.member_sheet.toasts.invite_resent', { email: displayEmail }))
             } else {
-                toast.error(res.error || "No se pudo reenviar la invitación")
+                toast.error(res.error || t('settings.team.toasts.invite_resend_error'))
             }
         } catch {
-            toast.error("Error inesperado al reenviar invitación")
+            toast.error(t('settings.team.toasts.unexpected_error'))
         } finally {
             setIsResendingInvite(false)
         }
@@ -465,77 +493,36 @@ export function MemberEditSheet({
     const handleSetManualPassword = async () => {
         if (!member) return
         if (newPassword.length < 6) {
-            toast.error("La contraseña debe tener al menos 6 caracteres")
+            toast.error(t('settings.member_sheet.alerts.password_too_short'))
             return
         }
         if (newPassword !== confirmPassword) {
-            toast.error("Las contraseñas no coinciden")
+            toast.error(t('settings.member_sheet.alerts.passwords_dont_match'))
             return
         }
         setIsSettingPassword(true)
         try {
             const res = await setMemberPasswordManually(member.user_id, newPassword)
             if (res.success) {
-                toast.success("Contraseña actualizada manualmente")
+                toast.success(t('settings.member_sheet.toasts.password_saved'))
                 setNewPassword("")
                 setConfirmPassword("")
                 onSave?.()
             } else {
-                toast.error(res.error || "No se pudo cambiar la contraseña")
+                toast.error(res.error || t('settings.member_sheet.toasts.save_error'))
             }
         } catch {
-            toast.error("Error inesperado al cambiar contraseña")
+            toast.error(t('settings.team.toasts.unexpected_error'))
         } finally {
             setIsSettingPassword(false)
         }
     }
 
-    const handleToggleSuspend = async () => {
-        if (!member) return
-        setIsTogglingStatus(true)
-        try {
-            const res = await toggleMemberStatus(member.user_id, member.status || 'active')
-            if (res.success) {
-                toast.success(res.status === 'blocked' ? "Miembro suspendido y desconectado del Inbox" : "Acceso del miembro reactivado")
-                onSave?.()
-                onOpenChange(false)
-            } else {
-                toast.error(res.error || "Error al cambiar estado del miembro")
-            }
-        } catch {
-            toast.error("Error inesperado")
-        } finally {
-            setIsTogglingStatus(false)
-        }
-    }
-
-    const handleRemoveMember = async () => {
-        if (!member) return
-        if (!confirm(`¿Seguro que deseas eliminar a ${displayName} de la organización? Se desasignarán sus conversaciones abiertas y canales.`)) {
-            return
-        }
-        setIsRemoving(true)
-        try {
-            const res = await removeMember(member.user_id)
-            if (res.success) {
-                toast.success("Miembro eliminado de la organización")
-                onSave?.()
-                onOpenChange(false)
-            } else {
-                toast.error(res.error || "No se pudo eliminar el miembro")
-            }
-        } catch {
-            toast.error("Error inesperado al eliminar miembro")
-        } finally {
-            setIsRemoving(false)
-        }
-    }
-
     const handleRequestClose = (nextOpen: boolean) => {
         if (!nextOpen) {
-            if (hasUnsavedChangesInCurrentSection || hasAnyUnsavedChanges) {
+            if (hasAnyUnsavedChanges) {
                 const confirmed = window.confirm(
-                    "Tienes cambios sin guardar en esta sección. ¿Estás seguro de que deseas cerrar la ficha?"
+                    t('settings.member_sheet.alerts.unsaved_exit')
                 )
                 if (!confirmed) return
             }
@@ -546,9 +533,9 @@ export function MemberEditSheet({
     }
 
     const handleGoToRolesTab = () => {
-        if (hasUnsavedChangesInCurrentSection || hasAnyUnsavedChanges) {
+        if (hasAnyUnsavedChanges) {
             const confirmed = window.confirm(
-                "Tienes cambios sin guardar en esta sección. ¿Estás seguro de que deseas salir?"
+                t('settings.member_sheet.alerts.unsaved_exit')
             )
             if (!confirmed) return
         }
@@ -561,109 +548,103 @@ export function MemberEditSheet({
     }
 
     const handleTabChange = (nextTab: string) => {
-        if (nextTab === activeSection) return
-        if (hasUnsavedChangesInCurrentSection) {
-            const confirmed = window.confirm(
-                "Tienes cambios sin guardar en esta pestaña. Si continúas, podrías perderlos. ¿Deseas cambiar de sección?"
-            )
-            if (!confirmed) return
-        }
         setActiveSection(nextTab)
+        if (nextTab !== 'security') {
+            setNewPassword("")
+            setConfirmPassword("")
+        }
     }
 
     return (
         <Sheet open={open} onOpenChange={handleRequestClose}>
-            <SheetContent className="w-full sm:max-w-xl p-0 gap-0 border-none shadow-2xl mr-4 my-4 h-[calc(100vh-2rem)] rounded-3xl overflow-hidden bg-transparent">
+            <SheetContent className="w-full sm:max-w-xl p-0 gap-0 border-none shadow-2xl mr-4 my-4 h-[calc(100vh-2rem)] rounded-3xl overflow-hidden bg-transparent [&>button:last-child]:hidden">
                 <div className="bg-white/95 dark:bg-zinc-950/95 backdrop-blur-xl h-full flex flex-col overflow-hidden rounded-3xl border border-zinc-200/80 dark:border-white/10">
-                    {/* Header Integral */}
-                    <div className="shrink-0 px-6 py-5 bg-gradient-to-r from-indigo-600 via-indigo-500 to-purple-600 text-white">
-                        <div className="flex items-start gap-4">
+                    {/* Sheet Header */}
+                    <div className="sticky top-0 z-20 flex items-center justify-between shrink-0 px-6 py-4 bg-white/60 dark:bg-zinc-900/60 backdrop-blur-md border-b border-zinc-200/80 dark:border-white/10">
+                        <div className="flex items-center gap-3.5 min-w-0">
                             {member?.avatar_url ? (
                                 <img
                                     src={member.avatar_url}
                                     alt={displayName}
-                                    className="h-14 w-14 rounded-2xl object-cover border-2 border-white/30 shadow-sm"
+                                    className="h-11 w-11 rounded-2xl object-cover border border-zinc-200/80 dark:border-white/10 shadow-xs shrink-0"
                                 />
                             ) : (
-                                <div className="h-14 w-14 rounded-2xl bg-white/20 backdrop-blur-sm flex items-center justify-center text-2xl font-bold border border-white/20 shrink-0">
+                                <div className="h-11 w-11 rounded-2xl bg-brand-pink/10 text-brand-pink border border-brand-pink/20 backdrop-blur-sm flex items-center justify-center text-lg font-bold shrink-0">
                                     {(displayName?.[0] || displayEmail?.[0] || "U").toUpperCase()}
                                 </div>
                             )}
 
-                            <div className="flex-1 min-w-0">
-                                <div className="flex items-center justify-between gap-2">
-                                    <SheetTitle className="text-white text-lg font-semibold truncate">
+                            <div className="min-w-0 flex-1">
+                                <div className="flex items-center gap-2">
+                                    <SheetTitle className="text-base font-bold text-zinc-900 dark:text-white tracking-tight truncate">
                                         {displayName}
                                     </SheetTitle>
-                                    <div className="flex items-center gap-1.5 shrink-0">
-                                        {isSuspended ? (
-                                            <Badge className="bg-red-500/90 text-white border-none text-[10px] gap-1">
-                                                <Ban className="h-3 w-3" /> Suspendido
-                                            </Badge>
-                                        ) : !emailConfirmedAt ? (
-                                            <Badge className="bg-amber-500/90 text-white border-none text-[10px] gap-1">
-                                                <Clock className="h-3 w-3" /> Invitación Pendiente
-                                            </Badge>
-                                        ) : (
-                                            <Badge className="bg-emerald-500/90 text-white border-none text-[10px] gap-1">
-                                                <CheckCircle2 className="h-3 w-3" /> Activo
-                                            </Badge>
-                                        )}
-                                    </div>
-                                </div>
-
-                                <SheetDescription className="text-white/85 text-xs truncate mt-0.5">
-                                    {displayEmail}
-                                </SheetDescription>
-
-                                <div className="flex flex-wrap items-center gap-2 mt-2.5">
-                                    <Badge variant="outline" className="bg-white/15 text-white border-white/20 py-0.5 h-5 text-[10px] gap-1">
-                                        {isOwner ? (
-                                            <><Crown className="h-3 w-3 text-amber-300" /> Dueño</>
-                                        ) : (
-                                            <><Shield className="h-3 w-3" /> {selectedRoleObj?.name || member?.role_name || "Miembro"}</>
-                                        )}
-                                    </Badge>
-                                    {jobTitle && (
-                                        <Badge variant="outline" className="bg-white/10 text-white/90 border-white/15 py-0.5 h-5 text-[10px] gap-1">
-                                            <Briefcase className="h-2.5 w-2.5" /> {jobTitle}
+                                    {isSuspended ? (
+                                        <Badge className="bg-red-500/10 text-red-600 dark:text-red-400 border border-red-500/20 text-[10px] font-semibold py-0.5 px-2">
+                                            <Ban className="h-3 w-3 mr-1" /> {t('settings.member_sheet.status_suspended')}
                                         </Badge>
+                                    ) : !emailConfirmedAt ? (
+                                        <Badge className="bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20 text-[10px] font-semibold py-0.5 px-2">
+                                            <Clock className="h-3 w-3 mr-1" /> {t('settings.member_sheet.status_pending')}
+                                        </Badge>
+                                    ) : (
+                                        <Badge className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20 text-[10px] font-semibold py-0.5 px-2">
+                                            <CheckCircle2 className="h-3 w-3 mr-1" /> {t('settings.member_sheet.status_active')}
+                                        </Badge>
+                                    )}
+                                </div>
+                                <SheetDescription className="sr-only">{t('settings.member_sheet.title')}</SheetDescription>
+                                <div className="flex items-center gap-2 text-xs text-muted-foreground truncate mt-0.5">
+                                    <span className="truncate">{displayEmail}</span>
+                                    <span>•</span>
+                                    <span className="inline-flex items-center gap-1 font-medium text-zinc-700 dark:text-zinc-300">
+                                        {isOwner ? (
+                                            <><Crown className="h-3 w-3 text-amber-500" /> {t('settings.member_sheet.role_owner')}</>
+                                        ) : (
+                                            <><Shield className="h-3 w-3 text-brand-pink" /> {selectedRoleObj?.name || member?.role_name || t('settings.member_sheet.role_member')}</>
+                                        )}
+                                    </span>
+                                    {jobTitle && (
+                                        <>
+                                            <span>•</span>
+                                            <span className="truncate text-zinc-500">{jobTitle}</span>
+                                        </>
                                     )}
                                 </div>
                             </div>
                         </div>
+
+                        <button
+                            type="button"
+                            onClick={() => handleRequestClose(false)}
+                            className="rounded-xl p-2 text-zinc-400 hover:text-zinc-700 dark:hover:text-zinc-200 hover:bg-zinc-100 dark:hover:bg-white/5 transition-colors cursor-pointer shrink-0 ml-3"
+                            aria-label={t('settings.member_sheet.close_tooltip')}
+                        >
+                            <X className="h-4 w-4" />
+                        </button>
                     </div>
 
                     {/* Navigation Tabs inside Sheet */}
                     <Tabs value={activeSection} onValueChange={handleTabChange} className="flex-1 flex flex-col overflow-hidden">
-                        <div className="px-6 pt-3 pb-2.5 border-b bg-zinc-50/70 dark:bg-white/5 shrink-0 space-y-2">
-                            <TabsList className="grid w-full grid-cols-4 h-9 bg-zinc-200/60 dark:bg-white/10 p-1 rounded-xl">
+                        <div className="px-6 pt-3 pb-2 border-b border-zinc-200/60 dark:border-white/5 bg-zinc-50/50 dark:bg-white/[0.02] shrink-0">
+                            <TabsList className="grid w-full grid-cols-4 h-9 bg-zinc-200/50 dark:bg-white/5 p-1 rounded-xl">
                                 <TabsTrigger value="profile" className="text-xs rounded-lg gap-1.5 relative">
-                                    <User className="h-3.5 w-3.5" /> Perfil
-                                    {hasProfileChanges && <span className="h-1.5 w-1.5 rounded-full bg-amber-500 absolute top-1 right-1" title="Cambios sin guardar" />}
+                                    <User className="h-3.5 w-3.5" /> {t('settings.member_sheet.tabs.profile')}
+                                    {hasProfileChanges && <span className="h-1.5 w-1.5 rounded-full bg-brand-pink absolute top-1.5 right-1.5" />}
                                 </TabsTrigger>
                                 <TabsTrigger value="role" className="text-xs rounded-lg gap-1.5 relative">
-                                    <Shield className="h-3.5 w-3.5" /> Rol IAM
-                                    {hasRoleChanges && <span className="h-1.5 w-1.5 rounded-full bg-amber-500 absolute top-1 right-1" title="Cambios sin guardar" />}
+                                    <Shield className="h-3.5 w-3.5" /> {t('settings.member_sheet.tabs.role')}
+                                    {hasRoleChanges && <span className="h-1.5 w-1.5 rounded-full bg-brand-pink absolute top-1.5 right-1.5" />}
                                 </TabsTrigger>
                                 <TabsTrigger value="inbox" className="text-xs rounded-lg gap-1.5 relative">
-                                    <MessageSquare className="h-3.5 w-3.5" /> Inbox
-                                    {hasInboxChanges && <span className="h-1.5 w-1.5 rounded-full bg-amber-500 absolute top-1 right-1" title="Cambios sin guardar" />}
+                                    <MessageSquare className="h-3.5 w-3.5" /> {t('settings.member_sheet.tabs.inbox')}
+                                    {hasInboxChanges && <span className="h-1.5 w-1.5 rounded-full bg-brand-pink absolute top-1.5 right-1.5" />}
                                 </TabsTrigger>
                                 <TabsTrigger value="security" className="text-xs rounded-lg gap-1.5 relative">
-                                    <KeyRound className="h-3.5 w-3.5" /> Seguridad
-                                    {hasSecurityChanges && <span className="h-1.5 w-1.5 rounded-full bg-amber-500 absolute top-1 right-1" title="Cambios sin guardar" />}
+                                    <KeyRound className="h-3.5 w-3.5" /> {t('settings.member_sheet.tabs.security')}
+                                    {hasSecurityChanges && <span className="h-1.5 w-1.5 rounded-full bg-brand-pink absolute top-1.5 right-1.5" />}
                                 </TabsTrigger>
                             </TabsList>
-
-                            {hasUnsavedChangesInCurrentSection && (
-                                <div className="p-2 rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/50 flex items-center justify-between text-xs text-amber-800 dark:text-amber-200 animate-in fade-in duration-200">
-                                    <div className="flex items-center gap-1.5">
-                                        <AlertTriangle className="h-3.5 w-3.5 text-amber-600 dark:text-amber-400 shrink-0" />
-                                        <span>Tienes cambios sin guardar en esta pestaña. Asegúrate de pulsar &quot;Guardar&quot; para conservarlos.</span>
-                                    </div>
-                                </div>
-                            )}
                         </div>
 
                         <div className="flex-1 overflow-y-auto p-6">
@@ -671,14 +652,14 @@ export function MemberEditSheet({
                             <TabsContent value="profile" className="mt-0 space-y-5">
                                 <div className="space-y-4">
                                     <div className="space-y-2">
-                                        <Label htmlFor="member-fullname" className="text-xs font-medium">Nombre Completo</Label>
+                                        <Label htmlFor="member-fullname" className="text-xs font-medium">{t('settings.member_sheet.profile.full_name')}</Label>
                                         <div className="relative">
                                             <User className="h-4 w-4 text-zinc-400 absolute left-3 top-3" />
                                             <Input
                                                 id="member-fullname"
                                                 value={fullName}
                                                 onChange={(e) => setFullName(e.target.value)}
-                                                placeholder="Ej: Carlos Mendoza"
+                                                placeholder={t('settings.member_sheet.profile.full_name_placeholder')}
                                                 className="pl-9"
                                             />
                                         </div>
@@ -686,28 +667,28 @@ export function MemberEditSheet({
 
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                         <div className="space-y-2">
-                                            <Label htmlFor="member-job" className="text-xs font-medium">Cargo / Posición</Label>
+                                            <Label htmlFor="member-job" className="text-xs font-medium">{t('settings.member_sheet.profile.job_title')}</Label>
                                             <div className="relative">
                                                 <Briefcase className="h-4 w-4 text-zinc-400 absolute left-3 top-3" />
                                                 <Input
                                                     id="member-job"
                                                     value={jobTitle}
                                                     onChange={(e) => setJobTitle(e.target.value)}
-                                                    placeholder="Ej: Ejecutivo Comercial"
+                                                    placeholder={t('settings.member_sheet.profile.job_title_placeholder')}
                                                     className="pl-9"
                                                 />
                                             </div>
                                         </div>
 
                                         <div className="space-y-2">
-                                            <Label htmlFor="member-phone" className="text-xs font-medium">Teléfono / WhatsApp</Label>
+                                            <Label htmlFor="member-phone" className="text-xs font-medium">{t('settings.member_sheet.profile.phone')}</Label>
                                             <div className="relative">
                                                 <Phone className="h-4 w-4 text-zinc-400 absolute left-3 top-3" />
                                                 <Input
                                                     id="member-phone"
                                                     value={phone}
                                                     onChange={(e) => setPhone(e.target.value)}
-                                                    placeholder="+57 300 000 0000"
+                                                    placeholder={t('settings.member_sheet.profile.phone_placeholder')}
                                                     className="pl-9"
                                                 />
                                             </div>
@@ -715,7 +696,7 @@ export function MemberEditSheet({
                                     </div>
 
                                     <div className="space-y-2">
-                                        <Label className="text-xs font-medium text-zinc-500">Correo Electrónico (Identificador de cuenta)</Label>
+                                        <Label className="text-xs font-medium text-zinc-500">{t('settings.member_sheet.profile.email_readonly')}</Label>
                                         <div className="relative">
                                             <Mail className="h-4 w-4 text-zinc-400 absolute left-3 top-3" />
                                             <Input
@@ -729,50 +710,39 @@ export function MemberEditSheet({
 
                                 {/* Ficha Técnica de Estado */}
                                 <div className="rounded-2xl border border-zinc-200/80 dark:border-white/10 bg-zinc-50/50 dark:bg-white/5 p-4 space-y-3">
-                                    <h4 className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Estado Operativo de Cuenta</h4>
+                                    <h4 className="text-xs font-semibold uppercase tracking-wider text-zinc-500">{t('settings.member_sheet.profile.operational_status')}</h4>
                                     <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
                                         <div className="p-2.5 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-white/5">
-                                            <span className="text-zinc-400 block mb-1">Verificación Email</span>
+                                            <span className="text-zinc-400 block mb-1">{t('settings.member_sheet.profile.email_verification')}</span>
                                             {emailConfirmedAt ? (
                                                 <span className="font-medium text-emerald-600 flex items-center gap-1">
-                                                    <CheckCircle2 className="h-3.5 w-3.5" /> Confirmado
+                                                    <CheckCircle2 className="h-3.5 w-3.5" /> {t('settings.member_sheet.profile.status_confirmed')}
                                                 </span>
                                             ) : (
                                                 <span className="font-medium text-amber-600 flex items-center gap-1">
-                                                    <Clock className="h-3.5 w-3.5" /> Pendiente
+                                                    <Clock className="h-3.5 w-3.5" /> {t('settings.member_sheet.profile.status_pending_badge')}
                                                 </span>
                                             )}
                                         </div>
 
                                         <div className="p-2.5 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-white/5">
-                                            <span className="text-zinc-400 block mb-1">Último Acceso</span>
+                                            <span className="text-zinc-400 block mb-1">{t('settings.member_sheet.profile.last_sign_in')}</span>
                                             <span className="font-medium text-zinc-700 dark:text-zinc-200">
                                                 {lastSignInAt
-                                                    ? format(new Date(lastSignInAt), "d MMM yyyy, HH:mm", { locale: es })
-                                                    : "Sin ingresos"}
+                                                    ? format(new Date(lastSignInAt), "d MMM yyyy, HH:mm", { locale: dateLocale })
+                                                    : t('settings.member_sheet.profile.never_signed_in')}
                                             </span>
                                         </div>
 
                                         <div className="p-2.5 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-white/5">
-                                            <span className="text-zinc-400 block mb-1">Miembro Desde</span>
+                                            <span className="text-zinc-400 block mb-1">{t('settings.member_sheet.profile.member_since')}</span>
                                             <span className="font-medium text-zinc-700 dark:text-zinc-200">
                                                 {member?.created_at
-                                                    ? format(new Date(member.created_at), "d MMM yyyy", { locale: es })
+                                                    ? format(new Date(member.created_at), "d MMM yyyy", { locale: dateLocale })
                                                     : "N/A"}
                                             </span>
                                         </div>
                                     </div>
-                                </div>
-
-                                <div className="flex justify-end pt-2">
-                                    <Button
-                                        onClick={handleSaveProfile}
-                                        disabled={isSavingProfile}
-                                        className="bg-brand-pink hover:bg-brand-pink/90 text-white"
-                                    >
-                                        {isSavingProfile ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                                        Guardar Datos del Perfil
-                                    </Button>
                                 </div>
                             </TabsContent>
 
@@ -781,16 +751,16 @@ export function MemberEditSheet({
                                 {member?.role === 'owner' ? (
                                     <div className="bg-amber-50 dark:bg-amber-500/10 border border-amber-200 dark:border-amber-500/20 rounded-2xl p-5 text-center space-y-2">
                                         <Crown className="h-9 w-9 text-amber-500 mx-auto" />
-                                        <h3 className="font-semibold text-amber-900 dark:text-amber-200">Dueño de la Organización</h3>
+                                        <h3 className="font-semibold text-amber-900 dark:text-amber-200">{t('settings.member_sheet.role.owner_title')}</h3>
                                         <p className="text-xs text-amber-700 dark:text-amber-300 max-w-md mx-auto">
-                                            El Dueño posee jerarquía máxima (Nivel 100) y acceso irrestricto a todos los módulos, canales y configuraciones del Space.
+                                            {t('settings.member_sheet.role.owner_desc')}
                                         </p>
                                     </div>
                                 ) : (
                                     <>
                                         <div className="space-y-2">
                                             <div className="flex items-center justify-between">
-                                                <Label className="text-xs font-medium">Rol IAM Asignado</Label>
+                                                <Label className="text-xs font-medium">{t('settings.member_sheet.role.assigned_title')}</Label>
                                                 <Button
                                                     type="button"
                                                     variant="ghost"
@@ -798,7 +768,7 @@ export function MemberEditSheet({
                                                     onClick={handleGoToRolesTab}
                                                     className="h-7 text-xs text-indigo-600 hover:text-indigo-700 hover:bg-indigo-50 gap-1"
                                                 >
-                                                    Gestionar Roles y Permisos
+                                                    {t('settings.member_sheet.role.manage_roles')}
                                                     <ExternalLink className="h-3 w-3" />
                                                 </Button>
                                             </div>
@@ -807,10 +777,15 @@ export function MemberEditSheet({
                                                 value={selectedRoleId}
                                                 legacyRole={member?.role}
                                                 onValueChange={setSelectedRoleId}
-                                                onRoleSelected={(r) => setSelectedRoleObj(r)}
+                                                onRoleSelected={(r) => {
+                                                    setSelectedRoleObj(r)
+                                                    if (r?.id) {
+                                                        setInitialSnapshot(prev => (prev && !prev.roleId ? { ...prev, roleId: r.id } : prev))
+                                                    }
+                                                }}
                                             />
                                             <p className="text-xs text-zinc-500">
-                                                El miembro heredará automáticamente la matriz de permisos configurada en este rol.
+                                                {t('settings.member_sheet.role.assigned_subtitle')}
                                             </p>
                                         </div>
 
@@ -821,20 +796,20 @@ export function MemberEditSheet({
                                                     <div>
                                                         <h4 className="text-xs font-semibold text-zinc-800 dark:text-zinc-200 flex items-center gap-1.5">
                                                             <Shield className="h-3.5 w-3.5 text-indigo-500" />
-                                                            Resumen de Permisos: {selectedRoleObj.name}
+                                                            {t('settings.member_sheet.role.summary_title', { name: selectedRoleObj.name })}
                                                         </h4>
                                                         {selectedRoleObj.description && (
                                                             <p className="text-[11px] text-zinc-500 mt-0.5">{selectedRoleObj.description}</p>
                                                         )}
                                                     </div>
                                                     <Badge variant="outline" className="text-[10px]">
-                                                        Jerarquía {selectedRoleObj.hierarchy_level}
+                                                        {t('settings.member_sheet.role.hierarchy_badge', { level: String(selectedRoleObj.hierarchy_level) })}
                                                     </Badge>
                                                 </div>
 
                                                 {rolePermissionsSummary.length === 0 ? (
                                                     <p className="text-xs text-zinc-500 italic">
-                                                        Este rol no tiene permisos administrativos especiales activados (acceso básico operativo).
+                                                        {t('settings.member_sheet.role.no_special_perms')}
                                                     </p>
                                                 ) : (
                                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 pt-1">
@@ -862,10 +837,10 @@ export function MemberEditSheet({
                                                 <div className="flex items-center justify-between gap-2">
                                                     <div>
                                                         <h4 className="text-xs font-semibold text-zinc-800 dark:text-zinc-200">
-                                                            Excepciones Individuales (Overrides)
+                                                            {t('settings.member_sheet.role.exceptions_title')}
                                                         </h4>
                                                         <p className="text-[11px] text-zinc-500">
-                                                            Habilita o restringe permisos puntuales para este miembro sin modificar el rol general.
+                                                            {t('settings.member_sheet.role.exceptions_subtitle')}
                                                         </p>
                                                     </div>
                                                     {activeOverrideCount > 0 && (
@@ -876,46 +851,49 @@ export function MemberEditSheet({
                                                             onClick={handleResetOverridesToRole}
                                                             className="h-7 text-[11px] text-amber-600 hover:text-amber-700 hover:bg-amber-50 shrink-0"
                                                         >
-                                                            Restaurar al rol ({activeOverrideCount})
+                                                            {t('settings.member_sheet.role.reset_overrides', { count: String(activeOverrideCount) })}
                                                         </Button>
                                                     )}
                                                 </div>
 
                                                 <div className="max-h-60 overflow-y-auto pr-1 space-y-3">
-                                                    {visiblePermissionGroups.map(group => (
-                                                        <div key={group.id} className="space-y-1.5">
-                                                            <div className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400">
-                                                                {group.label}
-                                                            </div>
-                                                            <div className="space-y-1">
-                                                                {group.permissions.map(perm => {
-                                                                    const roleDefault = Boolean(selectedRoleObj.permissions?.[perm.id] === true || selectedRoleObj.permissions?.all === true)
-                                                                    const overrideVal = permissionOverrides[perm.id]
-                                                                    const effectiveChecked = typeof overrideVal === 'boolean' ? overrideVal : roleDefault
-                                                                    const isOverrideGrant = overrideVal === true && !roleDefault
-                                                                    const isOverrideDeny = overrideVal === false && roleDefault
+                                                    {visiblePermissionGroups.map(group => {
+                                                        const groupInfo = getGroupInfo(group)
+                                                        return (
+                                                            <div key={group.id} className="space-y-1.5">
+                                                                <div className="text-[11px] font-semibold uppercase tracking-wider text-zinc-400">
+                                                                    {groupInfo.label}
+                                                                </div>
+                                                                <div className="space-y-1">
+                                                                    {group.permissions.map(perm => {
+                                                                        const permInfo = getPermissionInfo(perm)
+                                                                        const roleDefault = Boolean(selectedRoleObj.permissions?.[perm.id] === true || selectedRoleObj.permissions?.all === true)
+                                                                        const overrideVal = permissionOverrides[perm.id]
+                                                                        const effectiveChecked = typeof overrideVal === 'boolean' ? overrideVal : roleDefault
+                                                                        const isOverrideGrant = overrideVal === true && !roleDefault
+                                                                        const isOverrideDeny = overrideVal === false && roleDefault
 
-                                                                    return (
-                                                                        <div
-                                                                            key={perm.id}
-                                                                            className="flex items-center justify-between gap-2 py-1.5 px-2.5 rounded-lg bg-zinc-50/70 dark:bg-white/5 border border-zinc-100 dark:border-white/5"
-                                                                        >
-                                                                            <div className="min-w-0 pr-2">
-                                                                                <div className="flex items-center gap-1.5 flex-wrap">
-                                                                                    <span className="text-xs font-medium text-zinc-800 dark:text-zinc-200">
-                                                                                        {perm.label}
-                                                                                    </span>
+                                                                        return (
+                                                                            <div
+                                                                                key={perm.id}
+                                                                                className="flex items-center justify-between gap-2 py-1.5 px-2.5 rounded-lg bg-zinc-50/70 dark:bg-white/5 border border-zinc-100 dark:border-white/5"
+                                                                            >
+                                                                                <div className="min-w-0 pr-2">
+                                                                                    <div className="flex items-center gap-1.5 flex-wrap">
+                                                                                        <span className="text-xs font-medium text-zinc-800 dark:text-zinc-200">
+                                                                                            {permInfo.label}
+                                                                                        </span>
                                                                                     {isOverrideGrant ? (
                                                                                         <Badge className="h-4 px-1.5 text-[9px] bg-emerald-100 text-emerald-700 border-emerald-200 hover:bg-emerald-100">
-                                                                                            Override +
+                                                                                            {t('settings.member_sheet.role.badge_override_plus')}
                                                                                         </Badge>
                                                                                     ) : isOverrideDeny ? (
                                                                                         <Badge className="h-4 px-1.5 text-[9px] bg-red-100 text-red-700 border-red-200 hover:bg-red-100">
-                                                                                            Bloqueado −
+                                                                                            {t('settings.member_sheet.role.badge_override_minus')}
                                                                                         </Badge>
                                                                                     ) : effectiveChecked ? (
                                                                                         <Badge variant="outline" className="h-4 px-1.5 text-[9px] text-indigo-600 border-indigo-200">
-                                                                                            Heredado del rol
+                                                                                            {t('settings.member_sheet.role.badge_inherited')}
                                                                                         </Badge>
                                                                                     ) : null}
                                                                                 </div>
@@ -929,137 +907,82 @@ export function MemberEditSheet({
                                                                 })}
                                                             </div>
                                                         </div>
-                                                    ))}
-                                                </div>
+                                                    )
+                                                })}
+                                            </div>
                                             </div>
                                         )}
 
-                                        <div className="flex items-center justify-between pt-2">
-                                            <Button
-                                                type="button"
-                                                variant="outline"
-                                                size="sm"
-                                                onClick={handleGoToRolesTab}
-                                                className="gap-1.5 text-xs"
-                                            >
-                                                <Sparkles className="h-3.5 w-3.5 text-indigo-500" />
-                                                Personalizar matriz de roles
-                                            </Button>
-
-                                            <Button
-                                                onClick={handleSaveRole}
-                                                disabled={isSavingRole || !selectedRoleId}
-                                                className="bg-brand-pink hover:bg-brand-pink/90 text-white"
-                                            >
-                                                {isSavingRole ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                                                Guardar Rol y Permisos
-                                            </Button>
-                                        </div>
                                     </>
                                 )}
                             </TabsContent>
 
                             {/* SECTION 3: INBOX AGENT & CHANNELS */}
                             <TabsContent value="inbox" className="mt-0 space-y-5">
-                                <div className="space-y-3">
+                                {/* Master Switch: Acceso al Módulo de Mensajería */}
+                                <div className="rounded-2xl border border-zinc-200/80 dark:border-white/10 bg-white dark:bg-zinc-900 p-4 space-y-2">
                                     <div className="flex items-center justify-between">
-                                        <Label className="text-xs font-semibold uppercase tracking-wider text-zinc-600 dark:text-zinc-300 flex items-center gap-2">
-                                            <MessageSquare className="h-4 w-4 text-brand-pink" />
-                                            Canales Autorizados en el Inbox
-                                        </Label>
-                                        {hasGlobalInboxView && (
-                                            <Badge className="bg-indigo-100 text-indigo-700 border-indigo-200 text-[10px]">
-                                                Vista Global Activa
-                                            </Badge>
-                                        )}
-                                    </div>
-
-                                    {hasGlobalInboxView && (
-                                        <div className="p-3 rounded-xl bg-indigo-50/80 dark:bg-indigo-950/30 border border-indigo-200/60 dark:border-indigo-800/40 text-xs text-indigo-800 dark:text-indigo-200">
-                                            Este miembro posee <strong>Vista Global de Canales</strong> por su rol. Puede supervisar todas las conversaciones del Inbox sin restricción de canal.
-                                        </div>
-                                    )}
-
-                                    <ChannelAccessSelector
-                                        selectedIds={authorizedChannels}
-                                        onChange={setAuthorizedChannels}
-                                        disabled={isOwner}
-                                    />
-                                    <p className="text-[11px] text-zinc-500">
-                                        Los canales seleccionados se sincronizan automáticamente con el enrutador de conversaciones (<code>agent_channels</code>) para la asignación de chats.
-                                    </p>
-                                </div>
-
-                                {/* Agent Availability Config */}
-                                <div className="rounded-2xl border border-zinc-200/80 dark:border-white/10 bg-zinc-50/50 dark:bg-white/5 p-4 space-y-4">
-                                    <div className="flex items-center justify-between">
-                                        <h4 className="text-xs font-semibold uppercase tracking-wider text-zinc-600 dark:text-zinc-300 flex items-center gap-1.5">
-                                            <Activity className="h-3.5 w-3.5 text-emerald-500" />
-                                            Disponibilidad y Capacidad del Agente
-                                        </h4>
-                                        <Badge variant="outline" className="text-[10px]">
-                                            Carga actual: {member?.agent_availability?.current_load ?? 0} chats activos
-                                        </Badge>
-                                    </div>
-
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                        <div className="space-y-1.5">
-                                            <Label className="text-xs">Estado en Bandeja</Label>
-                                            <Select
-                                                value={agentStatus}
-                                                onValueChange={(v) => setAgentStatus(v as 'online' | 'away' | 'offline')}
-                                            >
-                                                <SelectTrigger className="bg-white dark:bg-zinc-900">
-                                                    <SelectValue />
-                                                </SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value="online">🟢 En línea (Recibe chats)</SelectItem>
-                                                    <SelectItem value="away">🟡 Ausente</SelectItem>
-                                                    <SelectItem value="offline">⚪ Desconectado</SelectItem>
-                                                </SelectContent>
-                                            </Select>
-                                            <p className="text-[11px] text-zinc-500 mt-1">
-                                                Configura el modo de servicio del agente al iniciar sesión. La presencia efectiva depende del latido activo.
-                                            </p>
-                                        </div>
-
-                                        <div className="space-y-1.5">
-                                            <Label htmlFor="agent-capacity" className="text-xs">Capacidad Máxima Simultánea</Label>
-                                            <Input
-                                                id="agent-capacity"
-                                                type="number"
-                                                min={1}
-                                                max={500}
-                                                value={maxCapacity}
-                                                onChange={(e) => setMaxCapacity(Number(e.target.value) || 1)}
-                                                className="bg-white dark:bg-zinc-900"
-                                            />
-                                        </div>
-                                    </div>
-
-                                    <div className="flex items-center justify-between p-3 rounded-xl bg-white dark:bg-zinc-900 border border-zinc-100 dark:border-white/5">
                                         <div className="space-y-0.5 pr-4">
-                                            <Label className="text-xs font-medium">Auto-Asignación de Conversaciones</Label>
-                                            <p className="text-[11px] text-zinc-500">
-                                                Permite que el motor Round-Robin / Load-Balance le asigne nuevos chats entrantes.
+                                            <Label htmlFor="master-inbox-switch" className="text-sm font-semibold text-zinc-900 dark:text-zinc-100 flex items-center gap-2 cursor-pointer">
+                                                <MessageSquare className="h-4 w-4 text-brand-pink" />
+                                                {t('settings.member_sheet.inbox.master_title')}
+                                            </Label>
+                                            <p className="text-xs text-zinc-500">
+                                                {isInboxEnabled
+                                                    ? t('settings.member_sheet.inbox.master_desc_enabled')
+                                                    : t('settings.member_sheet.inbox.master_desc_disabled')}
                                             </p>
                                         </div>
                                         <Switch
-                                            checked={autoAssignEnabled}
-                                            onCheckedChange={setAutoAssignEnabled}
+                                            id="master-inbox-switch"
+                                            checked={isInboxEnabled}
+                                            disabled={isOwner}
+                                            onCheckedChange={(checked) => {
+                                                setIsInboxEnabled(checked)
+                                                setPermissionOverrides(prev => ({ ...prev, 'inbox.view': checked }))
+                                            }}
                                         />
                                     </div>
+                                    {!isInboxEnabled && (
+                                        <div className="p-2.5 rounded-xl bg-amber-50 dark:bg-amber-950/30 border border-amber-200/60 dark:border-amber-800/40 text-xs text-amber-800 dark:text-amber-200 flex items-center gap-2">
+                                            <AlertTriangle className="h-4 w-4 text-amber-600 shrink-0" />
+                                            <span>
+                                                {t('settings.member_sheet.inbox.disabled_warning')}
+                                            </span>
+                                        </div>
+                                    )}
                                 </div>
 
-                                <div className="flex justify-end pt-2">
-                                    <Button
-                                        onClick={handleSaveInbox}
-                                        disabled={isSavingInbox}
-                                        className="bg-brand-pink hover:bg-brand-pink/90 text-white"
-                                    >
-                                        {isSavingInbox ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                                        Guardar Configuración de Inbox
-                                    </Button>
+                                <div className={`space-y-5 transition-opacity ${!isInboxEnabled ? 'opacity-40 pointer-events-none' : ''}`}>
+                                    <div className="space-y-3">
+                                        <div className="flex items-center justify-between">
+                                            <Label className="text-xs font-semibold uppercase tracking-wider text-zinc-600 dark:text-zinc-300 flex items-center gap-2">
+                                                <MessageSquare className="h-4 w-4 text-brand-pink" />
+                                                {t('settings.member_sheet.inbox.channels_label')}
+                                            </Label>
+                                            {hasGlobalInboxView && (
+                                                <Badge className="bg-indigo-100 text-indigo-700 border-indigo-200 text-[10px]">
+                                                    {t('settings.member_sheet.inbox.global_view_badge')}
+                                                </Badge>
+                                            )}
+                                        </div>
+
+                                        {hasGlobalInboxView && (
+                                            <div className="p-3 rounded-xl bg-indigo-50/80 dark:bg-indigo-950/30 border border-indigo-200/60 dark:border-indigo-800/40 text-xs text-indigo-800 dark:text-indigo-200">
+                                                {t('settings.member_sheet.inbox.global_view_alert')}
+                                            </div>
+                                        )}
+
+                                        <ChannelAccessSelector
+                                            selectedIds={authorizedChannels}
+                                            onChange={setAuthorizedChannels}
+                                            disabled={isOwner || !isInboxEnabled}
+                                        />
+                                        <p className="text-[11px] text-zinc-500">
+                                            {t('settings.member_sheet.inbox.channels_sync_notice')}
+                                        </p>
+                                    </div>
+
                                 </div>
                             </TabsContent>
 
@@ -1070,10 +993,10 @@ export function MemberEditSheet({
                                     <div className="flex items-start justify-between gap-3">
                                         <div>
                                             <h4 className="text-sm font-semibold text-zinc-800 dark:text-zinc-100">
-                                                Recuperación y Acceso por Correo
+                                                {t('settings.member_sheet.security.email_recovery_title')}
                                             </h4>
                                             <p className="text-xs text-zinc-500 mt-0.5">
-                                                Envía un enlace seguro a <strong>{displayEmail}</strong> para restablecer su contraseña o activar su invitación.
+                                                {t('settings.member_sheet.security.email_recovery_subtitle', { email: displayEmail || '' })}
                                             </p>
                                         </div>
                                     </div>
@@ -1088,7 +1011,7 @@ export function MemberEditSheet({
                                             className="gap-1.5 text-xs"
                                         >
                                             {isSendingReset ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5 text-indigo-600" />}
-                                            Enviar link de recuperación
+                                            {t('settings.member_sheet.security.send_reset_link')}
                                         </Button>
 
                                         <Button
@@ -1100,7 +1023,7 @@ export function MemberEditSheet({
                                             className="gap-1.5 text-xs"
                                         >
                                             {isResendingInvite ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Mail className="h-3.5 w-3.5" />}
-                                            Reenviar invitación
+                                            {t('settings.member_sheet.security.resend_invite')}
                                         </Button>
                                     </div>
                                 </div>
@@ -1109,29 +1032,42 @@ export function MemberEditSheet({
                                 <div className="rounded-2xl border border-zinc-200/80 dark:border-white/10 p-4 space-y-3 bg-white dark:bg-zinc-900">
                                     <div>
                                         <h4 className="text-sm font-semibold text-zinc-800 dark:text-zinc-100">
-                                            Asignar Contraseña Manualmente
+                                            {t('settings.member_sheet.security.manual_pass_title')}
                                         </h4>
                                         <p className="text-xs text-zinc-500 mt-0.5">
-                                            Establece una nueva contraseña directa si el miembro pertenece exclusivamente a esta organización.
+                                            {t('settings.member_sheet.security.manual_pass_subtitle')}
                                         </p>
+                                    </div>
+
+                                    {/* Decoy fields to divert aggressive browser password autofill */}
+                                    <div className="sr-only" aria-hidden="true" style={{ position: 'absolute', opacity: 0, pointerEvents: 'none' }}>
+                                        <input type="text" name="fake_username_decoy" tabIndex={-1} autoComplete="off" />
+                                        <input type="password" name="fake_password_decoy" tabIndex={-1} autoComplete="off" />
                                     </div>
 
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                                         <div className="space-y-1.5">
-                                            <Label htmlFor="manual-new-pass" className="text-xs">Nueva Contraseña</Label>
+                                            <Label htmlFor="manual-new-pass" className="text-xs">{t('settings.member_sheet.security.new_password')}</Label>
                                             <div className="relative">
                                                 <Input
                                                     id="manual-new-pass"
+                                                    name="admin_manual_override_new_pwd"
                                                     type={showPassword ? "text" : "password"}
                                                     value={newPassword}
                                                     onChange={(e) => setNewPassword(e.target.value)}
-                                                    placeholder="Mínimo 6 caracteres"
+                                                    placeholder={t('settings.member_sheet.security.new_password_placeholder')}
+                                                    autoComplete="new-password"
+                                                    data-lpignore="true"
+                                                    data-1p-ignore="true"
+                                                    data-form-type="other"
+                                                    readOnly
+                                                    onFocus={(e) => e.target.removeAttribute('readonly')}
                                                     className="pr-9"
                                                 />
                                                 <button
                                                     type="button"
                                                     onClick={() => setShowPassword(!showPassword)}
-                                                    className="absolute right-2.5 top-2.5 text-zinc-400 hover:text-zinc-600"
+                                                    className="absolute right-2.5 top-2.5 text-zinc-400 hover:text-zinc-600 cursor-pointer"
                                                 >
                                                     {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                                                 </button>
@@ -1139,91 +1075,91 @@ export function MemberEditSheet({
                                         </div>
 
                                         <div className="space-y-1.5">
-                                            <Label htmlFor="manual-confirm-pass" className="text-xs">Confirmar Contraseña</Label>
+                                            <Label htmlFor="manual-confirm-pass" className="text-xs">{t('settings.member_sheet.security.confirm_password')}</Label>
                                             <Input
                                                 id="manual-confirm-pass"
+                                                name="admin_manual_override_confirm_pwd"
                                                 type={showPassword ? "text" : "password"}
                                                 value={confirmPassword}
                                                 onChange={(e) => setConfirmPassword(e.target.value)}
-                                                placeholder="Repite la contraseña"
+                                                placeholder={t('settings.member_sheet.security.confirm_password_placeholder')}
+                                                autoComplete="new-password"
+                                                data-lpignore="true"
+                                                data-1p-ignore="true"
+                                                data-form-type="other"
+                                                readOnly
+                                                onFocus={(e) => e.target.removeAttribute('readonly')}
                                             />
                                         </div>
                                     </div>
 
-                                    <div className="flex justify-end">
-                                        <Button
-                                            type="button"
-                                            size="sm"
-                                            disabled={isSettingPassword || !newPassword}
-                                            onClick={handleSetManualPassword}
-                                            className="gap-1.5 text-xs"
-                                        >
-                                            {isSettingPassword ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <KeyRound className="h-3.5 w-3.5" />}
-                                            Actualizar Contraseña
-                                        </Button>
-                                    </div>
                                 </div>
-
-                                {/* 4.3 Account Suspension & Removal */}
-                                {member?.role !== 'owner' && (
-                                    <div className="rounded-2xl border border-red-200/70 dark:border-red-900/40 bg-red-50/40 dark:bg-red-950/20 p-4 space-y-3">
-                                        <div>
-                                            <h4 className="text-sm font-semibold text-red-900 dark:text-red-200">
-                                                Control de Acceso y Baja
-                                            </h4>
-                                            <p className="text-xs text-red-700/80 dark:text-red-300/80 mt-0.5">
-                                                Al suspender el acceso, el miembro no podrá entrar a la plataforma y pasará automáticamente a desconectado en el Inbox.
-                                            </p>
-                                        </div>
-
-                                        <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
-                                            <Button
-                                                type="button"
-                                                variant="outline"
-                                                size="sm"
-                                                disabled={isTogglingStatus}
-                                                onClick={handleToggleSuspend}
-                                                className={isSuspended
-                                                    ? "border-emerald-300 text-emerald-700 hover:bg-emerald-50 text-xs gap-1.5"
-                                                    : "border-amber-300 text-amber-800 hover:bg-amber-50 text-xs gap-1.5"
-                                                }
-                                            >
-                                                {isTogglingStatus ? (
-                                                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
-                                                ) : isSuspended ? (
-                                                    <CheckCircle2 className="h-3.5 w-3.5" />
-                                                ) : (
-                                                    <Ban className="h-3.5 w-3.5" />
-                                                )}
-                                                {isSuspended ? "Reactivar Acceso del Miembro" : "Suspender / Bloquear Acceso"}
-                                            </Button>
-
-                                            <Button
-                                                type="button"
-                                                variant="destructive"
-                                                size="sm"
-                                                disabled={isRemoving}
-                                                onClick={handleRemoveMember}
-                                                className="text-xs gap-1.5"
-                                            >
-                                                {isRemoving ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Trash2 className="h-3.5 w-3.5" />}
-                                                Eliminar del Equipo
-                                            </Button>
-                                        </div>
-                                    </div>
-                                )}
                             </TabsContent>
                         </div>
                     </Tabs>
 
-                    {/* Footer */}
-                    <div className="shrink-0 px-6 py-3.5 bg-zinc-50 dark:bg-zinc-900 border-t border-zinc-200/80 dark:border-white/10 flex items-center justify-between">
-                        <span className="text-[11px] text-zinc-400">
-                            ID: {member?.user_id?.slice(0, 8)}...
-                        </span>
-                        <Button variant="outline" size="sm" onClick={() => handleRequestClose(false)}>
-                            Cerrar Ficha
-                        </Button>
+                    {/* Unified Sticky Footer */}
+                    <div className="sticky bottom-0 z-20 bg-white/80 dark:bg-zinc-900/80 backdrop-blur-md px-6 py-3.5 border-t border-zinc-200/80 dark:border-white/10 flex items-center justify-between shrink-0">
+                        <div className="flex items-center gap-2.5">
+                            <span className="text-[11px] font-mono text-zinc-400">
+                                ID: {member?.user_id?.slice(0, 8)}...
+                            </span>
+                            {hasUnsavedChangesInCurrentSection && (
+                                <span className="text-[11px] font-medium text-amber-600 dark:text-amber-400 flex items-center gap-1.5 bg-amber-500/10 border border-amber-500/20 px-2.5 py-0.5 rounded-full">
+                                    <span className="h-1.5 w-1.5 rounded-full bg-amber-500 animate-pulse" />
+                                    {t('settings.member_sheet.footer.unsaved_badge')}
+                                </span>
+                            )}
+                        </div>
+
+                        <div className="flex items-center gap-2.5">
+                            <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                onClick={() => handleRequestClose(false)}
+                                className="text-xs rounded-xl h-9 px-4 cursor-pointer hover:bg-zinc-100 dark:hover:bg-white/5"
+                            >
+                                {t('settings.member_sheet.footer.close')}
+                            </Button>
+                            {activeSection !== 'security' && !(isOwner && activeSection === 'role') ? (
+                                <Button
+                                    type="button"
+                                    size="sm"
+                                    onClick={handleSaveCurrentTab}
+                                    disabled={!hasUnsavedChangesInCurrentSection || isCurrentTabSaving}
+                                    className="bg-brand-pink hover:bg-brand-pink/90 text-white text-xs font-semibold rounded-xl h-9 px-4 gap-1.5 shadow-sm transition-all disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+                                >
+                                    {isCurrentTabSaving ? (
+                                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                    ) : (
+                                        <Save className="h-3.5 w-3.5" />
+                                    )}
+                                    <span>
+                                        {activeSection === 'profile'
+                                            ? t('settings.member_sheet.footer.save_profile')
+                                            : activeSection === 'role'
+                                            ? t('settings.member_sheet.footer.save_role')
+                                            : t('settings.member_sheet.footer.save_inbox')}
+                                    </span>
+                                </Button>
+                            ) : hasSecurityChanges ? (
+                                <Button
+                                    type="button"
+                                    size="sm"
+                                    onClick={handleSetManualPassword}
+                                    disabled={isSettingPassword || !newPassword}
+                                    className="bg-brand-pink hover:bg-brand-pink/90 text-white text-xs font-semibold rounded-xl h-9 px-4 gap-1.5 shadow-sm transition-all disabled:opacity-40 cursor-pointer"
+                                >
+                                    {isSettingPassword ? (
+                                        <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                                    ) : (
+                                        <KeyRound className="h-3.5 w-3.5" />
+                                    )}
+                                    <span>{t('settings.member_sheet.footer.update_password')}</span>
+                                </Button>
+                            ) : null}
+                        </div>
                     </div>
                 </div>
             </SheetContent>

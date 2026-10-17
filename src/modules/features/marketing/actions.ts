@@ -9,6 +9,9 @@ import { encryptObject, decryptObject } from "@/modules/infrastructure/integrati
 import { MetaConnector } from '@/modules/infrastructure/meta/services/connector'
 import { AdsService } from '@/modules/infrastructure/meta/services/ads-service'
 
+import { requirePermission } from '@/modules/core/iam/services/role-service'
+import { PERMISSIONS } from '@/modules/core/iam/actions/permissions'
+
 const META_PROVIDER_KEY = 'meta_ads_monitor'
 
 function getOptionalFormString(formData: FormData, key: string) {
@@ -44,6 +47,7 @@ export async function getOrgMetaConfig() {
         .single()
 
     if (!member) return { config: null, error: "No organization found" }
+    await requirePermission(PERMISSIONS.MARKETING.MANAGE_ADS, member.organization_id)
 
     const { data, error } = await supabase
         .from('integration_connections')
@@ -68,16 +72,17 @@ export async function saveOrgMetaConfig(formData: FormData) {
     const { data: { user } } = await supabase.auth.getUser()
     if (!user) return { success: false, error: "Unauthorized" }
 
-    // Get active organization and check permissions (owner/admin)
+    // Get active organization and check permissions (marketing.ads.manage)
     const { data: member } = await supabase
         .from('organization_members')
-        .select('organization_id, role')
+        .select('organization_id')
         .eq('user_id', user.id)
         .single()
 
-    if (!member || !['owner', 'admin'].includes(member.role)) {
-        return { success: false, error: "Insufficient permissions" }
+    if (!member) {
+        return { success: false, error: "No organization found" }
     }
+    await requirePermission(PERMISSIONS.MARKETING.MANAGE_ADS, member.organization_id)
 
     const submittedAccessToken = getOptionalFormString(formData, 'access_token')
     const adAccountId = getOptionalFormString(formData, 'ad_account_id')
@@ -142,6 +147,7 @@ export async function getOrgAdsMetrics(datePreset: string = 'last_30d') {
         .single()
 
     if (!member) return { data: null, error: "No organization found" }
+    await requirePermission(PERMISSIONS.MARKETING.MANAGE_ADS, member.organization_id)
 
     // We fetch the latest snapshot for the given date (or range if we want to aggregate)
     // For the MVP, we just take the latest snapshot.
@@ -173,6 +179,7 @@ export async function syncOrgAdsMetrics(datePreset: string = 'last_30d') {
         .single()
 
     if (!member) return { success: false, error: "No organization found" }
+    await requirePermission(PERMISSIONS.MARKETING.MANAGE_ADS, member.organization_id)
 
     // 1. Get credentials (prefer most recently updated connection)
     const { data: config } = await supabase

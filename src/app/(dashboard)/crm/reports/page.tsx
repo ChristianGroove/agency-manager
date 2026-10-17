@@ -34,11 +34,15 @@ import {
 } from "@/components/ui/popover"
 import { Calendar } from "@/components/ui/calendar"
 import { useCurrentOrganization } from "@/modules/core/organizations/hooks/use-current-organization"
+import { useActiveModules } from "@/hooks/use-active-modules"
+import { useRouter } from "next/navigation"
 import type { BrandingConfig } from '@/types/branding'
 import { SectionHeader } from '@/components/layout/section-header'
 
 export default function ReportsPage() {
     const { t } = useTranslation()
+    const router = useRouter()
+    const { capabilities, isLoading: modulesLoading } = useActiveModules()
     const [loading, setLoading] = useState(true)
     const [exporting, setExporting] = useState(false)
     const [exportingAgent, setExportingAgent] = useState<string | null>(null)
@@ -53,6 +57,15 @@ export default function ReportsPage() {
     })
     const [calendarOpen, setCalendarOpen] = useState(false)
     const { organizationId, loading: orgLoading } = useCurrentOrganization()
+
+    useEffect(() => {
+        if (!modulesLoading && capabilities) {
+            const hasAccess = Boolean(capabilities['all'] || capabilities['crm.reports.view'])
+            if (!hasAccess) {
+                router.push('/dashboard?error=unauthorized')
+            }
+        }
+    }, [capabilities, modulesLoading, router])
     const [reportData, setReportData] = useState<AdvancedReportData | null>(null)
     const [branding, setBranding] = useState<BrandingConfig | null>(null)
     const [logoBase64Cache, setLogoBase64Cache] = useState<string | null>(null)

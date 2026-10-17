@@ -4,29 +4,28 @@ import { PaginatedDataTable as Table } from "@/components/ui/paginated-data-tabl
 import { useState, useEffect, useMemo } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
+import { Card } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { Badge } from "@/components/ui/badge"
+import { Switch } from "@/components/ui/switch"
 import {
     Loader2,
     UserPlus,
     Trash2,
     Mail,
     Shield,
-    ShieldCheck,
     User,
     Crown,
     CheckCircle,
     Ban,
     Clock,
-    Search,
     MessageSquare,
     Briefcase,
-    UserCog,
+    Settings,
     Send
 } from "lucide-react"
 import { toast } from "sonner"
@@ -34,10 +33,14 @@ import { getOrganizationMembers, inviteMember, removeMember, toggleMemberStatus,
 import { getChannels } from "@/modules/features/channels/actions"
 import { Channel } from "@/modules/features/channels/types"
 import { format } from "date-fns"
-import { es } from "date-fns/locale"
+import { es, enUS } from "date-fns/locale"
 import { MemberEditSheet } from "./member-edit-sheet"
 import { RolePicker } from "@/modules/core/iam/components/role-picker"
 import { ManualCreationForm } from "./manual-creation-form"
+import { SearchFilterBar } from "@/modules/core/ui/components/search-filter-bar"
+import { cn } from "@/modules/infrastructure/utils/utils"
+import { useTranslation } from "@/modules/core/i18n/use-translation"
+import { useLocalizedIam } from "@/modules/core/iam/actions/use-localized-iam"
 
 const AGENT_HEARTBEAT_TTL_MS = 5 * 60 * 1000
 
@@ -71,16 +74,20 @@ interface TeamSettingsTabProps {
 }
 
 export function TeamSettingsTab({ activeModules, onNavigateToRoles }: TeamSettingsTabProps) {
+    const { t, locale, getRoleInfo } = useLocalizedIam()
+    const dateLocale = locale === 'en' ? enUS : es
     const router = useRouter()
     const [members, setMembers] = useState<any[]>([])
     const [channels, setChannels] = useState<Channel[]>([])
     const [isLoading, setIsLoading] = useState(true)
     const [isInviteOpen, setIsInviteOpen] = useState(false)
     const [searchQuery, setSearchQuery] = useState("")
+    const [activeFilter, setActiveFilter] = useState<string>("all")
 
     // Invite Form
     const [inviteEmail, setInviteEmail] = useState("")
     const [inviteRole, setInviteRole] = useState("")
+    const [inviteInboxAccess, setInviteInboxAccess] = useState(true)
     const [isInviting, setIsInviting] = useState(false)
     const [resendingUserId, setResendingUserId] = useState<string | null>(null)
 
@@ -104,7 +111,7 @@ export function TeamSettingsTab({ activeModules, onNavigateToRoles }: TeamSettin
             }
         } catch (error) {
             console.error(error)
-            toast.error("Error al cargar miembros del equipo")
+            toast.error(t('settings.team.toasts.load_error'))
         } finally {
             setIsLoading(false)
         }
@@ -124,43 +131,58 @@ export function TeamSettingsTab({ activeModules, onNavigateToRoles }: TeamSettin
         return map
     }, [channels])
 
-    const filteredMembers = useMemo(() => {
-        const q = searchQuery.trim().toLowerCase()
-        if (!q) return members
-        return members.filter(m => {
-            const name = (m.full_name || m.user?.full_name || "").toLowerCase()
-            const email = (m.email || m.user?.email || "").toLowerCase()
-            const role = (m.role_name || m.role || "").toLowerCase()
-            const job = (m.job_title || "").toLowerCase()
-            return name.includes(q) || email.includes(q) || role.includes(q) || job.includes(q)
-        })
-    }, [members, searchQuery])
-
     const stats = useMemo(() => {
         const total = members.length
         const active = members.filter(m => m.account_state === 'active').length
         const pending = members.filter(m => m.account_state === 'pending_invite').length
+        const suspended = members.filter(m => m.account_state === 'suspended' || m.status === 'blocked').length
         const onlineAgents = members.filter(m => getEffectiveAgentStatus(m) === 'online').length
-        return { total, active, pending, onlineAgents }
+        return { total, active, pending, suspended, onlineAgents }
     }, [members])
+
+    const filteredMembers = useMemo(() => {
+        let result = members
+
+        if (activeFilter === 'active') {
+            result = result.filter(m => m.account_state === 'active')
+        } else if (activeFilter === 'pending') {
+            result = result.filter(m => m.account_state === 'pending_invite')
+        } else if (activeFilter === 'online') {
+            result = result.filter(m => getEffectiveAgentStatus(m) === 'online')
+        } else if (activeFilter === 'suspended') {
+            result = result.filter(m => m.account_state === 'suspended' || m.status === 'blocked')
+        }
+
+        const q = searchQuery.trim().toLowerCase()
+        if (q) {
+            result = result.filter(m => {
+                const name = (m.full_name || m.user?.full_name || "").toLowerCase()
+                const email = (m.email || m.user?.email || "").toLowerCase()
+                const role = (m.role_name || m.role || "").toLowerCase()
+                const job = (m.job_title || "").toLowerCase()
+                return name.includes(q) || email.includes(q) || role.includes(q) || job.includes(q)
+            })
+        }
+
+        return result
+    }, [members, activeFilter, searchQuery])
 
     const handleInvite = async () => {
         if (!inviteEmail) return
         setIsInviting(true)
         try {
-            const result = await inviteMember(inviteEmail, inviteRole)
+            const result = await inviteMember(inviteEmail, inviteRole, inviteInboxAccess)
             if (result.success) {
-                toast.success("Invitación enviada", {
-                    description: "Correo enviado al destinatario"
-                })
+                toast.success(t('settings.team.toasts.invite_sent'))
                 setIsInviteOpen(false)
                 setInviteEmail("")
+                setInviteInboxAccess(true)
                 loadMembers()
             } else {
-                toast.error("Error: " + result.error)
+                toast.error(t('common.error') + ": " + result.error)
             }
         } catch (error) {
-            toast.error("Error inesperado al enviar invitación")
+            toast.error(t('settings.team.toasts.unexpected_error'))
         } finally {
             setIsInviting(false)
         }
@@ -171,29 +193,29 @@ export function TeamSettingsTab({ activeModules, onNavigateToRoles }: TeamSettin
         try {
             const res = await resendMemberInvitation(userId)
             if (res.success) {
-                toast.success(`Invitación reenviada a ${email}`)
+                toast.success(t('settings.team.toasts.invite_resent', { email }))
             } else {
-                toast.error(res.error || "No se pudo reenviar la invitación")
+                toast.error(res.error || t('settings.team.toasts.invite_resend_error'))
             }
         } catch {
-            toast.error("Error inesperado al reenviar invitación")
+            toast.error(t('settings.team.toasts.unexpected_error'))
         } finally {
             setResendingUserId(null)
         }
     }
 
     const handleRemove = async (userId: string, displayName: string) => {
-        if (!confirm(`¿Seguro de remover a ${displayName} de la organización? Se liberarán sus canales y conversaciones asignadas.`)) return
+        if (!confirm(t('settings.team.toasts.remove_confirm', { name: displayName }))) return
         try {
             const result = await removeMember(userId)
             if (result.success) {
-                toast.success("Miembro removido correctamente")
+                toast.success(t('settings.team.toasts.remove_success'))
                 loadMembers()
             } else {
-                toast.error(result.error || "Error al remover miembro")
+                toast.error(result.error || t('settings.team.toasts.remove_error'))
             }
         } catch (error) {
-            toast.error("Error inesperado")
+            toast.error(t('settings.team.toasts.unexpected_error'))
         }
     }
 
@@ -201,13 +223,13 @@ export function TeamSettingsTab({ activeModules, onNavigateToRoles }: TeamSettin
         try {
             const result = await toggleMemberStatus(userId, currentStatus)
             if (result.success) {
-                toast.success(result.status === 'blocked' ? "Acceso suspendido" : "Acceso restaurado")
+                toast.success(result.status === 'blocked' ? t('settings.team.toasts.status_blocked') : t('settings.team.toasts.status_restored'))
                 loadMembers()
             } else {
-                toast.error("Error: " + result.error)
+                toast.error(t('common.error') + ": " + result.error)
             }
         } catch (error) {
-            toast.error("Error inesperado")
+            toast.error(t('settings.team.toasts.unexpected_error'))
         }
     }
 
@@ -221,66 +243,154 @@ export function TeamSettingsTab({ activeModules, onNavigateToRoles }: TeamSettin
 
     return (
         <div className="space-y-6">
+            {/* KPI Summary Strip */}
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <Card
+                    onClick={() => setActiveFilter('all')}
+                    className={cn(
+                        "glass-card group hover:shadow-lg transition-all duration-300 cursor-pointer hover:-translate-y-1 p-3.5 flex items-center justify-between",
+                        activeFilter === 'all' && "ring-2 ring-zinc-400 dark:ring-zinc-600 bg-white/20 dark:bg-white/10"
+                    )}
+                >
+                    <div>
+                        <span className="text-xs text-zinc-500 dark:text-zinc-400 block font-medium">{t('settings.team.kpis.total_members')}</span>
+                        <span className="text-xl font-bold text-zinc-900 dark:text-white tracking-tight">{stats.total}</span>
+                    </div>
+                    <div className="p-2 rounded-lg bg-indigo-50 dark:bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 group-hover:scale-110 transition-transform">
+                        <User className="h-4 w-4" />
+                    </div>
+                </Card>
+
+                <Card
+                    onClick={() => setActiveFilter(activeFilter === 'active' ? 'all' : 'active')}
+                    className={cn(
+                        "glass-card group hover:shadow-lg transition-all duration-300 cursor-pointer hover:-translate-y-1 p-3.5 flex items-center justify-between",
+                        activeFilter === 'active' && "ring-2 ring-emerald-500/60 bg-white/20 dark:bg-white/10"
+                    )}
+                >
+                    <div>
+                        <span className="text-xs text-zinc-500 dark:text-zinc-400 block font-medium">{t('settings.team.kpis.active_accounts')}</span>
+                        <span className="text-xl font-bold text-emerald-600 dark:text-emerald-400 tracking-tight">{stats.active}</span>
+                    </div>
+                    <div className="p-2 rounded-lg bg-emerald-50 dark:bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 group-hover:scale-110 transition-transform">
+                        <CheckCircle className="h-4 w-4" />
+                    </div>
+                </Card>
+
+                <Card
+                    onClick={() => setActiveFilter(activeFilter === 'pending' ? 'all' : 'pending')}
+                    className={cn(
+                        "glass-card group hover:shadow-lg transition-all duration-300 cursor-pointer hover:-translate-y-1 p-3.5 flex items-center justify-between",
+                        activeFilter === 'pending' && "ring-2 ring-amber-500/60 bg-white/20 dark:bg-white/10"
+                    )}
+                >
+                    <div>
+                        <span className="text-xs text-zinc-500 dark:text-zinc-400 block font-medium">{t('settings.team.kpis.pending_invites')}</span>
+                        <span className="text-xl font-bold text-amber-600 dark:text-amber-400 tracking-tight">{stats.pending}</span>
+                    </div>
+                    <div className="p-2 rounded-lg bg-amber-50 dark:bg-amber-500/10 text-amber-600 dark:text-amber-400 group-hover:scale-110 transition-transform">
+                        <Clock className="h-4 w-4" />
+                    </div>
+                </Card>
+
+                <Card
+                    onClick={() => setActiveFilter(activeFilter === 'online' ? 'all' : 'online')}
+                    className={cn(
+                        "glass-card group hover:shadow-lg transition-all duration-300 cursor-pointer hover:-translate-y-1 p-3.5 flex items-center justify-between",
+                        activeFilter === 'online' && "ring-2 ring-brand-pink/60 bg-white/20 dark:bg-white/10"
+                    )}
+                >
+                    <div>
+                        <span className="text-xs text-zinc-500 dark:text-zinc-400 block font-medium">{t('settings.team.kpis.online_agents')}</span>
+                        <span className="text-xl font-bold text-brand-pink tracking-tight">{stats.onlineAgents}</span>
+                    </div>
+                    <div className="p-2 rounded-lg bg-pink-50 dark:bg-pink-500/10 text-brand-pink group-hover:scale-110 transition-transform">
+                        <MessageSquare className="h-4 w-4" />
+                    </div>
+                </Card>
+            </div>
+
             {/* Top Header & Actions */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                 <div>
-                    <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">Equipo y Agentes</h3>
+                    <h3 className="text-lg font-semibold text-zinc-900 dark:text-zinc-100">{t('settings.team.title')}</h3>
                     <p className="text-sm text-zinc-500">
-                        Gestiona perfiles, accesos, credenciales, canales de Inbox y roles de tu organización.
+                        {t('settings.team.description')}
                     </p>
                 </div>
-                <div className="flex items-center gap-2">
-                    <Button variant="outline" onClick={goToRoles} className="gap-2">
-                        <ShieldCheck className="h-4 w-4 text-indigo-600" />
-                        Roles y Permisos
-                    </Button>
+                <div className="flex items-center gap-3 flex-1 lg:justify-end max-w-full lg:max-w-2xl">
+                    <div className="flex-1 min-w-[240px] sm:min-w-[320px]">
+                        <SearchFilterBar
+                            searchTerm={searchQuery}
+                            onSearchChange={setSearchQuery}
+                            searchPlaceholder={t('settings.team.search_placeholder')}
+                        />
+                    </div>
 
                     <Dialog open={isInviteOpen} onOpenChange={setIsInviteOpen}>
                         <DialogTrigger asChild>
-                            <Button className="bg-brand-pink hover:bg-brand-pink/90 text-white">
+                            <Button className="bg-brand-pink hover:bg-brand-pink/90 text-white shrink-0 h-10 px-4 rounded-xl shadow-xs">
                                 <UserPlus className="h-4 w-4 mr-2" />
-                                Añadir Miembro
+                                {t('settings.team.add_member')}
                             </Button>
                         </DialogTrigger>
                         <DialogContent className="sm:max-w-[500px]">
                             <DialogHeader>
-                                <DialogTitle>Añadir Nuevo Miembro</DialogTitle>
+                                <DialogTitle>{t('settings.team.dialog.title')}</DialogTitle>
                                 <DialogDescription>
-                                    Invita por correo electrónico o crea una cuenta con contraseña inmediata.
+                                    {t('settings.team.dialog.description')}
                                 </DialogDescription>
                             </DialogHeader>
 
                             <Tabs defaultValue="invite" className="w-full">
                                 <TabsList className="grid w-full grid-cols-2">
-                                    <TabsTrigger value="invite">Invitar por Correo</TabsTrigger>
-                                    <TabsTrigger value="create">Crear Manualmente</TabsTrigger>
+                                    <TabsTrigger value="invite">{t('settings.team.dialog.tab_invite')}</TabsTrigger>
+                                    <TabsTrigger value="create">{t('settings.team.dialog.tab_create')}</TabsTrigger>
                                 </TabsList>
 
                                 {/* TAB: INVITE */}
                                 <TabsContent value="invite" className="space-y-4 py-4">
                                     <div className="space-y-2">
-                                        <Label htmlFor="email">Correo Electrónico</Label>
+                                        <Label htmlFor="email">{t('settings.team.dialog.email_label')}</Label>
                                         <Input
                                             id="email"
                                             type="email"
-                                            placeholder="usuario@ejemplo.com"
+                                            placeholder={t('settings.team.dialog.email_placeholder')}
                                             value={inviteEmail}
                                             onChange={(e) => setInviteEmail(e.target.value)}
                                         />
                                     </div>
                                     <div className="space-y-2">
-                                        <Label htmlFor="role">Rol IAM</Label>
+                                        <Label htmlFor="role">{t('settings.team.dialog.role_label')}</Label>
                                         <RolePicker
                                             value={inviteRole}
                                             onValueChange={setInviteRole}
                                         />
                                     </div>
+                                    <div className="flex items-center justify-between p-3 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50">
+                                        <div className="space-y-0.5 pr-2">
+                                            <Label htmlFor="invite-inbox-access" className="text-sm font-medium flex items-center gap-1.5 cursor-pointer">
+                                                <MessageSquare className="h-4 w-4 text-indigo-500" />
+                                                {t('settings.team.dialog.inbox_label')}
+                                            </Label>
+                                            <p className="text-xs text-zinc-500">
+                                                {inviteInboxAccess
+                                                    ? t('settings.team.dialog.inbox_enabled_desc')
+                                                    : t('settings.team.dialog.inbox_disabled_desc')}
+                                            </p>
+                                        </div>
+                                        <Switch
+                                            id="invite-inbox-access"
+                                            checked={inviteInboxAccess}
+                                            onCheckedChange={setInviteInboxAccess}
+                                        />
+                                    </div>
                                     <div className="text-xs text-zinc-500 bg-zinc-50 dark:bg-white/5 p-3 rounded-xl border border-zinc-200/60 dark:border-white/10">
-                                        El usuario recibirá un correo con un enlace único para activar su acceso y configurar su nombre y contraseña.
+                                        {t('settings.team.dialog.notice')}
                                     </div>
                                     <Button onClick={handleInvite} disabled={isInviting || !inviteEmail} className="w-full">
                                         {isInviting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                        Enviar Invitación
+                                        {t('settings.team.dialog.send_button')}
                                     </Button>
                                 </TabsContent>
 
@@ -299,73 +409,19 @@ export function TeamSettingsTab({ activeModules, onNavigateToRoles }: TeamSettin
                 </div>
             </div>
 
-            {/* KPI Summary Strip */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-                <div className="rounded-2xl border border-zinc-200/70 dark:border-white/10 bg-white/80 dark:bg-white/5 p-3.5 flex items-center justify-between">
-                    <div>
-                        <span className="text-xs text-zinc-500 block">Total Equipo</span>
-                        <span className="text-xl font-bold text-zinc-900 dark:text-white">{stats.total}</span>
-                    </div>
-                    <div className="h-9 w-9 rounded-xl bg-indigo-50 dark:bg-indigo-500/10 flex items-center justify-center text-indigo-600">
-                        <User className="h-4 w-4" />
-                    </div>
-                </div>
-
-                <div className="rounded-2xl border border-zinc-200/70 dark:border-white/10 bg-white/80 dark:bg-white/5 p-3.5 flex items-center justify-between">
-                    <div>
-                        <span className="text-xs text-zinc-500 block">Cuentas Activas</span>
-                        <span className="text-xl font-bold text-emerald-600">{stats.active}</span>
-                    </div>
-                    <div className="h-9 w-9 rounded-xl bg-emerald-50 dark:bg-emerald-500/10 flex items-center justify-center text-emerald-600">
-                        <CheckCircle className="h-4 w-4" />
-                    </div>
-                </div>
-
-                <div className="rounded-2xl border border-zinc-200/70 dark:border-white/10 bg-white/80 dark:bg-white/5 p-3.5 flex items-center justify-between">
-                    <div>
-                        <span className="text-xs text-zinc-500 block">Invitaciones Pendientes</span>
-                        <span className="text-xl font-bold text-amber-600">{stats.pending}</span>
-                    </div>
-                    <div className="h-9 w-9 rounded-xl bg-amber-50 dark:bg-amber-500/10 flex items-center justify-center text-amber-600">
-                        <Clock className="h-4 w-4" />
-                    </div>
-                </div>
-
-                <div className="rounded-2xl border border-zinc-200/70 dark:border-white/10 bg-white/80 dark:bg-white/5 p-3.5 flex items-center justify-between">
-                    <div>
-                        <span className="text-xs text-zinc-500 block">Agentes Online (Inbox)</span>
-                        <span className="text-xl font-bold text-indigo-600">{stats.onlineAgents}</span>
-                    </div>
-                    <div className="h-9 w-9 rounded-xl bg-pink-50 dark:bg-pink-500/10 flex items-center justify-center text-brand-pink">
-                        <MessageSquare className="h-4 w-4" />
-                    </div>
-                </div>
-            </div>
-
-            {/* Search Filter */}
-            <div className="flex items-center justify-between gap-3">
-                <div className="relative w-full max-w-sm">
-                    <Search className="h-4 w-4 text-zinc-400 absolute left-3 top-3" />
-                    <Input
-                        placeholder="Buscar por nombre, correo, cargo o rol..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                        className="pl-9 bg-white dark:bg-white/5"
-                    />
-                </div>
-            </div>
-
             {/* Members Table */}
-            <Card className="relative border border-zinc-200/70 dark:border-white/10 shadow-sm rounded-2xl overflow-hidden bg-white/90 dark:bg-zinc-900/60">
-                <CardContent className="p-0">
-                    <Table>
+            <div className="relative min-w-0 space-y-3">
+                <Table
+                    resetKey={`${searchQuery}_${activeFilter}`}
+                    containerClassName="bg-white/40 dark:bg-white/5 backdrop-blur-md rounded-2xl border border-zinc-200/80 dark:border-white/10 shadow-none"
+                >
                         <TableHeader>
                             <TableRow>
-                                <TableHead>Miembro</TableHead>
-                                <TableHead>Rol IAM</TableHead>
-                                <TableHead>Estado de Cuenta</TableHead>
-                                <TableHead>Agente Inbox y Canales</TableHead>
-                                <TableHead className="text-right">Acciones</TableHead>
+                                <TableHead>{t('settings.team.table.member')}</TableHead>
+                                <TableHead>{t('settings.team.table.role')}</TableHead>
+                                <TableHead>{t('settings.team.table.account_status')}</TableHead>
+                                <TableHead>{t('settings.team.table.inbox_channels')}</TableHead>
+                                <TableHead className="text-right">{t('settings.team.table.actions')}</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
@@ -378,13 +434,13 @@ export function TeamSettingsTab({ activeModules, onNavigateToRoles }: TeamSettin
                             ) : filteredMembers.length === 0 ? (
                                 <TableRow>
                                     <TableCell colSpan={5} className="text-center py-10 text-muted-foreground">
-                                        No se encontraron miembros con ese criterio.
+                                        {t('settings.team.table.empty')}
                                     </TableCell>
                                 </TableRow>
                             ) : (
                                 filteredMembers.map((member) => {
                                     const fullName = member.full_name || member.user?.full_name
-                                    const email = member.email || member.user?.email || "Sin Email"
+                                    const email = member.email || member.user?.email || t('settings.team.table.no_email')
                                     const displayName = fullName || email.split("@")[0]
                                     const avatarUrl = member.avatar_url || member.user?.avatar_url
                                     const isOwner = member.role === 'owner' || member.role_hierarchy >= 100
@@ -422,7 +478,7 @@ export function TeamSettingsTab({ activeModules, onNavigateToRoles }: TeamSettin
                                                             <span className="truncate">{displayName}</span>
                                                             {!fullName && (
                                                                 <Badge variant="outline" className="text-[10px] h-4 px-1 text-zinc-400 border-zinc-200">
-                                                                    Sin nombre
+                                                                    {t('common.unknown')}
                                                                 </Badge>
                                                             )}
                                                         </div>
@@ -450,7 +506,11 @@ export function TeamSettingsTab({ activeModules, onNavigateToRoles }: TeamSettin
                                                     ) : (
                                                         <User className="h-3 w-3 text-zinc-400" />
                                                     )}
-                                                    {member.role_name}
+                                                    {getRoleInfo({
+                                                        name: member.role_name || (isOwner ? 'Dueño' : isAdmin ? 'Administrador' : 'Miembro'),
+                                                        is_system_role: isOwner || isAdmin || (member.role_name?.toLowerCase() === 'miembro' || member.role_name?.toLowerCase() === 'member'),
+                                                        hierarchy_level: isOwner ? 100 : isAdmin ? 50 : 10
+                                                    }).name}
                                                 </Badge>
                                             </TableCell>
 
@@ -459,18 +519,18 @@ export function TeamSettingsTab({ activeModules, onNavigateToRoles }: TeamSettin
                                                 <div className="space-y-1">
                                                     {member.account_state === 'suspended' ? (
                                                         <Badge variant="destructive" className="text-[10px] h-5 gap-1">
-                                                            <Ban className="h-2.5 w-2.5" /> Suspendido
+                                                            <Ban className="h-2.5 w-2.5" /> {t('settings.team.table.status_suspended')}
                                                         </Badge>
                                                     ) : member.account_state === 'pending_invite' ? (
                                                         <div className="flex items-center gap-1.5" onClick={(e) => e.stopPropagation()}>
                                                             <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 text-[10px] h-5 gap-1">
-                                                                <Clock className="h-2.5 w-2.5" /> Invitación Pendiente
+                                                                <Clock className="h-2.5 w-2.5" /> {t('settings.team.table.status_pending')}
                                                             </Badge>
                                                             <Button
                                                                 variant="ghost"
                                                                 size="icon"
                                                                 className="h-6 w-6 text-amber-700 hover:bg-amber-100"
-                                                                title="Reenviar invitación por correo"
+                                                                title={t('settings.member_sheet.security.resend_invite')}
                                                                 disabled={resendingUserId === member.user_id}
                                                                 onClick={() => handleResendInvite(member.user_id, email)}
                                                             >
@@ -483,16 +543,16 @@ export function TeamSettingsTab({ activeModules, onNavigateToRoles }: TeamSettin
                                                         </div>
                                                     ) : (
                                                         <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 text-[10px] h-5 gap-1">
-                                                            <CheckCircle className="h-2.5 w-2.5" /> Activo
+                                                            <CheckCircle className="h-2.5 w-2.5" /> {t('settings.team.table.status_active')}
                                                         </Badge>
                                                     )}
 
                                                     <div className="text-[11px] text-zinc-400">
                                                         {member.last_sign_in_at
-                                                            ? `Últ. acceso: ${format(new Date(member.last_sign_in_at), "d MMM yyyy", { locale: es })}`
+                                                            ? `${t('settings.team.table.last_seen')} ${format(new Date(member.last_sign_in_at), "d MMM yyyy", { locale: dateLocale })}`
                                                             : member.created_at
-                                                                ? `Ingreso: ${format(new Date(member.created_at), "d MMM yyyy", { locale: es })}`
-                                                                : "Sin registro"}
+                                                                ? `${t('settings.team.table.joined')} ${format(new Date(member.created_at), "d MMM yyyy", { locale: dateLocale })}`
+                                                                : t('settings.team.table.no_record')}
                                                     </div>
                                                 </div>
                                             </TableCell>
@@ -511,7 +571,7 @@ export function TeamSettingsTab({ activeModules, onNavigateToRoles }: TeamSettin
                                                             }`}
                                                         />
                                                         <span className="font-medium text-zinc-700 dark:text-zinc-300">
-                                                            {agentStatus === 'online' ? 'En línea' : agentStatus === 'away' ? 'Ausente' : 'Desconectado'}
+                                                            {agentStatus === 'online' ? t('settings.team.table.status_online') : agentStatus === 'away' ? t('settings.team.table.status_away') : t('settings.team.table.status_offline')}
                                                         </span>
                                                         <span className="text-[10px] text-zinc-400">
                                                             ({member.agent_availability?.current_load ?? 0}/{member.agent_availability?.max_capacity ?? 100})
@@ -521,13 +581,13 @@ export function TeamSettingsTab({ activeModules, onNavigateToRoles }: TeamSettin
                                                     <div className="flex flex-wrap gap-1">
                                                         {hasGlobalView ? (
                                                             <Badge variant="secondary" className="text-[10px] h-4 px-1.5 bg-indigo-50 text-indigo-700 border-indigo-100">
-                                                                Vista Global (Todos)
+                                                                {t('settings.team.table.global_view')}
                                                             </Badge>
                                                         ) : inboxAccessIds.length > 0 ? (
                                                             <>
                                                                 {inboxAccessIds.slice(0, 2).map(chId => (
                                                                     <Badge key={chId} variant="outline" className="text-[10px] h-4 px-1.5 font-normal">
-                                                                        {channelNameMap.get(chId) || "Canal WhatsApp"}
+                                                                        {channelNameMap.get(chId) || t('settings.team.table.channel_fallback')}
                                                                     </Badge>
                                                                 ))}
                                                                 {inboxAccessIds.length > 2 && (
@@ -537,7 +597,7 @@ export function TeamSettingsTab({ activeModules, onNavigateToRoles }: TeamSettin
                                                                 )}
                                                             </>
                                                         ) : (
-                                                            <span className="text-[11px] text-zinc-400 italic">Sin canales asignados</span>
+                                                            <span className="text-[11px] text-zinc-400 italic">{t('settings.team.table.no_channels')}</span>
                                                         )}
                                                     </div>
                                                 </div>
@@ -547,16 +607,16 @@ export function TeamSettingsTab({ activeModules, onNavigateToRoles }: TeamSettin
                                             <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                                                 <div className="flex items-center justify-end gap-1">
                                                     <Button
-                                                        variant="outline"
-                                                        size="sm"
-                                                        className="h-8 text-xs gap-1.5"
+                                                        variant="ghost"
+                                                        size="icon"
+                                                        className="h-8 w-8 text-zinc-600 hover:text-zinc-900 hover:bg-zinc-100 dark:hover:bg-white/10 dark:text-zinc-300 dark:hover:text-white"
                                                         onClick={() => {
                                                             setEditingMember(member)
                                                             setIsEditOpen(true)
                                                         }}
+                                                        title={t('settings.team.table.btn_settings')}
                                                     >
-                                                        <UserCog className="h-3.5 w-3.5 text-indigo-600" />
-                                                        Ficha
+                                                        <Settings className="h-4 w-4" />
                                                     </Button>
 
                                                     {!isOwner && (
@@ -567,7 +627,7 @@ export function TeamSettingsTab({ activeModules, onNavigateToRoles }: TeamSettin
                                                                 ? "h-8 w-8 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
                                                                 : "h-8 w-8 text-amber-600 hover:text-amber-700 hover:bg-amber-50"}
                                                             onClick={() => handleToggleStatus(member.user_id, member.status)}
-                                                            title={member.status === 'blocked' ? "Reactivar acceso" : "Suspender acceso"}
+                                                            title={member.status === 'blocked' ? t('settings.team.table.btn_reactivate') : t('settings.team.table.btn_suspend')}
                                                         >
                                                             {member.status === 'blocked' ? <CheckCircle className="h-4 w-4" /> : <Ban className="h-4 w-4" />}
                                                         </Button>
@@ -579,7 +639,7 @@ export function TeamSettingsTab({ activeModules, onNavigateToRoles }: TeamSettin
                                                             size="icon"
                                                             className="h-8 w-8 text-red-500 hover:text-red-700 hover:bg-red-50"
                                                             onClick={() => handleRemove(member.user_id, displayName)}
-                                                            title="Eliminar miembro"
+                                                            title={t('settings.team.table.btn_delete')}
                                                         >
                                                             <Trash2 className="h-4 w-4" />
                                                         </Button>
@@ -592,23 +652,6 @@ export function TeamSettingsTab({ activeModules, onNavigateToRoles }: TeamSettin
                             )}
                         </TableBody>
                     </Table>
-                </CardContent>
-            </Card>
-
-            {/* Direct Callout to Roles & Permissions Tab */}
-            <div className="glass-card bg-indigo-50/50 dark:bg-indigo-900/10 border border-indigo-100/60 dark:border-indigo-800/30 rounded-2xl p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div className="flex items-start gap-3">
-                    <ShieldCheck className="h-5 w-5 text-indigo-600 mt-0.5 shrink-0" />
-                    <div>
-                        <h4 className="font-medium text-indigo-950 dark:text-indigo-200 text-sm">Matriz Avanzada de Roles y Permisos (IAM)</h4>
-                        <p className="text-xs text-indigo-700 dark:text-indigo-300 mt-0.5">
-                            Configura roles personalizados, niveles de jerarquía y permisos granulares por módulo desde la nueva pestaña dedicada.
-                        </p>
-                    </div>
-                </div>
-                <Button variant="outline" size="sm" onClick={goToRoles} className="shrink-0 bg-white dark:bg-zinc-900">
-                    Abrir Roles y Permisos
-                </Button>
             </div>
 
             {/* Member Edit Sheet */}

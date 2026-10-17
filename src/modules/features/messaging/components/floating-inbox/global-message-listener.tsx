@@ -65,12 +65,14 @@ export function GlobalMessageListener() {
         // Wait for auth and permissions to be fully loaded
         if (!organizationId || !userPermissions || !userId) return
 
+        const { canAccessInbox, hasGlobalView, authorizedChannels } = evaluateInboxPermissions(userPermissions)
+        if (!canAccessInbox) return
+
         // 1. DYNAMIC NOTIFICATION LISTENER (MICRO-SUBSCRIPTIONS)
         globalChannelCounter.current += 1
         const channelName = `global-conv-${organizationId.slice(0, 8)}-${globalChannelCounter.current}`
 
         const channel = supabase.channel(channelName)
-        const { hasGlobalView, authorizedChannels } = evaluateInboxPermissions(userPermissions)
 
         // Helper to define what happens when a message arrives
         const onMessageUpdate = async (payload: any) => {

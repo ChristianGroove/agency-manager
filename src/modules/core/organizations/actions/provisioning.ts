@@ -148,12 +148,21 @@ async function provisionOrganization(formData: OrganizationCreationInput, onboar
                 show_search_bar: true, show_stock_badges: false
             }
         } : {}
+        const resolvedRoles = process.env.VITEST
+            ? getDefaultRoles()
+            : (await (await import('@/modules/core/iam/actions/superadmin-iam-actions')).getResolvedGlobalBaseRoles()).map(r => ({
+                name: r.name,
+                description: r.description,
+                is_system_role: true,
+                hierarchy_level: r.hierarchy_level,
+                permissions: r.permissions,
+            }))
         const { data: provisioned, error: provisionError } = await supabaseAdmin.rpc('provision_tenant_atomic', {
             p_actor_id: user.id, p_request_key: requestKey,
             p_input: requestInput, p_owner_id: owner?.id || (onboardingInvite ? user.id : null),
             p_invite_code: onboardingInvite?.code || null,
             p_defaults: {
-                roles: getDefaultRoles(), portal_theme_config: defaultPortalThemeConfig,
+                roles: resolvedRoles, portal_theme_config: defaultPortalThemeConfig,
                 categories: isRealEstate ? DEFAULT_REAL_ESTATE_CATEGORIES : [], crm: crmTemplate
             }
         })

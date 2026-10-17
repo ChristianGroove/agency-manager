@@ -63,9 +63,12 @@ vi.mock('@/modules/core/settings/actions/team', () => ({
 
 vi.mock('@/modules/core/iam/utils/inbox-permissions', () => ({
     evaluateInboxPermissions: vi.fn((perms) => {
-        if (perms.role === 'owner') return { hasGlobalView: true, authorizedChannels: [] };
-        if (perms.permissions.inbox_access) return { hasGlobalView: false, authorizedChannels: perms.permissions.inbox_access };
-        return { hasGlobalView: false, authorizedChannels: [] };
+        if (perms.permissions?.['inbox.view'] === false) {
+            return { canAccessInbox: false, hasGlobalView: false, authorizedChannels: [] };
+        }
+        if (perms.role === 'owner') return { canAccessInbox: true, hasGlobalView: true, authorizedChannels: [] };
+        if (perms.permissions?.inbox_access) return { canAccessInbox: true, hasGlobalView: false, authorizedChannels: perms.permissions.inbox_access };
+        return { canAccessInbox: true, hasGlobalView: false, authorizedChannels: [] };
     })
 }));
 
@@ -143,5 +146,20 @@ describe('GlobalMessageListener Micro-Subscriptions', () => {
         expect(mocks.mockOn).toHaveBeenCalledWith('postgres_changes', expect.objectContaining({
             filter: 'assigned_to=eq.agent-123'
         }), expect.any(Function));
+    });
+
+    it('does not create any subscriptions when member has inbox.view disabled', async () => {
+        mockPermissions = { 
+            role: 'agent', 
+            hierarchy: 10, 
+            permissions: { 'inbox.view': false } 
+        };
+        
+        renderHook(() => GlobalMessageListener());
+
+        await new Promise(resolve => setTimeout(resolve, 2100));
+
+        expect(mocks.mockChannel).not.toHaveBeenCalled();
+        expect(mocks.mockOn).not.toHaveBeenCalled();
     });
 });

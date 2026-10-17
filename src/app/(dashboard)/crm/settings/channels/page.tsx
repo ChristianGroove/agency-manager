@@ -15,17 +15,27 @@ import { getPipelineStages } from "@/modules/features/crm/services/logic/pipelin
 import { getOrganizationMembers } from "@/modules/core/settings/actions/team"
 import { getCurrentOrganizationId } from "@/modules/core/organizations/organization-actions"
 import { getActiveModules } from "@/modules/core/saas/saas-actions"
-import { hasRole } from '@/modules/core/iam/services/org-roles'
+import { hasPermission } from '@/modules/core/iam/services/role-service'
+import { PERMISSIONS } from '@/modules/core/iam/actions/permissions'
+import { redirect } from 'next/navigation'
 
 export default async function ChannelsPage() {
     const organizationId = await getCurrentOrganizationId()
     
-    const [channels, pipelineStages, agents, activeModules, canManageChannels] = await Promise.all([
+    const [canManageChannels, canManageSettings] = await Promise.all([
+        hasPermission(PERMISSIONS.INBOX.MANAGE_CHANNELS),
+        hasPermission(PERMISSIONS.CRM.MANAGE_SETTINGS)
+    ])
+
+    if (!canManageChannels && !canManageSettings) {
+        redirect("/dashboard?error=unauthorized")
+    }
+
+    const [channels, pipelineStages, agents, activeModules] = await Promise.all([
         getChannels(),
         getPipelineStages(),
         getOrganizationMembers(),
-        getActiveModules(organizationId || undefined),
-        hasRole('admin')
+        getActiveModules(organizationId || undefined)
     ])
 
     const isMetaAdsEnabled = activeModules.includes('module_meta_ads')

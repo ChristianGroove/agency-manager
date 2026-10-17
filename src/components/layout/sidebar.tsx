@@ -319,8 +319,9 @@ export function SidebarContent({ isCollapsed = false, currentOrgId, isSuperAdmin
 export function Sidebar({ currentOrgId, isSuperAdmin = false, user, sidebarContext, orgCount }: Omit<SidebarProps, 'isCollapsed' | 'toggleCollapse'>) {
     const { isCollapsed, toggleCollapse } = useSidebar()
     const { resolvedTheme } = useTheme()
-    // Fetch org type for floating actions visibility
-    const { organizationType } = useActiveModules()
+    // Fetch org type for floating actions visibility (prefer server context to avoid SSR/CSR hydration mismatch)
+    const { organizationType: hookOrganizationType } = useActiveModules()
+    const organizationType = sidebarContext?.organizationType || hookOrganizationType
 
     // PERF: Removed redundant branding fetch. Use CSS variable or default pink.
     const brandingColor = "242, 5, 226" // brand-pink RGB
@@ -364,6 +365,7 @@ export function Sidebar({ currentOrgId, isSuperAdmin = false, user, sidebarConte
     return (
         <TooltipProvider>
             <div
+                suppressHydrationWarning
                 className={cn(
                     "glass-panel fixed left-4 top-4 bottom-4 h-auto bg-white/10 dark:bg-white/5 backdrop-blur-md text-gray-900 dark:text-white rounded-2xl transition-all duration-300 ease-in-out z-50 flex flex-col select-none animate-float-sidebar",
                     "shadow-lg shadow-black/10 dark:shadow-black/20",

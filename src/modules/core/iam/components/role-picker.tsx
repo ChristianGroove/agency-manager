@@ -3,9 +3,11 @@
 import { useState, useEffect } from 'react';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Role, getOrganizationRoles } from '../services/role-service';
-import { normalizeRoleRecord } from '../actions/permissions';
+import { normalizeRoleRecord, sortRolesWithSystemBaseFirst } from '../actions/permissions';
 import { getCurrentUserPermissions } from '@/modules/core/settings/actions/team';
 import { Shield, User, Crown } from 'lucide-react';
+import { useTranslation } from '@/modules/core/i18n/use-translation';
+import { useLocalizedIam } from '../actions/use-localized-iam';
 
 interface RolePickerProps {
     value: string; // role_id
@@ -24,6 +26,7 @@ export function RolePicker({
     onRoleSelected,
     isCurrentUserOwner
 }: RolePickerProps) {
+    const { t, getRoleInfo } = useLocalizedIam();
     const [roles, setRoles] = useState<Role[]>([]);
     const [loading, setLoading] = useState(true);
     const [isOwnerSession, setIsOwnerSession] = useState<boolean>(isCurrentUserOwner ?? false);
@@ -53,7 +56,7 @@ export function RolePicker({
         getOrganizationRoles()
             .then(rawData => {
                 if (!mounted) return;
-                const data = rawData.map(normalizeRoleRecord);
+                const data = sortRolesWithSystemBaseFirst(rawData.map(normalizeRoleRecord));
                 setRoles(data);
 
                 // Resolve initial role if value is missing or legacy string ('admin', 'member', 'owner')
@@ -111,7 +114,7 @@ export function RolePicker({
     return (
         <Select value={selectedRole?.id || value} onValueChange={onValueChange} disabled={disabled || loading}>
             <SelectTrigger className="w-full">
-                <SelectValue placeholder={loading ? "Cargando roles..." : "Selecciona un rol"}>
+                <SelectValue placeholder={loading ? t('settings.roles.loading') : t('settings.roles.select_role_placeholder')}>
                     {selectedRole && (
                         <div className="flex items-center gap-2">
                             {((selectedRole.hierarchy_level ?? 0) >= 100 || selectedRole.name?.toLowerCase().trim() === 'owner' || selectedRole.name?.toLowerCase().trim() === 'dueño') ? (
@@ -121,29 +124,32 @@ export function RolePicker({
                             ) : (
                                 <User className="h-4 w-4 text-gray-500" />
                             )}
-                            <span>{selectedRole.name}</span>
+                            <span>{getRoleInfo(selectedRole).name}</span>
                         </div>
                     )}
                 </SelectValue>
             </SelectTrigger>
             <SelectContent>
-                {filteredRoles.map((role) => (
-                    <SelectItem key={role.id} value={role.id}>
-                        <div className="flex items-center gap-2">
-                            {((role.hierarchy_level ?? 0) >= 100 || role.name?.toLowerCase().trim() === 'owner' || role.name?.toLowerCase().trim() === 'dueño') ? (
-                                <Crown className="h-4 w-4 text-amber-500" />
-                            ) : ((role.hierarchy_level ?? 0) >= 50 || role.name?.toLowerCase().trim() === 'admin' || role.name?.toLowerCase().trim() === 'administrador') ? (
-                                <Shield className="h-4 w-4 text-indigo-500" />
-                            ) : (
-                                <User className="h-4 w-4 text-gray-500" />
-                            )}
-                            <div className="flex flex-col text-left">
-                                <span className="font-medium">{role.name}</span>
-                                {role.description && <span className="text-[10px] text-muted-foreground">{role.description}</span>}
+                {filteredRoles.map((role) => {
+                    const loc = getRoleInfo(role);
+                    return (
+                        <SelectItem key={role.id} value={role.id}>
+                            <div className="flex items-center gap-2">
+                                {((role.hierarchy_level ?? 0) >= 100 || role.name?.toLowerCase().trim() === 'owner' || role.name?.toLowerCase().trim() === 'dueño') ? (
+                                    <Crown className="h-4 w-4 text-amber-500" />
+                                ) : ((role.hierarchy_level ?? 0) >= 50 || role.name?.toLowerCase().trim() === 'admin' || role.name?.toLowerCase().trim() === 'administrador') ? (
+                                    <Shield className="h-4 w-4 text-indigo-500" />
+                                ) : (
+                                    <User className="h-4 w-4 text-gray-500" />
+                                )}
+                                <div className="flex flex-col text-left">
+                                    <span className="font-medium">{loc.name}</span>
+                                    {loc.description && <span className="text-[10px] text-muted-foreground">{loc.description}</span>}
+                                </div>
                             </div>
-                        </div>
-                    </SelectItem>
-                ))}
+                        </SelectItem>
+                    );
+                })}
             </SelectContent>
         </Select>
     );

@@ -65,10 +65,16 @@ VALUES ('app_id', 'core_clients', true, true);
 
 ---
 
-## 4. Puesta en Producción (Checklist)
+## 4. Puesta en Producción y Gobernanza IAM V2 (Checklist)
 
-Para que el Space sea funcional al 100%:
-- [ ] **Marketplace**: `is_active = true` en `saas_apps`.
+Para que el Space y sus módulos sean funcionales y seguros al 100%:
+- [ ] **Política Disabled-by-Default**: Todo módulo nuevo o feature nueva introducida para el Space debe entrar **desactivada por defecto** (`auto_enable = false` para tenants existentes y permisos operativos en `false`) y exigir confirmación explícita antes de activarse.
+- [ ] **Registro en Sistema de Roles y Permisos (IAM V2)**:
+  - Registrar permisos del módulo en [`src/modules/core/iam/actions/permissions.ts`](file:///G:/Pixy/agency-manager-mejorasuxui/src/modules/core/iam/actions/permissions.ts) (`PERMISSIONS` y `PERMISSION_GROUPS` con `moduleKey`).
+  - Definir valores iniciales en [`src/modules/core/iam/services/default-roles.ts`](file:///G:/Pixy/agency-manager-mejorasuxui/src/modules/core/iam/services/default-roles.ts) y rutas en [`src/modules/core/saas/module-config.ts`](file:///G:/Pixy/agency-manager-mejorasuxui/src/modules/core/saas/module-config.ts).
+  - Añadir traducciones en [`es.ts`](file:///G:/Pixy/agency-manager-mejorasuxui/src/modules/core/i18n/dictionaries/es.ts), [`en.ts`](file:///G:/Pixy/agency-manager-mejorasuxui/src/modules/core/i18n/dictionaries/en.ts) y [`use-localized-iam.ts`](file:///G:/Pixy/agency-manager-mejorasuxui/src/modules/core/iam/actions/use-localized-iam.ts).
+  - Blindar todas las Server Actions con `requirePermission(...)` y auditar la plantilla global desde `/platform/admin` $\rightarrow$ **Red (Tenants)** $\rightarrow$ **Roles & Permisos IAM**.
+- [ ] **Marketplace**: `is_active = true` en `saas_apps` (únicamente tras confirmar la revisión de permisos).
 - [ ] **Diccionario**: Verificado en el tab "Diccionario" del Admin.
 - [ ] **Capacidades**: Comprobar que los switches de "Funciones" reflejan los módulos instalados.
 - [ ] **Banners**: Asegurarse de que existe un banner en `global_dashboard_banners` para la `space_category` del nuevo app.
@@ -76,5 +82,7 @@ Para que el Space sea funcional al 100%:
 ---
 
 ## 📝 Soporte Arquitectónico
-Para entender cómo Pixy procesa este Space en tiempo de ejecución, consulta:
-[SAAS_SPACE_ENGINE_V2.md](file:///d:/Pixy/agency-manager/docs/architecture/SAAS_SPACE_ENGINE_V2.md)
+Para entender cómo Pixy procesa este Space y su modelo de permisos IAM V2 en tiempo de ejecución, consulta:
+- [SECURITY_STANDARDS.md](file:///G:/Pixy/agency-manager-mejorasuxui/docs/2-architecture/security/SECURITY_STANDARDS.md)
+- [settings-and-iam-overhaul.md](file:///G:/Pixy/agency-manager-mejorasuxui/docs/ui/settings-and-iam-overhaul.md)
+

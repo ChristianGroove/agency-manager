@@ -85,12 +85,12 @@ export function SettingsForm({
     // CAA Registration
     useRegisterView({
         viewId: "settings",
-        label: "Configuración",
+        label: t('settings.title'),
         actions: [
-            { id: "save-settings", label: "Guardar Cambios", type: "function", target: "submit_form", icon: Save, description: "Guardar la configuración actual" },
-            { id: "view-billing", label: "Facturación y Planes", type: "route", target: "/platform/settings?tab=subscription", icon: CreditCard, description: "Gestionar plan y métodos de pago" },
-            { id: "manage-team", label: "Gestionar Equipo", type: "route", target: "/platform/settings?tab=team", icon: Users, description: "Invitar o eliminar miembros" },
-            { id: "manage-roles", label: "Roles y Permisos", type: "route", target: "/platform/settings?tab=roles", icon: ShieldCheck, description: "Configurar roles y permisos IAM" }
+            { id: "save-settings", label: t('common.save'), type: "function", target: "submit_form", icon: Save, description: t('settings.description') },
+            { id: "view-billing", label: t('settings.tabs.subscription'), type: "route", target: "/platform/settings?tab=subscription", icon: CreditCard, description: t('settings.tabs.subscription') },
+            { id: "manage-team", label: t('settings.tabs.team'), type: "route", target: "/platform/settings?tab=team", icon: Users, description: t('settings.team.description') },
+            { id: "manage-roles", label: t('settings.tabs.roles'), type: "route", target: "/platform/settings?tab=roles", icon: ShieldCheck, description: t('settings.roles.description') }
         ]
     })
 
@@ -110,14 +110,14 @@ export function SettingsForm({
         try {
             const result = await updateSettings(formData)
             if (result.error) {
-                toast.error("Error al guardar: " + result.error)
+                toast.error(`${t('settings.save_error_prefix')}${result.error}`)
             } else {
-                toast.success("Configuración guardada correctamente")
+                toast.success(t('settings.saved_success'))
                 router.refresh()
             }
         } catch (error) {
             console.error(error)
-            toast.error("Ocurrió un error inesperado al guardar")
+            toast.error(t('settings.save_error'))
         } finally {
             setIsLoading(false)
         }
@@ -141,7 +141,7 @@ export function SettingsForm({
         },
         {
             id: 'roles',
-            label: 'Roles y Permisos',
+            label: t('settings.tabs.roles'),
             icon: ShieldCheck,
             requiredModule: null,
             isCore: true,
@@ -173,7 +173,7 @@ export function SettingsForm({
         },
         {
             id: 'revenue',
-            label: 'Comisiones',
+            label: t('settings.tabs.revenue'),
             icon: DollarSign,
             requiredModule: null,
             isCore: false,
@@ -237,52 +237,55 @@ export function SettingsForm({
                 />
             )}
 
-            <SectionHeader
-                title={t('settings.title')}
-                subtitle={t('settings.description')}
-                icon={Settings}
-                action={showGlobalSaveButton ? (
-                    <Button onClick={handleSubmit} disabled={isLoading} className="bg-brand-pink hover:bg-brand-pink/90">
-                        {isLoading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-                        {t('common.save')}
-                    </Button>
-                ) : undefined}
-            />
-
-            <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full" suppressHydrationWarning>
-                <TabsList
-                    className="flex w-full overflow-x-auto bg-zinc-100/50 dark:bg-white/5 p-1 backdrop-blur-sm border border-zinc-200/50 dark:border-white/10 no-scrollbar rounded-xl"
-                    suppressHydrationWarning
-                >
-                    {visibleTabs.map(tab => {
-                        const Icon = tab.icon
-                        return (
-                            <TabsTrigger
-                                key={tab.id}
-                                value={tab.id}
-                                className="flex items-center justify-center gap-2 data-[state=active]:bg-white dark:data-[state=active]:bg-white/10 data-[state=active]:text-[var(--brand-pink)] dark:data-[state=active]:text-white data-[state=active]:shadow-sm transition-all flex-1 whitespace-nowrap px-4 rounded-lg"
+            <Tabs value={activeTab} onValueChange={handleTabChange} className="w-full space-y-6" suppressHydrationWarning>
+                <SectionHeader
+                    title={t('settings.title')}
+                    subtitle={t('settings.description')}
+                    icon={Settings}
+                    action={
+                        <div className="flex items-center gap-3 flex-wrap sm:flex-nowrap">
+                            <TabsList
+                                className="inline-flex items-center gap-1 p-1 bg-gray-100/50 dark:bg-white/5 backdrop-blur-sm border border-gray-200/50 dark:border-white/10 rounded-xl h-auto flex-wrap sm:flex-nowrap"
                                 suppressHydrationWarning
                             >
-                                <Icon className="h-4 w-4" />
-                                {tab.label}
-                            </TabsTrigger>
-                        )
-                    })}
-                </TabsList>
+                                {visibleTabs.map(tab => {
+                                    const Icon = tab.icon
+                                    return (
+                                        <TabsTrigger
+                                            key={tab.id}
+                                            value={tab.id}
+                                            className="flex items-center justify-center gap-2 rounded-lg py-1.5 px-3 text-xs sm:text-sm font-medium transition-all data-[state=active]:bg-white dark:data-[state=active]:bg-white/10 data-[state=active]:text-primary dark:data-[state=active]:text-white data-[state=active]:shadow-sm text-muted-foreground hover:bg-gray-200/50 dark:hover:bg-white/5 hover:text-foreground shrink-0"
+                                            suppressHydrationWarning
+                                        >
+                                            <Icon className="h-4 w-4 shrink-0" />
+                                            <span>{tab.label}</span>
+                                        </TabsTrigger>
+                                    )
+                                })}
+                            </TabsList>
+                            {showGlobalSaveButton && (
+                                <Button onClick={handleSubmit} disabled={isLoading} className="bg-brand-pink hover:bg-brand-pink/90 h-9 px-4 text-xs font-semibold shadow-xs shrink-0">
+                                    {isLoading ? <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> : <Save className="mr-1.5 h-3.5 w-3.5" />}
+                                    {t('common.save')}
+                                </Button>
+                            )}
+                        </div>
+                    }
+                />
 
-                <TabsContent value="subscription" className="space-y-4 mt-4" suppressHydrationWarning>
+                <TabsContent value="subscription" className="space-y-4 mt-2" suppressHydrationWarning>
                     <SubscriptionSettingsTab app={subscriptionApp} allowDirectBilling={billingStatus?.allowDirectBilling} />
                 </TabsContent>
 
-                <TabsContent value="team" className="space-y-4 mt-4" suppressHydrationWarning>
+                <TabsContent value="team" className="space-y-4 mt-2" suppressHydrationWarning>
                     <TeamSettingsTab activeModules={activeModules} onNavigateToRoles={() => handleTabChange('roles')} />
                 </TabsContent>
 
-                <TabsContent value="roles" className="space-y-4 mt-4" suppressHydrationWarning>
+                <TabsContent value="roles" className="space-y-4 mt-2" suppressHydrationWarning>
                     <RoleManager initialRoles={initialRoles} activeModules={activeModules} />
                 </TabsContent>
 
-                <TabsContent value="notifications" className="space-y-4 mt-4" suppressHydrationWarning>
+                <TabsContent value="notifications" className="space-y-4 mt-2" suppressHydrationWarning>
                     <Card className="glass-card rounded-2xl relative overflow-hidden">
                         <CardHeader>
                             <CardTitle>{t('settings.notifications.title')}</CardTitle>
@@ -294,31 +297,31 @@ export function SettingsForm({
                                     <div className="h-10 w-10 rounded-full bg-brand-pink/10 flex items-center justify-center text-brand-pink">
                                         <Palette className="w-5 h-5" />
                                     </div>
-                                    <h3 className="font-medium">Diseño y Plantillas</h3>
-                                    <p className="text-xs text-muted-foreground mb-2">Personaliza el aspecto de tus correos.</p>
+                                    <h3 className="font-medium">{t('settings.notifications.design_templates')}</h3>
+                                    <p className="text-xs text-muted-foreground mb-2">{t('settings.notifications.design_templates_desc')}</p>
                                     <Button variant="outline" size="sm" onClick={() => router.push('/tools/email-engine')}>
-                                        Gestionar Plantillas
+                                        {t('settings.notifications.manage_templates')}
                                     </Button>
                                 </div>
                                 <div className="space-y-2">
-                                    <Label htmlFor="email_sender_name">Nombre del Remitente</Label>
+                                    <Label htmlFor="email_sender_name">{t('settings.notifications.sender_name')}</Label>
                                     <Input
                                         id="email_sender_name"
                                         name="email_sender_name"
                                         value={formData.email_sender_name || ''}
                                         onChange={handleChange}
-                                        placeholder="Ej: Mi Agencia"
+                                        placeholder={t('settings.notifications.sender_name_placeholder')}
                                     />
-                                    <p className="text-xs text-muted-foreground">El nombre que verán los clientes.</p>
+                                    <p className="text-xs text-muted-foreground">{t('settings.notifications.sender_name_hint')}</p>
                                 </div>
                                 <div className="space-y-2">
-                                    <Label htmlFor="email_reply_to">Correo de Respuesta</Label>
+                                    <Label htmlFor="email_reply_to">{t('settings.notifications.reply_to')}</Label>
                                     <Input
                                         id="email_reply_to"
                                         name="email_reply_to"
                                         value={formData.email_reply_to || ''}
                                         onChange={handleChange}
-                                        placeholder="soporte@miagencia.com"
+                                        placeholder={t('settings.notifications.reply_to_placeholder')}
                                     />
                                 </div>
                             </div>
@@ -349,27 +352,27 @@ export function SettingsForm({
                         <CardContent className="space-y-4">
                             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                                 <div className="space-y-2">
-                                    <Label htmlFor="invoice_prefix">Prefijo de Documentos</Label>
+                                    <Label htmlFor="invoice_prefix">{t('settings.billing.prefix')}</Label>
                                     <Input id="invoice_prefix" name="invoice_prefix" value={formData.invoice_prefix || 'INV-'} onChange={handleChange} placeholder="INV-" />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label htmlFor="default_due_days">Días de Vencimiento</Label>
+                                    <Label htmlFor="default_due_days">{t('settings.billing.due_days')}</Label>
                                     <Input type="number" id="default_due_days" name="default_due_days" value={formData.default_due_days || 30} onChange={handleChange} />
                                 </div>
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                    <Label htmlFor="default_tax_name">Nombre del Impuesto</Label>
+                                    <Label htmlFor="default_tax_name">{t('settings.billing.tax_name')}</Label>
                                     <Input id="default_tax_name" name="default_tax_name" value={formData.default_tax_name || 'IVA'} onChange={handleChange} placeholder="IVA" />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label htmlFor="default_tax_rate">Tasa de Impuesto (%)</Label>
+                                    <Label htmlFor="default_tax_rate">{t('settings.billing.tax_rate')}</Label>
                                     <Input type="number" id="default_tax_rate" name="default_tax_rate" value={formData.default_tax_rate || 0} onChange={handleChange} />
                                 </div>
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="invoice_legal_text">Pie de Página de Factura</Label>
-                                <Textarea id="invoice_legal_text" name="invoice_legal_text" value={formData.invoice_legal_text || ''} onChange={handleChange} placeholder="Texto legal..." className="min-h-[100px]" />
+                                <Label htmlFor="invoice_legal_text">{t('settings.billing.legal_text')}</Label>
+                                <Textarea id="invoice_legal_text" name="invoice_legal_text" value={formData.invoice_legal_text || ''} onChange={handleChange} placeholder={t('settings.billing.legal_text_placeholder')} className="min-h-[100px]" />
                             </div>
                         </CardContent>
                     </Card>
@@ -386,63 +389,63 @@ export function SettingsForm({
                             <div className="flex flex-col gap-4 p-4 border dark:border-white/10 rounded-lg bg-muted/20 dark:bg-white/5">
                                 <div className="flex items-center justify-between">
                                     <div className="space-y-0.5">
-                                        <Label className="text-base">Habilitar Pagos en el Portal</Label>
-                                        <p className="text-sm text-muted-foreground">Si se desactiva, los clientes verán sus cuentas pero no podrán pagar.</p>
+                                        <Label className="text-base">{t('settings.payments.enable_portal')}</Label>
+                                        <p className="text-sm text-muted-foreground">{t('settings.payments.enable_portal_desc')}</p>
                                     </div>
                                     <Switch checked={formData.enable_portal_payments !== false} onCheckedChange={(checked) => handleSwitchChange('enable_portal_payments', checked)} />
                                 </div>
                                 <div className="flex items-center justify-between">
                                     <div className="space-y-0.5">
-                                        <Label className="text-base">Permitir Pago Múltiple</Label>
-                                        <p className="text-sm text-muted-foreground">Pagar varios documentos en una sola transacción.</p>
+                                        <Label className="text-base">{t('settings.payments.enable_multi')}</Label>
+                                        <p className="text-sm text-muted-foreground">{t('settings.payments.enable_multi_desc')}</p>
                                     </div>
                                     <Switch checked={formData.enable_multi_invoice_payment !== false} onCheckedChange={(checked) => handleSwitchChange('enable_multi_invoice_payment', checked)} />
                                 </div>
                             </div>
                             <div className="space-y-2">
-                                <Label htmlFor="min_payment_amount">Monto Mínimo de Pago</Label>
+                                <Label htmlFor="min_payment_amount">{t('settings.payments.min_amount')}</Label>
                                 <Input type="number" id="min_payment_amount" name="min_payment_amount" value={formData.min_payment_amount || 0} onChange={handleChange} />
                             </div>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                    <Label htmlFor="payment_pre_message">Mensaje Pre-Pago</Label>
-                                    <Textarea id="payment_pre_message" name="payment_pre_message" value={formData.payment_pre_message || ''} onChange={handleChange} placeholder="Mensaje antes de pagar..." className="min-h-[80px]" />
+                                    <Label htmlFor="payment_pre_message">{t('settings.payments.pre_message')}</Label>
+                                    <Textarea id="payment_pre_message" name="payment_pre_message" value={formData.payment_pre_message || ''} onChange={handleChange} placeholder={t('settings.payments.pre_message_placeholder')} className="min-h-[80px]" />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label htmlFor="payment_success_message">Mensaje Post-Pago</Label>
-                                    <Textarea id="payment_success_message" name="payment_success_message" value={formData.payment_success_message || ''} onChange={handleChange} placeholder="Mensaje tras pago exitoso..." className="min-h-[80px]" />
+                                    <Label htmlFor="payment_success_message">{t('settings.payments.success_message')}</Label>
+                                    <Textarea id="payment_success_message" name="payment_success_message" value={formData.payment_success_message || ''} onChange={handleChange} placeholder={t('settings.payments.success_message_placeholder')} className="min-h-[80px]" />
                                 </div>
                             </div>
                         </CardContent>
                     </Card>
                     <Card className="glass-card rounded-2xl relative overflow-hidden mt-6 border-indigo-100 dark:border-indigo-500/20 bg-indigo-50/30 dark:bg-indigo-500/5">
                         <CardHeader>
-                            <CardTitle className="flex items-center gap-2 text-indigo-700 dark:text-indigo-400">Integración Wompi (API)</CardTitle>
-                            <CardDescription>Configura tus llaves de API.</CardDescription>
+                            <CardTitle className="flex items-center gap-2 text-indigo-700 dark:text-indigo-400">{t('settings.payments.wompi_title')}</CardTitle>
+                            <CardDescription>{t('settings.payments.wompi_desc')}</CardDescription>
                         </CardHeader>
                         <CardContent className="space-y-4">
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div className="space-y-2">
-                                    <Label htmlFor="wompi_public_key">Llave Pública</Label>
+                                    <Label htmlFor="wompi_public_key">{t('settings.payments.wompi_public_key')}</Label>
                                     <Input id="wompi_public_key" name="wompi_public_key" value={formData.wompi_public_key || ''} onChange={handleChange} placeholder="pub_..." className="bg-white" />
                                 </div>
                                 <div className="space-y-2">
-                                    <Label htmlFor="wompi_integrity_secret">Secreto de Integridad</Label>
+                                    <Label htmlFor="wompi_integrity_secret">{t('settings.payments.wompi_integrity_secret')}</Label>
                                     <Input
                                         type="password"
                                         id="wompi_integrity_secret"
                                         name="wompi_integrity_secret"
                                         value={formData.wompi_integrity_secret || ''}
                                         onChange={handleChange}
-                                        placeholder={formData.wompi_integrity_secret_present ? "Secreto configurado; deja vacio para conservarlo" : "Secret..."}
+                                        placeholder={formData.wompi_integrity_secret_present ? t('settings.payments.wompi_secret_configured') : t('settings.payments.wompi_secret_placeholder')}
                                         className="bg-white"
                                     />
                                 </div>
                             </div>
                             <div className="flex items-center justify-between pt-2">
                                 <div className="space-y-0.5">
-                                    <Label>Ambiente de Producción</Label>
-                                    <p className="text-xs text-muted-foreground">Desactiva para usar modo Sandbox.</p>
+                                    <Label>{t('settings.payments.wompi_environment')}</Label>
+                                    <p className="text-xs text-muted-foreground">{t('settings.payments.wompi_environment_desc')}</p>
                                 </div>
                                 <Switch checked={formData.wompi_environment === 'Production'} onCheckedChange={(checked) => setFormData((prev: any) => ({ ...prev, wompi_environment: checked ? 'Production' : 'Sandbox' }))} />
                             </div>

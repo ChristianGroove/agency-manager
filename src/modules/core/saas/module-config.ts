@@ -80,7 +80,10 @@ export const MODULE_ROUTES: ModuleRoute[] = [
         href: '/crm/inbox',
         icon: Inbox,
         category: 'crm',
-        parentModule: 'module_messaging'
+        parentModule: 'module_messaging',
+        access: {
+            requiredPermission: 'inbox.view'
+        }
     },
     {
         key: 'crm_clients',
@@ -123,7 +126,7 @@ export const MODULE_ROUTES: ModuleRoute[] = [
         category: 'crm',
         parentModule: 'module_meta_ads',
         access: {
-            allowedRoles: ['owner', 'admin']
+            requiredPermission: 'marketing.ads.manage'
         }
     },
     {
@@ -145,7 +148,7 @@ export const MODULE_ROUTES: ModuleRoute[] = [
         category: 'crm',
         parentModule: 'module_crm_reports',
         access: {
-            allowedRoles: ['owner']
+            requiredPermission: 'crm.reports.view'
         }
     },
     // Quote Designer moved to Inbox Sidebar per user request
@@ -157,7 +160,7 @@ export const MODULE_ROUTES: ModuleRoute[] = [
         category: 'crm',
         parentModule: 'core_crm',
         access: {
-            allowedRoles: ['owner', 'admin']
+            requiredPermission: 'crm.settings.manage'
         }
     },
 

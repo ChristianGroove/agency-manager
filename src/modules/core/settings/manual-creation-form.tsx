@@ -3,15 +3,19 @@ import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { RolePicker } from "@/modules/core/iam/components/role-picker"
+import { Switch } from "@/components/ui/switch"
 import { createUserManually } from "./actions/team"
 import { toast } from "sonner"
-import { Eye, EyeOff, Lock, User, Mail, CheckCircle, Loader2, Sparkles } from "lucide-react"
+import { Eye, EyeOff, Lock, User, Mail, CheckCircle, Loader2, Sparkles, MessageSquare } from "lucide-react"
+import { useTranslation } from "@/modules/core/i18n/use-translation"
 
 export function ManualCreationForm({ onSuccess }: { onSuccess: () => void }) {
+    const { t } = useTranslation()
     const [email, setEmail] = useState("")
     const [name, setName] = useState("")
     const [password, setPassword] = useState("")
     const [role, setRole] = useState("")
+    const [inboxAccess, setInboxAccess] = useState(true)
     const [showPassword, setShowPassword] = useState(false)
     const [isLoading, setIsLoading] = useState(false)
 
@@ -24,7 +28,7 @@ export function ManualCreationForm({ onSuccess }: { onSuccess: () => void }) {
         setPassword(generated)
         setShowPassword(true)
         navigator.clipboard?.writeText(generated).catch(() => {})
-        toast.success("Contraseña segura generada y copiada al portapapeles")
+        toast.success(t('settings.team.manual_form.password_copied'))
     }
 
     const handleSubmit = async () => {
@@ -32,15 +36,15 @@ export function ManualCreationForm({ onSuccess }: { onSuccess: () => void }) {
         const cleanEmail = email.trim().toLowerCase()
 
         if (!cleanName || !cleanEmail || !password || !role) {
-            toast.error("Por favor completa todos los campos")
+            toast.error(t('settings.team.manual_form.validation_all_fields'))
             return
         }
         if (cleanName.length < 2) {
-            toast.error("El nombre completo debe tener al menos 2 caracteres")
+            toast.error(t('settings.team.manual_form.validation_name_len'))
             return
         }
         if (password.length < 6) {
-            toast.error("La contraseña debe tener al menos 6 caracteres")
+            toast.error(t('settings.team.manual_form.validation_pass_len'))
             return
         }
 
@@ -51,17 +55,18 @@ export function ManualCreationForm({ onSuccess }: { onSuccess: () => void }) {
                 email: cleanEmail,
                 password,
                 fullName: cleanName,
-                role
+                role,
+                inboxAccess
             })
 
             if (result.success) {
-                toast.success("Usuario creado y activado exitosamente")
+                toast.success(t('settings.team.manual_form.created_success'))
                 onSuccess()
             } else {
-                toast.error("Error: " + result.error)
+                toast.error(t('common.error') + ": " + result.error)
             }
         } catch (error) {
-            toast.error("Error inesperado al crear usuario")
+            toast.error(t('settings.team.toasts.unexpected_error'))
         } finally {
             setIsLoading(false)
         }
@@ -70,12 +75,12 @@ export function ManualCreationForm({ onSuccess }: { onSuccess: () => void }) {
     return (
         <div className="space-y-4">
             <div className="space-y-2">
-                <Label htmlFor="create-name">Nombre Completo</Label>
+                <Label htmlFor="create-name">{t('settings.team.manual_form.name_label')}</Label>
                 <div className="relative">
                     <User className="absolute left-3 top-3 h-4 w-4 text-zinc-400" />
                     <Input
                         id="create-name"
-                        placeholder="Nombre del miembro"
+                        placeholder={t('settings.team.manual_form.name_placeholder')}
                         className="pl-9"
                         autoComplete="off"
                         value={name}
@@ -85,13 +90,13 @@ export function ManualCreationForm({ onSuccess }: { onSuccess: () => void }) {
             </div>
 
             <div className="space-y-2">
-                <Label htmlFor="create-email">Correo Electrónico</Label>
+                <Label htmlFor="create-email">{t('settings.team.manual_form.email_label')}</Label>
                 <div className="relative">
                     <Mail className="absolute left-3 top-3 h-4 w-4 text-zinc-400" />
                     <Input
                         id="create-email"
                         type="email"
-                        placeholder="correo@empresa.com"
+                        placeholder={t('settings.team.manual_form.email_placeholder')}
                         className="pl-9"
                         autoComplete="new-password"
                         value={email}
@@ -102,14 +107,14 @@ export function ManualCreationForm({ onSuccess }: { onSuccess: () => void }) {
 
             <div className="space-y-2">
                 <div className="flex items-center justify-between">
-                    <Label htmlFor="create-password">Contraseña Inicial</Label>
+                    <Label htmlFor="create-password">{t('settings.team.manual_form.password_label')}</Label>
                     <button
                         type="button"
                         onClick={generateSecurePassword}
-                        className="inline-flex items-center gap-1 text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:underline"
+                        className="inline-flex items-center gap-1 text-xs font-medium text-indigo-600 dark:text-indigo-400 hover:underline cursor-pointer"
                     >
                         <Sparkles className="h-3 w-3" />
-                        Generar contraseña segura
+                        {t('settings.team.manual_form.generate_password')}
                     </button>
                 </div>
                 <div className="relative">
@@ -117,7 +122,7 @@ export function ManualCreationForm({ onSuccess }: { onSuccess: () => void }) {
                     <Input
                         id="create-password"
                         type={showPassword ? "text" : "password"}
-                        placeholder="Contraseña segura"
+                        placeholder={t('settings.team.manual_form.password_placeholder')}
                         className="pl-9 pr-9"
                         autoComplete="new-password"
                         value={password}
@@ -137,28 +142,46 @@ export function ManualCreationForm({ onSuccess }: { onSuccess: () => void }) {
                         )}
                     </Button>
                 </div>
-                <p className="text-xs text-zinc-500">Mínimo 6 caracteres.</p>
+                <p className="text-xs text-zinc-500">{t('settings.team.manual_form.password_min_length')}</p>
             </div>
 
             <div className="space-y-2">
-                <Label htmlFor="create-role">Rol IAM</Label>
+                <Label htmlFor="create-role">{t('settings.team.manual_form.role_label')}</Label>
                 <RolePicker
                     value={role}
                     onValueChange={setRole}
                 />
             </div>
 
+            <div className="flex items-center justify-between p-3 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-zinc-50 dark:bg-zinc-900/50">
+                <div className="space-y-0.5 pr-2">
+                    <Label htmlFor="create-inbox-access" className="text-sm font-medium flex items-center gap-1.5 cursor-pointer">
+                        <MessageSquare className="h-4 w-4 text-indigo-500" />
+                        {t('settings.team.manual_form.inbox_label')}
+                    </Label>
+                    <p className="text-xs text-zinc-500">
+                        {inboxAccess
+                            ? t('settings.team.manual_form.inbox_enabled_desc')
+                            : t('settings.team.manual_form.inbox_disabled_desc')}
+                    </p>
+                </div>
+                <Switch
+                    id="create-inbox-access"
+                    checked={inboxAccess}
+                    onCheckedChange={setInboxAccess}
+                />
+            </div>
+
             <div className="flex items-start gap-2 p-3 bg-amber-50 dark:bg-amber-500/10 text-amber-800 dark:text-amber-300 rounded-xl text-xs border border-amber-200/70 dark:border-amber-500/20">
                 <CheckCircle className="h-4 w-4 mt-0.5 shrink-0 text-amber-600 dark:text-amber-400" />
                 <p>
-                    <strong>Nota Importante:</strong> El usuario será creado y confirmado inmediatamente.
-                    Tú eres responsable de comunicarle sus credenciales de acceso de forma segura.
+                    {t('settings.team.manual_form.important_note')}
                 </p>
             </div>
 
             <Button onClick={handleSubmit} disabled={isLoading} className="w-full">
                 {isLoading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Crear Usuario
+                {t('settings.team.manual_form.submit_button')}
             </Button>
         </div>
     )

@@ -4,7 +4,7 @@ import { createClient } from '@/modules/core/database/supabase-server';
 import { supabaseAdmin } from '@/modules/core/database/supabase-admin';
 import { getCurrentOrganizationId } from '@/modules/core/organizations/organization-actions';
 import { isSuperAdmin } from '@/modules/core/iam/services/platform-roles';
-import { PERMISSIONS, PERMISSION_GROUPS, PermissionString, normalizeRoleRecord, resolveSystemRoleKind, sanitizeBrokenUtf8 } from '../actions/permissions';
+import { PERMISSIONS, PERMISSION_GROUPS, PermissionString, normalizeRoleRecord, resolveSystemRoleKind, sanitizeBrokenUtf8, sortRolesWithSystemBaseFirst } from '../actions/permissions';
 import { cache } from 'react';
 import { DEFAULT_ROLES, getDefaultRoles } from './default-roles';
 
@@ -74,19 +74,16 @@ export async function getOrganizationRoles(): Promise<Role[]> {
         return [];
     }
 
-    return (data || [])
-        .map((role: any) => {
-            const normalized = normalizeRoleRecord(role);
-            return {
-                ...normalized,
-                member_count: role.members?.[0]?.count || 0
-            };
-        })
-        .sort((a: Role, b: Role) => {
-            const diff = (b.hierarchy_level ?? 0) - (a.hierarchy_level ?? 0);
-            if (diff !== 0) return diff;
-            return (a.name || '').localeCompare(b.name || '');
-        });
+    const mapped = (data || []).map((role: any) => {
+        const normalized = normalizeRoleRecord(role);
+        return {
+            ...normalized,
+            member_count: role.members?.[0]?.count || 0,
+            created_at: role.created_at
+        };
+    });
+
+    return sortRolesWithSystemBaseFirst(mapped);
 }
 
 export interface UserPermissionsPayload {
